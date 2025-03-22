@@ -9,13 +9,19 @@ const Navbar = () => {
   const Links = (
     <>
       <li>
-        <NavLink>Home</NavLink>
+        <NavLink 
+        to={'/'}
+        >Home</NavLink>
       </li>
       <li>
-        <NavLink>About</NavLink>
+        <NavLink
+        to={'/'}
+        >About</NavLink>
       </li>
       <li>
-        <NavLink>Products</NavLink>
+        <NavLink
+        to={'/'}
+        >Products</NavLink>
       </li>
     </>
   );
@@ -102,8 +108,14 @@ const Navbar = () => {
               className="menu right-4 menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-0 w-52 p-2 shadow"
             >
               <li>
-                <button
+                <Link
+                to={'/dashboard'}
                   className="hover:border-highlight border-2 hover:text-highlight"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  className="hover:border-highlight border-2 hover:text-highlight mt-2"
                   onClick={logoutHandler}
                 >
                   Logout
