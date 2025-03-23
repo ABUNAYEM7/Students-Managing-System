@@ -11,9 +11,11 @@ import Courses from '../Pages/Admin/Courses/Courses'
 import ManageFaculty from '../Pages/Admin/ManageFaculty/ManageFaculty'
 import ManageStudents from '../Pages/Admin/ManageStudents/ManageStudents'
 import AddCourses from '../Pages/Admin/AddCourses/AddCourses'
+import EditCourse from '../Components/DynamicRoute/EditCourse/EditCourse'
 
 const AppRouter = () => {
   const {data:user} = useUserRole()
+  // console.log(user)
   return (
     <Routes>
         <Route path='/' element={<MainLayout/>}>
@@ -31,6 +33,8 @@ const AppRouter = () => {
             </Route>
           )
         }
+        {/* dynamic-route */}
+        <Route path='/edit-course/:id' element={<EditCourse/>}/>
         </Route>
     </Routes>
   )

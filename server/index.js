@@ -3,12 +3,11 @@ const app = express();
 const cors = require("cors");
 const port = process.env.PORT || 3000;
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 app.use(express.json());
 app.use(cors());
 
-const uri =
-  "mongodb+srv://academicore404:qOJBfn3aa3Ph18f7@cluster404.ppsob.mongodb.net/?appName=Cluster404";
+const uri = `mongodb+srv://${process.env.VITE_USER}:${process.env.VITE_PASS}.ppsob.mongodb.net/?appName=Cluster404`;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -23,11 +22,27 @@ async function run() {
     await client.connect();
 
     const usersCollection = client.db("academi_core").collection("users");
+    const courseCollection = client.db("academi_core").collection("courses");
 
     // save new user data in db
     app.post("/users", async (req, res) => {
       const user = req.body;
       const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // save new courses data in db
+    app.post("/add-courses", async (req, res) => {
+      const course = req.body;
+      const result = await courseCollection.insertOne(course);
+      res.send(result);
+    });
+
+    // delete-course
+    app.delete("/delete-course/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await courseCollection.deleteOne(filter);
       res.send(result);
     });
 
@@ -40,6 +55,38 @@ async function run() {
       const filter = { email };
       const result = await usersCollection.findOne(filter);
       res.send(result);
+    });
+
+    // get-courses from db
+    app.get("/all-courses", async (req, res) => {
+      const result = await courseCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    // get specific courses from db
+    app.get("/courses/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await courseCollection.findOne(filter);
+      res.send(result);
+    });
+
+    // update specific course
+    app.patch("/update-course/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const data = req.body;
+      const updatedCourse = {
+        $set: {
+          course:data.course,
+          name: data.name,
+          credit: data.credit,
+          description: data.description,
+          date:data.date,
+        },
+      };
+      const result = await courseCollection.updateOne(filter,updatedCourse)
+      res.send(result)
     });
 
     await client.db("admin").command({ ping: 1 });

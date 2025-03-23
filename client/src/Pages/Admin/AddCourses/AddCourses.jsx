@@ -1,4 +1,8 @@
 import { useState } from "react";
+import addCoursesImage from "../../../assets/addCourses.jpg"
+import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
+import { useNavigate } from "react-router";
+import Swal from "sweetalert2";
 
 const AddCourses = () => {
   const [formData, setFormData] = useState({
@@ -6,22 +10,54 @@ const AddCourses = () => {
     name: "",
     credit: "",
     description: "",
+    date : new Date().toISOString()
   });
+
+  const axiosInstance = AxiosSecure()
+  const navigate = useNavigate()
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit =async (e) => {
     e.preventDefault();
-    console.log("Submitted Data:", formData);
+    try{
+      const res = await axiosInstance.post('/add-courses',formData)
+    if(res?.data?.insertedId){
+      Swal.fire({
+        position: "center",
+        icon: "success",
+        title: "Course Added Successfully",
+        showConfirmButton: false,
+        timer: 1500
+      });
+      navigate('/dashboard/courses')
+    }
+    }
+    catch(err){
+      Swal.fire({
+        title: "Error occurs",
+        icon: "error",
+        text:"Please try again",
+        draggable: true
+      });
+    }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <form
+    <div className="mockup-window border border-base-300 w-full p-4 mt-6">
+  <div className="flex gap-5 flex-col-reverse md:flex-row items-center ">
+    {/* image-container */}
+    <div className="w-fit md:w-1/2">
+    <img src={addCoursesImage} alt="Add courses image" />
+    </div>
+    {/* form-container */}
+    <div className="w-fit md:w-1/2 rounded-3xl  ">
+    <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md"
+        className="bg-white p-6 rounded-lg shadow-lg w-full"
       >
         <h2 className="text-xl font-bold text-center mb-4">Create Course</h2>
         
@@ -83,6 +119,8 @@ const AddCourses = () => {
         <button type="submit" className="btn btn-primary w-full">Create</button>
       </form>
     </div>
+  </div>
+</div>
   );
 };
 
