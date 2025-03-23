@@ -12,6 +12,7 @@ import ManageFaculty from '../Pages/Admin/ManageFaculty/ManageFaculty'
 import ManageStudents from '../Pages/Admin/ManageStudents/ManageStudents'
 import AddCourses from '../Pages/Admin/AddCourses/AddCourses'
 import EditCourse from '../Components/DynamicRoute/EditCourse/EditCourse'
+import ManageUsers from '../Pages/Admin/ManageUsers/ManageUsers'
 
 const AppRouter = () => {
   const {data:user} = useUserRole()
@@ -30,6 +31,7 @@ const AppRouter = () => {
               <Route path='add-courses' element={<AddCourses/>}/>
               <Route path='manage-students' element={<ManageStudents/>}/>
               <Route path='manage-faculty' element={<ManageFaculty/>}/>
+              <Route path='manage-users' element={<ManageUsers/>}/>
             </Route>
           )
         }

@@ -30,10 +30,12 @@ const EditCourse = () => {
     }
   }, [data]);
 
+//   handle change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+//   handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -57,6 +59,8 @@ const EditCourse = () => {
       });
     }
   };
+
+  
   return (
     <div>
       <h3 className="text-3xl font-black text-center mt-6">Edit Course</h3>

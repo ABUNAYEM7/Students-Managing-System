@@ -76,6 +76,20 @@ const AdminDashboard = () => {
                  Faculty
               </NavLink>
             </li>
+            <li>
+              <NavLink
+                className={({ isActive }) =>
+                  `${
+                    isActive
+                      ? " border-2 border-white text-white"
+                      : "text-white"
+                  }`
+                }
+                to={"/dashboard/manage-users"}
+              >
+                 Manage Users
+              </NavLink>
+            </li>
           </ul>
         </div>
       </div>

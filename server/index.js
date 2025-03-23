@@ -38,6 +38,38 @@ async function run() {
       res.send(result);
     });
 
+    // update specific course
+    app.patch("/update-course/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const data = req.body;
+      const updatedCourse = {
+        $set: {
+          course: data.course,
+          name: data.name,
+          credit: data.credit,
+          description: data.description,
+          date: data.date,
+        },
+      };
+      const result = await courseCollection.updateOne(filter, updatedCourse);
+      res.send(result);
+    });
+
+    // update user role
+    app.patch("/update/user-role/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const { role } = req.body;
+      const updatedRole = {
+        $set: {
+          role: role,
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updatedRole);
+      res.send(result);
+    });
+
     // delete-course
     app.delete("/delete-course/:id", async (req, res) => {
       const id = req.params.id;
@@ -45,6 +77,25 @@ async function run() {
       const result = await courseCollection.deleteOne(filter);
       res.send(result);
     });
+
+    // delete-user
+    app.delete("/delete-user/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    // get user state
+    app.get('/user-state',async(req,res)=>{
+      const totalUser = await usersCollection.estimatedDocumentCount({})
+      const totalStudents = await usersCollection.countDocuments({role : 'student'})
+      const totalFaculty = await usersCollection.countDocuments({role : 'faculty'})
+      const totalAdmin= await usersCollection.countDocuments({role : 'admin'})
+      res.send({
+        totalUser,totalStudents,totalFaculty,totalAdmin
+      })
+    })
 
     // GET USER ROLE BY USER EMAIL
     app.get("/user-role/:email", async (req, res) => {
@@ -71,23 +122,15 @@ async function run() {
       res.send(result);
     });
 
-    // update specific course
-    app.patch("/update-course/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const data = req.body;
-      const updatedCourse = {
-        $set: {
-          course:data.course,
-          name: data.name,
-          credit: data.credit,
-          description: data.description,
-          date:data.date,
-        },
-      };
-      const result = await courseCollection.updateOne(filter,updatedCourse)
-      res.send(result)
+    // get all users from db
+    app.get("/all-users", async (req, res) => {
+      const userRole = req.query.role;
+      const filter = userRole ? {role : userRole} : {}
+      const result = await usersCollection.find(filter).toArray();
+      res.send(result);
     });
+
+    
 
     await client.db("admin").command({ ping: 1 });
 
