@@ -1,14 +1,16 @@
 import React from 'react'
-import { Outlet } from 'react-router'
+import { Outlet, useLocation } from 'react-router'
 import Navbar from "../Shared/Navbar"
 import Footer from '../Shared/Footer'
 
 const MainLayout = () => {
+  const {pathname} = useLocation()
   return (
     <div className='border-2 border-black'> 
       <div>
         <div>
-            <Navbar/>
+             {/* Hide Navbar if pathname starts with /dashboard */}
+        {!pathname.startsWith('/dashboard') && <Navbar />}
         </div>
         <div className='min-h-svh'>
             <Outlet/>

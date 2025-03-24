@@ -70,6 +70,18 @@ async function run() {
       res.send(result);
     });
 
+    // update user information
+    app.patch('/update/user-info/:email',async(req,res)=>{
+      const email = req.params.email;
+      const filter = {email}
+      const data = req.body;
+      const updatedInfo = {
+        $set:{... data}
+      }
+      const result = await usersCollection.updateOne(filter,updatedInfo)
+      res.send(result)
+    })
+
     // delete-course
     app.delete("/delete-course/:id", async (req, res) => {
       const id = req.params.id;
@@ -148,8 +160,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log("Students Management Server running on port", port);
+  console.log(`Server running on port ${port}`);
 });
-
-// academicore4
-// dTplCISQ8tXRlyye

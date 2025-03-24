@@ -1,32 +1,36 @@
-import React from "react";
+import React, { useEffect } from "react";
 import logo from "../assets/logo.jfif";
 import { Link, NavLink } from "react-router";
 import useAuth from "../Components/Hooks/useAuth";
 import Swal from "sweetalert2";
+import useUserRole from "../Components/Hooks/useUserRole";
 
 const Navbar = () => {
   // navigation links
   const Links = (
     <>
       <li>
-        <NavLink 
-        to={'/'}
-        >Home</NavLink>
+        <NavLink to={"/"}>Home</NavLink>
       </li>
       <li>
-        <NavLink
-        to={'/'}
-        >About</NavLink>
+        <NavLink to={"/"}>About</NavLink>
       </li>
       <li>
-        <NavLink
-        to={'/'}
-        >Products</NavLink>
+        <NavLink to={"/"}>Products</NavLink>
       </li>
     </>
   );
 
   const { user, userLogOut } = useAuth();
+  const { data: userRole,refetch } = useUserRole();
+
+
+  // useEffect to fetch the userRole immediately
+  useEffect(()=>{
+    if(user && user?.email){
+      refetch()
+    }
+  },[user])
 
   // logoutHandler
   const logoutHandler = async () => {
@@ -108,12 +112,14 @@ const Navbar = () => {
               className="menu right-4 menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-0 w-52 p-2 shadow"
             >
               <li>
-                <Link
-                to={'/dashboard'}
-                  className="hover:border-highlight border-2 hover:text-highlight"
-                >
-                  Dashboard
-                </Link>
+                {userRole?.data?.role !== "user" && (
+                  <Link
+                    to={"/dashboard"}
+                    className="hover:border-highlight border-2 hover:text-highlight"
+                  >
+                    Dashboard
+                  </Link>
+                )}
                 <button
                   className="hover:border-highlight border-2 hover:text-highlight mt-2"
                   onClick={logoutHandler}

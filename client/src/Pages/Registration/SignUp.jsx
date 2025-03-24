@@ -11,6 +11,8 @@ import axios from "axios";
 const SignUp = () => {
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
+  const [submitting,setSubmitting] = useState(false)
+
   const navigate = useNavigate()
 
     const {registerUser,updateUserProfile} = useAuth()
@@ -27,27 +29,32 @@ const SignUp = () => {
 
     // Reset error before validation
   setError("");
+  setSubmitting(true)
 
   if (pass.length < 6) {
     setError("Password must be at least 6 characters long.");
+    setSubmitting(false)
     return;
   }
 
   // Check for at least one uppercase letter
   if (!/[A-Z]/.test(pass)) {
     setError("Password must contain at least one uppercase letter.");
+    setSubmitting(false)
     return;
   }
 
   // Check for at least one lowercase letter
   if (!/[a-z]/.test(pass)) {
     setError("Password must contain at least one lowercase letter.");
+    setSubmitting(false)
     return;
   }
 
   // Check for at least one number
   if (!/\d/.test(pass)) {
     setError("Password must contain at least one number.");
+    setSubmitting(false)
     return;
   }
 
@@ -80,6 +87,7 @@ const SignUp = () => {
                 // post data in db
                 const res =await axios.post(`http://localhost:3000/users`,userData)
                 if(res?.data?.insertedId){
+                  setSubmitting(false)
                   navigate('/')
                   Swal.fire({
                       position: "center",
@@ -139,7 +147,9 @@ const SignUp = () => {
               <input 
               name="image"
               type="file" 
-              className="file-input file-input-accent w-full" />
+              className="file-input file-input-accent w-full"
+              required
+               />
             </div>
             {/* Email */}
             <div className="form-control">
@@ -195,8 +205,11 @@ const SignUp = () => {
               <button
                 type="submit"
                 className="btn bg-primary text-white hover:text-highlight w-full"
+                disabled={submitting}
               >
-                Submit
+                {
+                  submitting ? 'Submitting'  : 'Submit'
+                }
               </button>
             </div>
           </form>
