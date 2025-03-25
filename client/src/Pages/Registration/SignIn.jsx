@@ -9,19 +9,23 @@ import Swal from "sweetalert2";
 const SignIn = () => {
   const [show, setShow] = useState(false)
   const [error, setError] = useState("");
+  const [submitting,setSubmitting] = useState(false)
   const navigate = useNavigate()
 
   const {userLogIn} = useAuth()
 
-  const submitHandler =async (e) => {
+  const submitHandler = async (e) => {
     e.preventDefault()
     const form = e.target;
     const email = form.email.value;
     const pass = form.pass.value;
+      setSubmitting(false)
         try{
+          setSubmitting(true)
             await userLogIn(email,pass)
             .then(user=>{
                 if(user.user?.email){
+                  setSubmitting(false)
                     navigate('/')
                     Swal.fire({
                         position: "center",
@@ -35,6 +39,7 @@ const SignIn = () => {
                     })
         }
         catch(err){
+          setSubmitting(false)
             console.log(err)
             setError(err.message.split('/')[1].split(')')[0] || err.code || 'Invalid Credentials')
         }
@@ -109,8 +114,11 @@ const SignIn = () => {
             <div className="form-control mt-6">
               <button 
               type="submit"
+              disabled={submitting}
               className="btn bg-primary text-white hover:text-highlight w-full">
-                Submit
+                {
+                  submitting ? 'Login ...' : 'Login'
+                }
               </button>
             </div>
           </form>

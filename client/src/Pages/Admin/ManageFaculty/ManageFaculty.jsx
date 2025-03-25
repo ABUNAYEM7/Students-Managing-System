@@ -2,13 +2,17 @@ import React from "react";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
+import { Link } from "react-router";
 
 const ManageFaculty = () => {
-  const axiosInstance = AxiosSecure()
-  const { data: faculties,refetch } = useFetchData(
-    "userRole",
-    "/all-users?role=faculty"
+  const axiosInstance = AxiosSecure();
+  const { data, refetch } = useFetchData(
+    "faculties",
+    "/all-faculties"
   );
+
+  const faculties = data?.result
+  console.log(faculties);
 
   // deleteHandler
   const deleteHandler = (id) => {
@@ -35,27 +39,35 @@ const ManageFaculty = () => {
     });
   };
 
-
   return (
     <div>
       <h3 className="text-3xl font-black text-center mt-6">
         {" "}
         Faculties Management
       </h3>
-      {
-        faculties?.length === 0 ? (
-          <h3 className="text-3xl font-black text-center text-red-700 mt-6">
-        {" "}
-        No Faculty Available
-      </h3>
-        ):(
-          <div className="mt-12 p-4">
+      <div className="mt-3 p-4 flex items-center justify-end">
+        <Link
+          to={"/dashboard/add-faculty"}
+          className="btn uppercase hover:bg-green-400 hover:text-white"
+        >
+          Add Faculty ➕
+        </Link>
+      </div>
+      {faculties?.length === 0 ? (
+        <h3 className="text-3xl font-black text-center text-red-700 mt-6">
+          {" "}
+          No Faculty Available
+        </h3>
+      ) : (
+        <div className="mt-12 p-4">
           <div className="overflow-x-auto">
             <table className="table">
               <thead>
                 <tr>
                   <th>Name</th>
                   <th>Email</th>
+                  <th>Staff No</th>
+                  <th>Contact No</th>
                   <th>Delete</th>
                 </tr>
               </thead>
@@ -68,22 +80,27 @@ const ManageFaculty = () => {
                           <div className="mask mask-squircle h-12 w-12">
                             <img
                               referrerPolicy="no-referrer"
-                              src={faculty?.photo}
+                              src={faculty?.staffPhoto}
                               alt="Avatar Tailwind CSS Component"
                             />
                           </div>
                         </div>
                         <div>
-                          <div className="font-bold">{faculty?.name}</div>
+                          <div className="font-bold">
+                            {faculty?.firstName}
+                            <span className="ml-2">{faculty?.lastName}</span>
+                          </div>
                           <div className="text-sm opacity-50">
                             <div className="badge badge-info text-white">
-                              {faculty?.role}
+                              {faculty?.designation}
                             </div>
                           </div>
                         </div>
                       </div>
                     </td>
                     <td>{faculty?.email}</td>
+                    <td>{faculty?.staffNo}</td>
+                    <td>{faculty?.mobile}</td>
                     <td>
                       <button
                         onClick={() => deleteHandler(faculty?._id)}
@@ -98,8 +115,7 @@ const ManageFaculty = () => {
             </table>
           </div>
         </div>
-        )
-      }
+      )}
     </div>
   );
 };

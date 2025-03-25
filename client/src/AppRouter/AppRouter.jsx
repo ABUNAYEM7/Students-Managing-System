@@ -1,56 +1,85 @@
-import React from 'react'
-import { Route, Routes } from 'react-router'
-import MainLayout from '../MainLayout/MainLayout'
-import Home from '../Pages/Home/Home'
-import SignIn from '../Pages/Registration/SignIn'
-import SignUp from '../Pages/Registration/SignUp'
-import useUserRole from '../Components/Hooks/useUserRole'
-import AdminDashboard from '../Pages/Admin/AdminDashboard/AdminDashboard'
-import AdminDashboardHome from '../Pages/Admin/AdminHome/AdminDashboardHome'
-import Courses from '../Pages/Admin/Courses/Courses'
-import ManageFaculty from '../Pages/Admin/ManageFaculty/ManageFaculty'
-import ManageStudents from '../Pages/Admin/ManageStudents/ManageStudents'
-import AddCourses from '../Pages/Admin/AddCourses/AddCourses'
-import EditCourse from '../Components/DynamicRoute/EditCourse/EditCourse'
-import ManageUsers from '../Pages/Admin/ManageUsers/ManageUsers'
-import StudentDashboard from '../Pages/Student/StudentDashboard/StudentDashboard'
-import StudentDashboardHome from '../Pages/Student/StudentDashboardHome/StudentDashboardHome'
-import Profile from '../Pages/Student/Profile/Profile'
+import React from "react";
+import { Route, Routes } from "react-router";
+import MainLayout from "../MainLayout/MainLayout";
+import Home from "../Pages/Home/Home";
+import SignIn from "../Pages/Registration/SignIn";
+import SignUp from "../Pages/Registration/SignUp";
+import AdminDashboardHome from "../Pages/Admin/AdminHome/AdminDashboardHome";
+import Courses from "../Pages/Admin/Courses/Courses";
+import ManageFaculty from "../Pages/Admin/ManageFaculty/ManageFaculty";
+import ManageStudents from "../Pages/Admin/ManageStudents/ManageStudents";
+import AddCourses from "../Pages/Admin/AddCourses/AddCourses";
+import EditCourse from "../Components/DynamicRoute/EditCourse/EditCourse";
+import ManageUsers from "../Pages/Admin/ManageUsers/ManageUsers";
+import Profile from "../Pages/Student/Profile/Profile";
+import PrivateRoute from "../Pages/PrivateRoute/PrivateRoute";
+import Dashboard from "../Pages/DashBoard/Dashboard";
+import { Navigate } from "react-router";
+import Attendance from "../Pages/Student/Attendance/Attendance";
+import Grade from "../Pages/Student/Grade/Grade";
+import Fee from "../Pages/Student/Fee/Fee";
+import FacultyDashboard from "../Pages/Faculty/FacultyDashboard/FacultyDashboard";
+import StudentsDashboardHome from "../Pages/Student/StudentDashboardHome/StudentDashboardHome"
+import FacultyCourses from "../Pages/Faculty/FacultyCourses/FacultyCourses"
+import FacultyGrades from "../Pages/Faculty/FacultyGrades/FacultyGrades"
+import FacultyAttendance from "../Pages/Faculty/FacultyAttendance/FacultyAttendance"
+import CreateAssignment from "../Pages/Faculty/createAssignment/CreateAssignment"
+import Materials from "../Pages/Faculty/Materials/Materials"
+import AddFaculty from "../Pages/Admin/ManageFaculty/AddFaculty";
+import AddMaterials from "../Pages/Faculty/AddMaterials/AddMaterials";
 
 const AppRouter = () => {
-  const {data:user} = useUserRole()
-  // console.log(user)
   return (
     <Routes>
-        <Route path='/' element={<MainLayout/>}>
-        <Route index element={<Home/>}/>
-        <Route path='/signIn' element={<SignIn/>}/>
-        <Route path='/signUp' element={<SignUp/>}/>
-        {
-          user?.data?.role  === 'admin' && (
-            <Route path='/dashboard' element={<AdminDashboard/>}>
-              <Route index element={<AdminDashboardHome/>}/>
-              <Route path='courses' element={<Courses/>}/>
-              <Route path='add-courses' element={<AddCourses/>}/>
-              <Route path='manage-students' element={<ManageStudents/>}/>
-              <Route path='manage-faculty' element={<ManageFaculty/>}/>
-              <Route path='manage-users' element={<ManageUsers/>}/>
-            </Route>
-          )
-        }
-        {
-          user?.data?.role === 'student' &&(
-            <Route path='/dashboard' element={<StudentDashboard/>}>
-              <Route index element={<StudentDashboardHome/>}/>
-              <Route path='profile' element={<Profile/>}/>
-            </Route>
-          )
-        }
-        {/* dynamic-route */}
-        <Route path='/edit-course/:id' element={<EditCourse/>}/>
-        </Route>
-    </Routes>
-  )
-}
+      <Route path="/" element={<MainLayout />}>
+        {/* Public Routes */}
+        <Route index element={<Home />} />
+        <Route path="signIn" element={<SignIn />} />
+        <Route path="signUp" element={<SignUp />} />
+        <Route path="edit-course/:id" element={<EditCourse />} />
 
-export default AppRouter
+        {/* Protected Dashboard Route for Admin & Student */}
+        <Route
+          path="dashboard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        >
+          {/* Redirect based on role */}
+          <Route index element={<Navigate to="home" replace />} />
+
+          {/* Admin Routes */}
+          <Route path="admin/home" element={<AdminDashboardHome />} />
+          <Route path="courses" element={<Courses />} />
+          <Route path="add-courses" element={<AddCourses />} />
+          <Route path="manage-students" element={<ManageStudents />} />
+          <Route path="manage-faculty" element={<ManageFaculty />} />
+          <Route path="manage-users" element={<ManageUsers />} />
+          <Route path="/dashboard/add-faculty" element={<AddFaculty />} />
+
+          {/* Student Routes */}
+          <Route path="profile" element={<Profile />} />
+          <Route path="student/home" element={<StudentsDashboardHome/>} />
+          <Route path="attendance" element={<Attendance/>}/>
+          <Route path="grade" element={<Grade/>}/>
+          <Route path="Fee" element={<Fee/>}/>
+
+          {/* Faculty Routes */}
+          <Route>
+            <Route path="faculty/home" element={<FacultyDashboard/>}/>
+            <Route path="faculty-courses" element={<FacultyCourses/>}/>
+            <Route path="faculty-grades" element={<FacultyGrades/>}/>
+            <Route path="faculty-attendance" element={<FacultyAttendance/>}/>
+            <Route path="create-assignment" element={<CreateAssignment/>}/>
+            <Route path="materials" element={<Materials/>}/>
+            <Route path="add-materials" element={<AddMaterials/>}/>
+          </Route>
+        </Route>
+      </Route>
+    </Routes>
+  );
+};
+
+export default AppRouter;

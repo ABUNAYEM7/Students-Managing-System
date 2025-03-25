@@ -6,7 +6,6 @@ import useFetchData from "../../../Components/Hooks/useFetchData";
 const AdminDashboardHome = () => {
   const { user } = useAuth();
   const { data: state } = useFetchData("state", "/user-state");
-  console.log(state)
 
   return (
     <div>

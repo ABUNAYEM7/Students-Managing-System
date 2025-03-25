@@ -1,11 +1,22 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
+import useAuth from "../../../Components/Hooks/useAuth";
 
 const ManageUsers = () => {
-  const { data: users,refetch } = useFetchData("users", "/all-users");
+  const [users,setUsers] = useState([])
+  const { data: user,refetch } = useFetchData("users", "/all-users");
+  const {user:admin} = useAuth()
   const axiosInstance = AxiosSecure();
+
+  useEffect(()=>{
+    if(user){
+      const updatedUser = user?.filter(u=>u.email !== admin?.email)
+      setUsers(updatedUser)
+         }
+  },[user])
+
 
   //   adminHandler
   const adminHandler = async (id) => {

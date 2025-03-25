@@ -22,6 +22,7 @@ async function run() {
     await client.connect();
 
     const usersCollection = client.db("academi_core").collection("users");
+    const facultiesCollection = client.db("academi_core").collection("faculties");
     const courseCollection = client.db("academi_core").collection("courses");
 
     // save new user data in db
@@ -37,6 +38,13 @@ async function run() {
       const result = await courseCollection.insertOne(course);
       res.send(result);
     });
+
+    // save new faculty
+    app.post('/add-faculty',async(req,res)=>{
+      const info = req.body;
+      const result =await facultiesCollection.insertOne(info)
+      res.send(result)
+    })
 
     // update specific course
     app.patch("/update-course/:id", async (req, res) => {
@@ -126,6 +134,13 @@ async function run() {
       res.send(result);
     });
 
+    // get-faculties 
+    app.get("/all-faculties", async (req, res) => {
+      const result = await facultiesCollection.find({}).toArray();
+      const totalStaff = await facultiesCollection.estimatedDocumentCount()
+      res.send({result,totalStaff});
+    });
+
     // get specific courses from db
     app.get("/courses/:id", async (req, res) => {
       const id = req.params.id;
@@ -160,5 +175,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log('server running on')
 });
