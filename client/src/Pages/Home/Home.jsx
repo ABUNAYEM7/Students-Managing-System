@@ -10,6 +10,10 @@ import image3 from "../../assets/bannerImage3.jpg";
 import KeyFeatures from "../../Components/Features/KeyFeatures";
 import SimpleSteps from "../../Components/SimpleSteps/SimpleSteps";
 import ContactUs from "../../Components/ContactUs/ContactUs";
+import SmartCampus from "../../Components/SmartCampus/SmartCampus";
+import University from "../../Components/Universilty/University";
+import OurGallery from "../../Components/OurGallery/OurGallery";
+import OurCourses from "../../Components/OurCourses/OurCourses";
 
 const Home = () => {
   const slides = [
@@ -36,7 +40,7 @@ const Home = () => {
   return (
     <div>
       {/* banner */}
-      <div className="relative h-[600px] border-2 border-black">
+      <div className="relative h-[600px]">
         <Swiper
           pagination={{ clickable: true }}
           modules={[Pagination, Autoplay]} // Add Autoplay module
@@ -74,6 +78,22 @@ const Home = () => {
           ))}
         </Swiper>
       </div>
+      {/* university-section */}
+      <section>
+        <University />
+      </section>
+      {/* smartCamp-section */}
+      <section>
+        <SmartCampus />
+      </section>
+      {/* OurGallery-section */}
+      <section className="my-12 p-4">
+        <OurGallery />
+      </section>
+      {/* OurCourses section */}
+      <section className="my-12 p-4">
+        <OurCourses />
+      </section>
       {/* features-section */}
       <section className="my-12 p-4">
         <KeyFeatures />
