@@ -27,6 +27,7 @@ import CreateAssignment from "../Pages/Faculty/createAssignment/CreateAssignment
 import Materials from "../Pages/Faculty/Materials/Materials"
 import AddFaculty from "../Pages/Admin/ManageFaculty/AddFaculty";
 import AddMaterials from "../Pages/Faculty/AddMaterials/AddMaterials";
+import Assignment from "../Pages/Faculty/Assignment/Assignment";
 
 const AppRouter = () => {
   return (
@@ -72,9 +73,12 @@ const AppRouter = () => {
             <Route path="faculty-courses" element={<FacultyCourses/>}/>
             <Route path="faculty-grades" element={<FacultyGrades/>}/>
             <Route path="faculty-attendance" element={<FacultyAttendance/>}/>
-            <Route path="create-assignment" element={<CreateAssignment/>}/>
+            <Route path="assignment" element={<Assignment/>}/>
+            <Route path="add-assignment" element={<CreateAssignment/>}/>
+            <Route path="add-assignment/:id" element={<CreateAssignment/>}/>
             <Route path="materials" element={<Materials/>}/>
             <Route path="add-materials" element={<AddMaterials/>}/>
+            <Route path="add-materials/:id" element={<AddMaterials/>}/>
           </Route>
         </Route>
       </Route>

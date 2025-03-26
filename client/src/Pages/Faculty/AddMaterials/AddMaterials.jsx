@@ -1,12 +1,35 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
+import useAuth from "../../../Components/Hooks/useAuth";
+import Swal from "sweetalert2";
+import { useNavigate, useParams } from "react-router";
+import useFetchData from "../../../Components/Hooks/useFetchData";
 
 const AddMaterials = () => {
+  const [err,setErr] = useState('')
+  const { id } = useParams();
+  const {data} = id ? useFetchData(`${id}`, `/material/${id}`) : {data : null}
   const [formData, setFormData] = useState({
-    courseId: "",
+    courseId:  "",
     title: "",
     file: null,
   });
+  const axiosInstance = AxiosSecure();
+  const { user } = useAuth();
+  const fileInputRef = useRef();
+  const navigate = useNavigate()
 
+  useEffect(() => {
+    if (id && data) {
+      setFormData({
+        courseId: data.courseId || "",
+        title: data.title || "",
+        file: null, // always null for security
+      });
+    }
+  }, [id, data]);
+
+  // handleChange
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
     setFormData((prev) => ({
@@ -15,80 +38,146 @@ const AddMaterials = () => {
     }));
   };
 
+  // handleSubmit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const { courseId, title, file } = formData;
 
-    if (!courseId || !title || !file) {
-      alert("All fields are required.");
+    if (!courseId || !title || (!file && !id)) {
+      setErr("All fields are required.");
       return;
     }
+    const data = new FormData();
+    data.append("courseId", courseId);
+    data.append("title", title);
+    data.append("email", user?.email);
 
-    const payload = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      payload.append(key, value);
-    });
+    if(file){
+      data.append("file", file);
+    }
 
-    console.log("Submitting:", formData);
-
-    // You can send this to your API
-    // await fetch("/api/upload", {
-    //   method: "POST",
-    //   body: payload,
-    // });
+    try {
+      if(id){
+        const res = await axiosInstance.patch(`/update-material/${id}`,data,{
+          headers: { "Content-Type": "multipart/form-data" },
+        })
+        console.log('update material res',res)
+        if (res?.data?.modifiedCount > 0) {
+          return Swal.fire("Updated!", "Material has been updated.", "success");
+        }
+      }
+      const res = await axiosInstance.post("/upload-file", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+       if (res?.data?.insertedId) {
+        Swal.fire({
+          position: "center",
+          icon: "success",
+          title: "Your material has been uploaded",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+        navigate('/dashboard/materials')
+        setFormData({
+          courseId: "",
+          title: "",
+          file: null,
+        });
+        if (fileInputRef.current) {
+          fileInputRef.current.value = null;
+        }
+      }
+    } catch (err) {
+      console.log(err);
+    }
   };
 
+
   return (
-   <div className="p-6">
-     <div className="max-w-2xl mx-auto p-6 bg-white rounded shadow-md">
-      <h2 className="text-2xl font-bold mb-1">Course Materials</h2>
-      <p className="text-gray-600 mb-4">Upload and manage course materials</p>
+    <div className="p-6">
+      <div className="max-w-2xl mx-auto p-6 bg-white rounded shadow-md">
+        <h2 className="text-2xl font-bold mb-1">Course Materials</h2>
+        <p className="text-gray-600 mb-4">Upload and manage course materials</p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Course Dropdown */}
-        <select
-          className="select select-bordered w-full"
-          name="courseId"
-          required
-          value={formData.courseId}
-          onChange={handleChange}
-        >
-          <option disabled value="">
-            Select Course
-          </option>
-          <option value="455">455 - DSA</option>
-          <option value="456">456 - Web Development</option>
-          <option value="457">457 - Database Systems</option>
-        </select>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Course Dropdown */}
+          <label className="label">
+            <span className="label-text">Select Course *</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            name="courseId"
+            required
+            value={formData.courseId}
+            onChange={handleChange}
+          >
+            <option disabled value="">
+              Select Course
+            </option>
+            <option value="455">455 - DSA</option>
+            <option value="456">456 - Web Development</option>
+            <option value="457">457 - Database Systems</option>
+          </select>
 
-        {/* Material Title */}
-        <input
-          type="text"
-          name="title"
-          placeholder="Material title"
-          className="input input-bordered w-full"
-          required
-          value={formData.title}
-          onChange={handleChange}
-        />
+          {/* Material Title */}
+          <label className="label">
+            <span className="label-text">Title *</span>
+          </label>
+          <input
+            type="text"
+            name="title"
+            placeholder="Material title"
+            className="input input-bordered w-full"
+            required
+            value={formData.title}
+            onChange={handleChange}
+            
+          />
 
-        {/* File Upload */}
-        <input
-          type="file"
-          name="file"
-          className="file-input file-input-bordered w-full"
-          accept=".pdf"
-          required
-          onChange={handleChange}
-        />
+          {/* File Upload */}
+          <label className="label">
+            <span className="label-text">Upload File *</span>
+          </label>
+          {/* Show file preview if in edit mode */}
+          {formData?.file === null && data?.filename && (
+            <div className="mb-2 text-sm text-gray-600">
+              Current File:{" "}
+              <a
+                href={`http://localhost:3000/${data?.path?.replace(
+                  /\\/g,
+                  "/"
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline"
+              >
+                {data?.originalname || "View File"}
+              </a>
+            </div>
+          )}
 
-        <button type="submit" className="btn btn-primary w-full">
-          Upload Material
-        </button>
-      </form>
+          <input
+            type="file"
+            name="file"
+            className="file-input file-input-bordered w-full"
+            accept=".pdf"
+            onChange={handleChange}
+            ref={fileInputRef}
+          />
+
+          {
+            err &&  <label className="label">
+            <span className="text-lg text-red-600 font-medium">{err}</span>
+          </label>
+          }
+
+          <button type="submit" className="btn btn-primary w-full">
+            Upload Material
+          </button>
+        </form>
+      </div>
     </div>
-   </div>
   );
 };
 

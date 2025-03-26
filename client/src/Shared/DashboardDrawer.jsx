@@ -106,8 +106,8 @@ const DashboardDrawer = () => {
                   </NavLink>
                 </li>
                 <li>
-                  <NavLink to="/dashboard/create-assignment" className={getNavClass}>
-                    Create Assignment
+                  <NavLink to="/dashboard/assignment" className={getNavClass}>
+                     Assignment
                   </NavLink>
                 </li>
                 <li>
