@@ -37,6 +37,16 @@ async function run() {
       .db("academi_core")
       .collection("assignments");
 
+    const subAssignmentsCollection = client
+      .db("academi_core")
+      .collection("subAssignment");
+
+    const attendanceCollection = client
+      .db("academi_core")
+      .collection("attendance");
+
+    const leavesCollection = client.db("academi_core").collection("leaves");
+
     // save new user data in db
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -58,6 +68,13 @@ async function run() {
       res.send(result);
     });
 
+    // save leave application
+    app.post("/leave-application", async (req, res) => {
+      const application = req.body;
+      const result = await leavesCollection.insertOne(application);
+      res.send(result);
+    });
+
     // update specific course
     app.patch("/update-course/:id", async (req, res) => {
       const id = req.params.id;
@@ -73,6 +90,31 @@ async function run() {
         },
       };
       const result = await courseCollection.updateOne(filter, updatedCourse);
+      res.send(result);
+    });
+
+    // POST: Mark attendance
+    app.post("/mark-attendance", async (req, res) => {
+      const { courseId, date, students, takenBy } = req.body;
+
+      const alreadyTaken = await attendanceCollection.findOne({
+        courseId,
+        date,
+      });
+      if (alreadyTaken) {
+        return res
+          .status(409)
+          .send({ message: "Attendance already taken for this date." });
+      }
+
+      const result = await attendanceCollection.insertOne({
+        courseId,
+        date,
+        students,
+        takenBy,
+        createdAt: new Date().toISOString(),
+      });
+
       res.send(result);
     });
 
@@ -210,6 +252,49 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/students-assignment/:email", async (req, res) => {
+      const { email } = req.params;
+
+      const assignments = await assignmentsCollection
+        .aggregate([
+          {
+            $lookup: {
+              from: "subAssignment",
+              let: { assignmentId: { $toString: "$_id" } },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $eq: ["$assignmentId", "$$assignmentId"] },
+                        { $eq: ["$email", email] },
+                      ],
+                    },
+                  },
+                },
+                {
+                  $project: {
+                    _id: 0,
+                    submitted: { $literal: true },
+                    path: 1,
+                  },
+                },
+              ],
+              as: "submission",
+            },
+          },
+          {
+            $unwind: {
+              path: "$submission",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+        ])
+        .toArray();
+
+      res.send(assignments);
+    });
+
     // get specific materials
     app.get("/material/:id", async (req, res) => {
       const { id } = req.params;
@@ -225,7 +310,49 @@ async function run() {
       const result = await assignmentsCollection.findOne(filter);
       res.send(result);
     });
-    
+
+    // Get all student submissions for a specific assignment
+    app.get("/assignment-submissions/:assignmentId", async (req, res) => {
+      const { assignmentId } = req.params;
+
+      const submissions = await subAssignmentsCollection
+        .find({ assignmentId })
+        .project({ _id: 1, email: 1, comments: 1, path: 1, uploadedAt: 1 })
+        .toArray();
+
+      res.send(submissions);
+    });
+
+    // GET: Fetch submitted attendance data for a specific course and date
+    app.get("/submitted-attendance", async (req, res) => {
+      const { courseId, date } = req.query;
+      try {
+        const record = await attendanceCollection.findOne({ courseId, date });
+        if (!record) {
+          return res.status(404).send({ message: "Attendance not found" });
+        }
+        res.send({ students: record.students });
+      } catch (error) {
+        console.error("Error fetching submitted attendance:", error);
+        res
+          .status(500)
+          .send({ message: "Server error while fetching attendance" });
+      }
+    });
+
+    // GET: Get attendance report by course
+    app.get("/attendance-report/:courseId", async (req, res) => {
+      const { courseId } = req.params;
+      const records = await attendanceCollection.find({ courseId }).toArray();
+      res.send(records);
+    });
+
+    // get attendance status
+    app.get("/attendance-status", async (req, res) => {
+      const { courseId, date } = req.query;
+      const existing = await attendanceCollection.findOne({ courseId, date });
+      res.send({ submitted: !!existing });
+    });
 
     // upload pdf procedures
     const storage = multer.diskStorage({
@@ -266,13 +393,14 @@ async function run() {
     // save-assignment to db
     app.post("/upload-assignment", upload.single("file"), async (req, res) => {
       try {
-        const { courseId, title, instructions, email } = req.body;
+        const { courseId, title, instructions, email, deadline } = req.body;
         const fileInfo = req.file;
         const assignment = {
           courseId,
           title,
           instructions,
           email,
+          deadline,
           filename: fileInfo.filename,
           originalname: fileInfo.originalname,
           path: fileInfo.path,
@@ -286,6 +414,29 @@ async function run() {
         res.status(500).send({ message: "Upload failed" });
       }
     });
+
+    // assignment-submission
+    app.post(
+      "/assignment-submission",
+      upload.single("file"),
+      async (req, res) => {
+        const { assignmentId, email, comments } = req.body;
+        const fileInfo = req.file;
+        const subAssignment = {
+          assignmentId,
+          email,
+          comments,
+          filename: fileInfo.filename,
+          originalname: fileInfo.originalname,
+          path: fileInfo.path,
+          size: fileInfo.size,
+          mimetype: fileInfo.mimetype,
+          uploadedAt: new Date().toISOString(),
+        };
+        const result = await subAssignmentsCollection.insertOne(subAssignment);
+        res.send(result);
+      }
+    );
 
     // update material
     app.patch(
@@ -361,7 +512,7 @@ async function run() {
           const updateFields = {
             title: title || existing.title,
             courseId: courseId || existing.courseId,
-            instructions : instructions || existing.instructions,
+            instructions: instructions || existing.instructions,
             email: email || existing.email,
             updatedAt: new Date().toISOString(),
           };
