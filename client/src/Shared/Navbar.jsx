@@ -53,7 +53,7 @@ const Navbar = () => {
   };
 
   return (
-    <div className="navbar bg-base-100 shadow-sm">
+    <div className="navbar bg-prime/60 backdrop-blur-md shadow-sm fixed top-0 z-50 mx-auto max-w-[1480px]">
       <div className="navbar-start">
         <div className="dropdown">
           <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
@@ -76,7 +76,7 @@ const Navbar = () => {
           {/* sm-navigation-links */}
           <ul
             tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow "
+            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2  text-highlight"
           >
             {Links}
           </ul>
@@ -87,7 +87,7 @@ const Navbar = () => {
       </div>
       <div className="navbar-center hidden lg:flex">
         {/* lg-navigation-links */}
-        <ul className="menu menu-horizontal px-1 text-xl font-medium">
+        <ul className="menu menu-horizontal px-1 text-xl font-medium text-highlight">
           {Links}
         </ul>
       </div>
@@ -132,7 +132,7 @@ const Navbar = () => {
         ) : (
           <NavLink
             to={"/signIn"}
-            className="btn btn-accent text-white hover:bg-white hover:border-2 hover:border-accent hover:text-black"
+            className="btn bg-highlight text-white hover:bg-white hover:border-2 hover:border-highlight hover:text-highlight"
           >
             SingIn
           </NavLink>

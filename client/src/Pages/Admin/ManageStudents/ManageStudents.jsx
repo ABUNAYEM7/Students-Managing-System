@@ -1,16 +1,12 @@
-import React from 'react'
-import AxiosSecure from '../../../Components/Hooks/AxiosSecure';
-import useFetchData from '../../../Components/Hooks/useFetchData';
-import Swal from 'sweetalert2';
+import React from "react";
+import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
+import useFetchData from "../../../Components/Hooks/useFetchData";
+import Swal from "sweetalert2";
 
 const ManageStudents = () => {
-  const axiosInstance = AxiosSecure()
-  const { data: students,refetch } = useFetchData(
-    "userRole",
-    "/all-users?role=student"
-  );
+  const axiosInstance = AxiosSecure();
+  const { data: students, refetch } = useFetchData("students", "/all-students");
 
-  // deleteHandler
   const deleteHandler = (id) => {
     Swal.fire({
       title: "Are you sure?",
@@ -22,7 +18,7 @@ const ManageStudents = () => {
       confirmButtonText: "Yes, delete it!",
     }).then(async (result) => {
       if (result.isConfirmed) {
-        const res = await axiosInstance.delete(`/delete-user/${id}`);
+        const res = await axiosInstance.delete(`/delete-student/${id}`);
         if (res?.data?.deletedCount > 0) {
           refetch();
           Swal.fire({
@@ -36,57 +32,50 @@ const ManageStudents = () => {
   };
 
   return (
-    <div>
-      <h3 className="text-3xl font-black text-center mt-6">
-        {" "}
+    <div className="px-4 md:px-10 py-6 min-h-screen bg-base-200">
+      <h3 className="text-xl md:text-3xl font-black text-center mb-6">
         Students Management
       </h3>
-      {
-        students?.length === 0 ? (
-          <h3 className="text-3xl font-black text-center text-red-700 mt-6">
-        {" "}
-        No Faculty Available
-      </h3>
-        ):(
-          <div className="mt-12 p-4">
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
+
+      {students?.length === 0 ? (
+        <h3 className="text-lg md:text-xl font-semibold text-center text-red-600">
+          No Students Available
+        </h3>
+      ) : (
+        <div className="w-full overflow-x-auto">
+          <div className="inline-block min-w-full align-middle">
+            <table className="table table-zebra min-w-[700px]">
+              <thead className="bg-base-300">
                 <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Delete</th>
+                  <th className="text-sm">Name</th>
+                  <th className="text-sm">Email</th>
+                  <th className="text-sm">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {students?.map((student) => (
-                  <tr key={student?._id}>
+                  <tr key={student._id}>
                     <td>
                       <div className="flex items-center gap-3">
                         <div className="avatar">
-                          <div className="mask mask-squircle h-12 w-12">
+                          <div className="mask mask-squircle w-10 h-10">
                             <img
                               referrerPolicy="no-referrer"
-                              src={student?.photo}
-                              alt="Avatar Tailwind CSS Component"
+                              src={student.photo}
+                              alt={student.name}
                             />
                           </div>
                         </div>
                         <div>
-                          <div className="font-bold">{student?.name}</div>
-                          <div className="text-sm opacity-50">
-                            <div className="badge badge-info text-white">
-                              {student?.role}
-                            </div>
-                          </div>
+                          <div className="font-semibold">{student.name}</div>
                         </div>
                       </div>
                     </td>
-                    <td>{student?.email}</td>
+                    <td className="text-sm">{student.email}</td>
                     <td>
                       <button
-                        onClick={() => deleteHandler(student?._id)}
-                        className="btn btn-error text-white"
+                        onClick={() => deleteHandler(student._id)}
+                        className="btn btn-sm btn-error text-white"
                       >
                         Delete
                       </button>
@@ -97,10 +86,9 @@ const ManageStudents = () => {
             </table>
           </div>
         </div>
-        )
-      }
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default ManageStudents
+export default ManageStudents;

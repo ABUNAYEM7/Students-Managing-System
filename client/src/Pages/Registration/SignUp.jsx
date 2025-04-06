@@ -110,7 +110,7 @@ const SignUp = () => {
 
 
   return (
-    <div className="hero bg-base-200 min-h-screen">
+    <div className="hero bg-base-200 min-h-screen mt-12">
       <div className="hero-content w-full flex-col lg:flex-row-reverse justify-between">
         {/* right-container */}
         <div className="w-full md:w-1/2 p-4 my-6">
@@ -178,12 +178,12 @@ const SignUp = () => {
                 required
               />
               {/* Password Toggle */}
-              <div className="absolute top-5 right-2 p-2 rounded-full bg-highlight flex items-center justify-center">
+              <div className="absolute top-5 right-2 p-2 rounded-full  flex items-center justify-center">
                 <button onClick={() => setShow(!show)} type="button">
                   {show ? (
-                    <FaEye className="text-black" size={25} />
+                    <FaEye className="text-black" size={20} />
                   ) : (
-                    <FaEyeSlash className="text-black" size={25} />
+                    <FaEyeSlash className="text-black" size={20} />
                   )}
                 </button>
               </div>
@@ -204,7 +204,7 @@ const SignUp = () => {
             <div className="form-control mt-6">
               <button
                 type="submit"
-                className="btn bg-primary text-white hover:text-highlight w-full"
+                className="btn bg-prime text-highlight w-full"
                 disabled={submitting}
               >
                 {

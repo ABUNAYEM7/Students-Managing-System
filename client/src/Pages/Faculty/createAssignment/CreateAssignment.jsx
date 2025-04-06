@@ -7,14 +7,14 @@ import useFetchData from "../../../Components/Hooks/useFetchData";
 
 const CreateAssignment = () => {
   const { id } = useParams();
-  const { data } = id
-    ? useFetchData(`${id}`, `/assignment/${id}`)
-    : { data: null };
+  const { data } = id ? useFetchData(`${id}`, `/assignment/${id}`) : { data: null };
   const [formData, setFormData] = useState({
     courseId: "",
     title: "",
     instructions: "",
     file: null,
+    deadline: "",
+    semester: "",
   });
   const [error, setError] = useState("");
   const fileInputRef = useRef();
@@ -22,7 +22,12 @@ const CreateAssignment = () => {
   const axiosInstance = AxiosSecure();
   const { user } = useAuth();
 
-  // useEffect to set the fetch data in the form
+  const getCurrentDateTimeLocal = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+
   useEffect(() => {
     if (id && data) {
       setFormData({
@@ -30,6 +35,8 @@ const CreateAssignment = () => {
         title: data?.title || "",
         instructions: data?.instructions || "",
         file: null,
+        deadline: data?.deadline || "",
+        semester: data?.semester || "",
       });
     }
   }, [id, data]);
@@ -42,14 +49,20 @@ const CreateAssignment = () => {
     }));
   };
 
-  // handleSubmit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    const { courseId, title, instructions, file } = formData;
-    if (!courseId || !title || !instructions ||(!file && !id)) {
-      setError("All fields are required.");
+    const { courseId, title, instructions, file, deadline, semester } = formData;
+    if (!courseId || !title || !instructions || (!file && !id) || !deadline || !semester) {
+      setError("All fields are required including the deadline and semester.");
+      return;
+    }
+
+    const deadlineDate = new Date(deadline);
+    const now = new Date();
+    if (deadlineDate < now) {
+      setError("Deadline must be a future date and time.");
       return;
     }
 
@@ -59,6 +72,8 @@ const CreateAssignment = () => {
     data.append("instructions", instructions);
     data.append("file", file);
     data.append("email", user?.email);
+    data.append("deadline", deadline);
+    data.append("semester", semester);
 
     try {
       if (id) {
@@ -72,8 +87,8 @@ const CreateAssignment = () => {
             title: "Assignment has been Updated",
             showConfirmButton: false,
             timer: 1500,
-          });;
-          return  navigate("/dashboard/assignment")
+          });
+          return navigate("/dashboard/assignment");
         }
       }
 
@@ -97,6 +112,8 @@ const CreateAssignment = () => {
           title: "",
           instructions: "",
           file: null,
+          deadline: "",
+          semester: "",
         });
         if (fileInputRef.current) {
           fileInputRef.current.value = null;
@@ -115,7 +132,6 @@ const CreateAssignment = () => {
         <p className="text-gray-600 mb-4">Enter assignment details below</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Course Dropdown */}
           <label className="label">
             <span className="label-text">Select Course *</span>
           </label>
@@ -126,15 +142,28 @@ const CreateAssignment = () => {
             onChange={handleChange}
             required
           >
-            <option disabled value="">
-              Select Course
-            </option>
+            <option disabled value="">Select Course</option>
             <option value="455">455 - DSA</option>
             <option value="456">456 - Web Development</option>
             <option value="457">457 - Database Systems</option>
           </select>
 
-          {/* Title */}
+          <label className="label">
+            <span className="label-text">Semester *</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            name="semester"
+            value={formData.semester}
+            onChange={handleChange}
+            required
+          >
+            <option disabled value="">Select Semester</option>
+            <option value="Spring 2025">Spring 2025</option>
+            <option value="Summer 2025">Summer 2025</option>
+            <option value="Fall 2025">Fall 2025</option>
+          </select>
+
           <label className="label">
             <span className="label-text">Assignment Title *</span>
           </label>
@@ -148,7 +177,6 @@ const CreateAssignment = () => {
             required
           />
 
-          {/* Instructions */}
           <label className="label">
             <span className="label-text">Instructions *</span>
           </label>
@@ -162,18 +190,27 @@ const CreateAssignment = () => {
             required
           ></textarea>
 
-          {/* PDF Upload */}
+          <label className="label">
+            <span className="label-text">Deadline (Date & Time) *</span>
+          </label>
+          <input
+            type="datetime-local"
+            name="deadline"
+            className="input input-bordered w-full"
+            value={formData.deadline}
+            onChange={handleChange}
+            min={getCurrentDateTimeLocal()}
+            required
+          />
+
           <label className="label">
             <span className="label-text">Upload PDF *</span>
           </label>
           {formData?.file === null && data?.filename && (
             <div className="mb-2 text-sm text-gray-600">
-              Current File:{" "}
+              Current File: {" "}
               <a
-                href={`http://localhost:3000/${data?.path?.replace(
-                  /\\/g,
-                  "/"
-                )}`}
+                href={`http://localhost:3000/${data?.path?.replace(/\\/g, "/")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 underline"

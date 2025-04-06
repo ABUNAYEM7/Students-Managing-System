@@ -45,6 +45,10 @@ async function run() {
       .db("academi_core")
       .collection("attendance");
 
+    const studentsCollection = client.db("academi_core").collection("students");
+
+    const gradesCollection = client.db("academi_core").collection("grades");
+
     const leavesCollection = client.db("academi_core").collection("leaves");
 
     // save new user data in db
@@ -118,6 +122,109 @@ async function run() {
       res.send(result);
     });
 
+    // create new students from user
+    app.post("/create-student", async (req, res) => {
+      const studentInfo = req.body;
+      const result = await studentsCollection.insertOne(studentInfo);
+      res.send(result);
+    });
+
+    // POST: Upsert grades by semester
+    app.post("/student-grades/upsert", async (req, res) => {
+      try {
+        const { studentGrades, semester } = req.body;
+
+        for (const record of studentGrades) {
+          const filter = {
+            studentEmail: record.studentEmail,
+            semester,
+          };
+
+          const update = {
+            $setOnInsert: {
+              studentEmail: record.studentEmail,
+              studentName: record.studentName,
+              semester,
+              createdAt: new Date(),
+            },
+            $set: {
+              updatedAt: new Date(),
+            },
+            $addToSet: {
+              grades: {
+                courseId: record.courseId,
+                facultyEmail: record.facultyEmail,
+                point: parseFloat(record.point), // ✅ FIXED: correctly access "point"
+                outOf: record.outOf || 5.0,
+                submittedAt: new Date(record.submittedAt),
+              },
+            },
+          };
+
+          await gradesCollection.updateOne(filter, update, { upsert: true });
+        }
+
+        res.send({ success: true });
+      } catch (err) {
+        console.error("Grade upsert error:", err);
+        res.status(500).send({ success: false, message: "Server error." });
+      }
+    });
+
+    // POST: Enroll a student into a course
+    app.post("/enroll-course", async (req, res) => {
+      try {
+        const { email, course } = req.body;
+
+        if (!email || !course?.courseId || !course?.courseName) {
+          return res
+            .status(400)
+            .send({ success: false, message: "Missing required fields." });
+        }
+
+        // Optionally: fetch student info from users collection if needed
+        const user = await usersCollection.findOne({ email });
+
+        const studentName = user?.name || course.studentName || "Unknown";
+        const studentPhoto =
+          user?.photo ||
+          course.photo ||
+          "https://i.ibb.co/2K2tkj1/default-avatar.png";
+
+        const filter = { email };
+
+        const update = {
+          $setOnInsert: {
+            email,
+            name: studentName,
+            photo: studentPhoto,
+            createdAt: new Date(),
+          },
+          $addToSet: {
+            courses: {
+              courseId: course.courseId,
+              courseName: course.courseName,
+              credit: course.credit,
+              semester: course.semester,
+              enrolledAt: new Date(course.enrolledAt || Date.now()),
+            },
+          },
+          $set: {
+            updatedAt: new Date(),
+          },
+        };
+
+        const result = await studentsCollection.updateOne(filter, update, {
+          upsert: true,
+        });
+
+        res.send({ success: true, result });
+      } catch (error) {
+        console.error("Enroll Error:", error);
+        res.status(500).send({ success: false, message: "Server error" });
+      }
+    });
+
     // update user role
     app.patch("/update/user-role/:id", async (req, res) => {
       const id = req.params.id;
@@ -157,6 +264,14 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    // delete-student
+    app.delete("/delete-student/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await studentsCollection.deleteOne(filter);
       res.send(result);
     });
 
@@ -207,15 +322,27 @@ async function run() {
       res.send(result);
     });
 
-    // get-courses from db
-    app.get("/all-courses", async (req, res) => {
-      const result = await courseCollection.find({}).toArray();
+    // get specific user
+    app.get("/specific-user/:id", async (req, res) => {
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const result = await usersCollection.findOne(filter);
       res.send(result);
     });
 
+    // get-courses from db
+    app.get("/all-courses-by-department", async (req, res) => {
+      const department = req.query.department;
+      const filter = department ? { department } : {};
+      const result = await courseCollection.find(filter).toArray();
+      res.send(result);
+    });
+    
+
     // get-faculties
     app.get("/all-faculties", async (req, res) => {
-      const result = await facultiesCollection.find({}).toArray();
+      const filter = { role: "Faculty" };
+      const result = await facultiesCollection.find(filter).toArray();
       const totalStaff = await facultiesCollection.estimatedDocumentCount();
       res.send({ result, totalStaff });
     });
@@ -228,11 +355,55 @@ async function run() {
       res.send(result);
     });
 
+    // get faculty assign courses
+    app.get("/faculty-assign/courses/:email", async (req, res) => {
+      const { email } = req.params;
+      const filter = { facultyEmail: email };
+      const result = await courseCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    // get faculties dashboard state
+    app.get("/faculty-dashboard/state/:email", async (req, res) => {
+      try {
+        const { email } = req.params;
+
+        const totalCourses = await courseCollection.countDocuments({
+          facultyEmail: email,
+        });
+        const totalAssignments = await assignmentsCollection.countDocuments({
+          email: email,
+        });
+        const totalStudents = await usersCollection.countDocuments({
+          role: "student",
+        });
+
+        res.send({ totalCourses, totalAssignments, totalStudents });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ error: "Failed to fetch dashboard data" });
+      }
+    });
+
     // get all users from db
     app.get("/all-users", async (req, res) => {
       const userRole = req.query.role;
       const filter = userRole ? { role: userRole } : {};
       const result = await usersCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    // get all students
+    app.get("/all-students", async (req, res) => {
+      const result = await studentsCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    // get specific students
+    app.get("/student/:email", async (req, res) => {
+      const {email} = req.params;
+      const filter = {email}
+      const result = await studentsCollection.findOne(filter);
       res.send(result);
     });
 
@@ -252,6 +423,7 @@ async function run() {
       res.send(result);
     });
 
+    // get all assignment with the status
     app.get("/students-assignment/:email", async (req, res) => {
       const { email } = req.params;
 
@@ -354,6 +526,14 @@ async function run() {
       res.send({ submitted: !!existing });
     });
 
+    // get specific student grade
+    app.get("/student-result/:email", async (req, res) => {
+      const { email } = req.params;
+      const filter = { studentEmail: email };
+      const result = await gradesCollection.findOne(filter);
+      res.send(result);
+    });
+
     // upload pdf procedures
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
@@ -393,10 +573,11 @@ async function run() {
     // save-assignment to db
     app.post("/upload-assignment", upload.single("file"), async (req, res) => {
       try {
-        const { courseId, title, instructions, email, deadline } = req.body;
+        const { courseId, title, instructions, email, deadline,semester } = req.body;
         const fileInfo = req.file;
         const assignment = {
           courseId,
+          semester,
           title,
           instructions,
           email,

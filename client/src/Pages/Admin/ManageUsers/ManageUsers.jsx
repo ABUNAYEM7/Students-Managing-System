@@ -5,20 +5,18 @@ import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import useAuth from "../../../Components/Hooks/useAuth";
 
 const ManageUsers = () => {
-  const [users,setUsers] = useState([])
-  const { data: user,refetch } = useFetchData("users", "/all-users");
-  const {user:admin} = useAuth()
+  const [users, setUsers] = useState([]);
+  const { data: user, refetch } = useFetchData("users", "/all-users");
+  const { user: admin } = useAuth();
   const axiosInstance = AxiosSecure();
 
-  useEffect(()=>{
-    if(user){
-      const updatedUser = user?.filter(u=>u.email !== admin?.email)
-      setUsers(updatedUser)
-         }
-  },[user])
+  useEffect(() => {
+    if (user) {
+      const updatedUser = user?.filter((u) => u.email !== admin?.email);
+      setUsers(updatedUser);
+    }
+  }, [user]);
 
-
-  //   adminHandler
   const adminHandler = async (id) => {
     const res = await axiosInstance.patch(`/update/user-role/${id}`, {
       role: "admin",
@@ -34,51 +32,37 @@ const ManageUsers = () => {
         showConfirmButton: false,
         timer: 1500,
       });
-      refetch()
+      refetch();
     }
   };
 
-  //   facultyHandler
-  const facultyHandler = async (id) => {
-    const res = await axiosInstance.patch(`/update/user-role/${id}`, {
-        role: "faculty",
-      });
-      if (
-        (res?.data?.matchedCount > 0 && res?.data?.modifiedCount > 0) ||
-        (res?.data?.matchedCount > 0 && res?.data?.modifiedCount === 0)
-      ) {
-        Swal.fire({
-          position: "center",
-          icon: "success",
-          title: "User Role Updated Successfully",
-          showConfirmButton: false,
-          timer: 1500,
-        });
-        refetch()
-      }
-  };
-
-  //   studentHandler
   const studentHandler = async (id) => {
-    const res = await axiosInstance.patch(`/update/user-role/${id}`, {
-        role: "student",
-      });
-      if (
-        (res?.data?.matchedCount > 0 && res?.data?.modifiedCount > 0) ||
-        (res?.data?.matchedCount > 0 && res?.data?.modifiedCount === 0)
-      ) {
-        Swal.fire({
-          position: "center",
-          icon: "success",
-          title: "User Role Updated Successfully",
-          showConfirmButton: false,
-          timer: 1500,
-        });
-        refetch()
+    try {
+      const user = await axiosInstance.get(`/specific-user/${id}`);
+      if (user) {
+        const { email, name, photo } = user?.data;
+        const studentInfo = {
+          email,
+          name,
+          photo,
+        };
+        const res = await axiosInstance.post(`/create-student`, studentInfo);
+        if (res?.data?.insertedId) {
+          Swal.fire({
+            position: "center",
+            icon: "success",
+            title: "User Role Updated Successfully",
+            showConfirmButton: false,
+            timer: 1500,
+          });
+          refetch()
+        }
       }
+    } catch (err) {
+      console.log(err);
+    }
   };
 
-  // deleteHandler
   const deleteHandler = (id) => {
     Swal.fire({
       title: "Are you sure?",
@@ -104,14 +88,12 @@ const ManageUsers = () => {
   };
 
   return (
-    <div>
+    <div className="px-4 md:px-10 py-6 min-h-screen bg-base-200">
       <h3 className="text-3xl font-black text-center mt-6">User Management</h3>
-      {/* table-container */}
-      <div className="mt-12 p-4">
-        <div className="overflow-x-auto">
-          <table className="table">
-            {/* head */}
-            <thead>
+      <div className="mt-12 w-full overflow-x-auto">
+        <div className="inline-block min-w-full align-middle">
+          <table className="table table-zebra min-w-[900px]">
+            <thead className="bg-base-300">
               <tr>
                 <th>Name</th>
                 <th>Email</th>
@@ -121,7 +103,7 @@ const ManageUsers = () => {
             </thead>
             <tbody>
               {users?.map((user) => (
-                <tr>
+                <tr key={user?._id}>
                   <td>
                     <div className="flex items-center gap-3">
                       <div className="avatar">
@@ -129,7 +111,7 @@ const ManageUsers = () => {
                           <img
                             referrerPolicy="no-referrer"
                             src={user?.photo}
-                            alt="Avatar Tailwind CSS Component"
+                            alt="Avatar"
                           />
                         </div>
                       </div>
@@ -146,18 +128,13 @@ const ManageUsers = () => {
                   <td>{user?.email}</td>
                   <td>
                     <div className="dropdown dropdown-start">
-                      <div tabIndex={0} role="button" className="btn m-1">
+                      <div tabIndex={0} role="button" className="btn btn-sm m-1">
                         Click ⬇️
                       </div>
                       <ul
                         tabIndex={0}
-                        className="dropdown-content menu bg-base-100 rounded-box z-1 w-30 p-2 shadow-sm"
+                        className="dropdown-content menu bg-base-100 rounded-box z-1 w-32 p-2 shadow-sm"
                       >
-                        <li>
-                          <button onClick={() => facultyHandler(user?._id)}>
-                            Faculty
-                          </button>
-                        </li>
                         <li>
                           <button onClick={() => adminHandler(user?._id)}>
                             Admin
@@ -165,7 +142,7 @@ const ManageUsers = () => {
                         </li>
                         <li>
                           <button onClick={() => studentHandler(user?._id)}>
-                            Students
+                            Student
                           </button>
                         </li>
                       </ul>
@@ -174,7 +151,7 @@ const ManageUsers = () => {
                   <td>
                     <button
                       onClick={() => deleteHandler(user?._id)}
-                      className="btn btn-error text-white"
+                      className="btn btn-sm btn-error text-white"
                     >
                       Delete
                     </button>

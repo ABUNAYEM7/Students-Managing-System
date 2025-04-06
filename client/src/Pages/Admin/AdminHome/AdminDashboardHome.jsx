@@ -1,63 +1,113 @@
 import React from "react";
-import { FaUserShield, FaChalkboardTeacher, FaUserGraduate, FaUsers } from "react-icons/fa";
 import useAuth from "../../../Components/Hooks/useAuth";
 import useFetchData from "../../../Components/Hooks/useFetchData";
+import {
+  FaUserShield,
+  FaUserGraduate,
+  FaChalkboardTeacher,
+  FaUsers,
+} from "react-icons/fa";
 
 const AdminDashboardHome = () => {
   const { user } = useAuth();
   const { data: state } = useFetchData("state", "/user-state");
 
+  const dashboardItems = [
+    {
+      title: "Total Admins",
+      count: state?.totalAdmin,
+      icon: <FaUserShield size={30} />,
+      color: "bg-blue-500",
+    },
+    {
+      title: "Total Students",
+      count: state?.totalStudents,
+      icon: <FaUserGraduate size={30} />,
+      color: "bg-green-500",
+    },
+    {
+      title: "Total Faculties",
+      count: state?.totalFaculty,
+      icon: <FaChalkboardTeacher size={30} />,
+      color: "bg-yellow-500",
+    },
+    {
+      title: "Total Users",
+      count: state?.totalUser,
+      icon: <FaUsers size={30} />,
+      color: "bg-red-500",
+    },
+  ];
+
   return (
-    <div>
-      <h3 className="text-2xl font-semibold text-center mt-6">
+    <div className="p-3 md:p-6 bg-gray-100 min-h-screen z-0">
+      <h1 className="text-xl md:text-4xl font-bold text-[#243c5a] mb-8">
         Welcome Dear {user?.displayName}
-      </h3>
+      </h1>
 
-      <div className="mt-12 p-8 grid grid-cols-1 md:grid-cols-2  gap-5 ">
-        
-        {/* Admin Card */}
-        <div className="card bg-blue-500 text-white min-w-[350px] min-h-[200px] shadow-xl">
-          <div className="card-body">
-            <div className="flex items-center justify-between">
-              <h2 className="card-title text-xl">Total Admins</h2>
-              <FaUserShield size={30} />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {dashboardItems.map((item, index) => (
+          <div
+            key={index}
+            className={`card ${item.color} text-white shadow-xl`}
+          >
+            <div className="card-body flex-row items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-semibold">{item.count}</h2>
+                <p className="font-medium">{item.title}</p>
+              </div>
+              <div>{item.icon}</div>
             </div>
-            <p className="text-2xl font-bold">{state?.totalAdmin}</p>
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Faculty Card */}
-        <div className="card bg-green-500 text-white min-w-[350px] min-h-[200px]  shadow-xl">
-          <div className="card-body">
-            <div className="flex items-center justify-between">
-              <h2 className="card-title text-xl">Total Faculties</h2>
-              <FaChalkboardTeacher size={30} />
-            </div>
-            <p className="text-2xl font-bold">{state?.totalFaculty}</p>
-          </div>
-        </div>
-
-        {/* Student Card */}
-        <div className="card bg-yellow-500 text-white min-w-[350px] min-h-[200px]  shadow-xl">
-          <div className="card-body">
-            <div className="flex items-center justify-between">
-              <h2 className="card-title text-xl">Total Students</h2>
-              <FaUserGraduate size={30} />
-            </div>
-            <p className="text-2xl font-bold">{state?.totalStudents}</p>
-          </div>
-        </div>
-
-        {/* User Card */}
-        <div className="card bg-red-500 text-white min-w-[350px] min-h-[200px]  shadow-xl">
-          <div className="card-body">
-            <div className="flex items-center justify-between">
-              <h2 className="card-title text-xl">Total Users</h2>
-              <FaUsers size={30} />
-            </div>
-            <p className="text-2xl font-bold">{state?.totalUser}</p>
-          </div>
-        </div>
+      {/* Upcoming Activities Table */}
+      <h2 className="card-title">Upcoming Activities</h2>
+      <div className="overflow-x-auto w-full mt-4 ">
+        <table className="table table-zebra  w-full">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Activity</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="text-sm md:text-base">
+              <td>1</td>
+              <td>User Role Review</td>
+              <td>April 12, 2025</td>
+              <td>
+                <span className="badge badge-warning text-[10px] md:text-base">
+                  Scheduled
+                </span>
+              </td>
+            </tr>
+            <tr className="text-sm md:text-base">
+              <td>2</td>
+              <td>System Backup & Maintenance</td>
+              <td>April 14, 2025</td>
+              <td>
+                <span className="badge badge-info text-[10px] md:text-base">
+                  In Progress
+                </span>
+              </td>
+            </tr>
+            <tr className="text-sm md:text-base">
+              <td>3</td>
+              <td>Faculty Feedback Review</td>
+              <td>April 17, 2025</td>
+              <td>
+                <span className="badge badge-success text-[10px] md:text-base">
+                  Pending
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );

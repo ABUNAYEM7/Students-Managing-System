@@ -45,7 +45,7 @@ const Courses = () => {
       <h3 className="text-3xl font-black text-center mt-6">
         Course Management
       </h3>
-      <div className="mt-6 p-4">
+      <div className="mt-6 p-4 ">
         <div className="overflow-x-auto">
           <table className="table">
             {/* head */}

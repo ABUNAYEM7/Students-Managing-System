@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import useAuth from "../../../Components/Hooks/useAuth";
 import Swal from "sweetalert2";
@@ -12,6 +12,7 @@ const Assignment = () => {
     `${user?.email}`,
     `/assignments/${user?.email}`
   );
+  const navigate = useNavigate()
 
   // deleteHandler
   const deleteHandler = (id) => {
@@ -37,6 +38,11 @@ const Assignment = () => {
       }
     });
   };
+
+  // detailsHandler
+  const detailsHandler = (id)=>{
+    navigate(`/dashboard/assignment-details/${id}`)
+  }
 
   return (
     <div>
@@ -71,17 +77,10 @@ const Assignment = () => {
                   <td>{assignment.courseId}</td>
                   <td>{assignment.title}</td>
                   <td>
-                    <a
-                      href={`http://localhost:3000/${assignment.path.replace(
-                        /\\/g,
-                        "/"
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      View
-                    </a>
+                    <button
+                    className="text-blue-600 underline cursor-pointer"
+                    onClick={()=>detailsHandler(assignment._id)}
+                    >View Details</button>
                   </td>
                   <td>
                     <Link
@@ -103,7 +102,7 @@ const Assignment = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="text-center py-10 text-red-500">
+                <td colSpan="6" className="text-center py-10 text-red-500 ">
                   No materials uploaded yet.
                 </td>
               </tr>

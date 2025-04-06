@@ -13,7 +13,7 @@ const University = () => {
         <motion.div
           initial={{ opacity: 0, x: 100 }}
           whileInView={{ opacity: 1, x: 0 }}
-          transition={{ duration: 3 }}
+          transition={{ duration: 1 }}
           viewport={{ once: true }}
           className="w-full lg:w-1/2 p-4"
         >
@@ -126,7 +126,7 @@ const University = () => {
         <motion.div
           initial={{ opacity: 0, x: -100 }}
           whileInView={{ opacity: 1, x: 0 }}
-          transition={{ duration: 3 }}
+          transition={{ duration: 1 }}
           viewport={{ once: true }}
           className="w-full lg:w-1/2"
         >

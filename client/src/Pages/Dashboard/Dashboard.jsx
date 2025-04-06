@@ -47,7 +47,7 @@ const Dashboard = () => {
       return <Navigate to="/dashboard/faculty/home" replace />;
     }
     return (
-      <DashboardDrawer>
+       <DashboardDrawer>
         <Outlet />
       </DashboardDrawer>
     );

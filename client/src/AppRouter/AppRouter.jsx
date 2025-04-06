@@ -28,6 +28,10 @@ import Materials from "../Pages/Faculty/Materials/Materials"
 import AddFaculty from "../Pages/Admin/ManageFaculty/AddFaculty";
 import AddMaterials from "../Pages/Faculty/AddMaterials/AddMaterials";
 import Assignment from "../Pages/Faculty/Assignment/Assignment";
+import AssignmentDetails from "../Pages/Faculty/AssingmentDetails/AssignmentDetails";
+import LeaveForm from "../Pages/Student/LeaveForm/LeaveForm";
+import StudentAssignment from "../Pages/Student/StudentAssignment/StudentAssignment";
+import StudentsCourses from "../Pages/Student/StudentsCourses/StudentsCourses";
 
 const AppRouter = () => {
   return (
@@ -63,9 +67,12 @@ const AppRouter = () => {
           {/* Student Routes */}
           <Route path="profile" element={<Profile />} />
           <Route path="student/home" element={<StudentsDashboardHome/>} />
+          <Route path="student-courses" element={<StudentsCourses/>}/>
+          <Route path="student-assignment" element={<StudentAssignment/>}/>
           <Route path="attendance" element={<Attendance/>}/>
           <Route path="grade" element={<Grade/>}/>
           <Route path="Fee" element={<Fee/>}/>
+          <Route path="leave-form/:email" element={<LeaveForm/>}/>
 
           {/* Faculty Routes */}
           <Route>
@@ -76,6 +83,7 @@ const AppRouter = () => {
             <Route path="assignment" element={<Assignment/>}/>
             <Route path="add-assignment" element={<CreateAssignment/>}/>
             <Route path="add-assignment/:id" element={<CreateAssignment/>}/>
+            <Route path="assignment-details/:id" element={<AssignmentDetails/>}/>
             <Route path="materials" element={<Materials/>}/>
             <Route path="add-materials" element={<AddMaterials/>}/>
             <Route path="add-materials/:id" element={<AddMaterials/>}/>

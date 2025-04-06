@@ -38,7 +38,7 @@ const Home = () => {
   ];
 
   return (
-    <div>
+    <div className="mt-[75px]">
       {/* banner */}
       <div className="relative h-[600px]">
         <Swiper
@@ -50,7 +50,7 @@ const Home = () => {
           {slides.map((slide, index) => (
             <SwiperSlide key={index} className="relative">
               <img
-                className="h-full w-full object-cover object-center"
+                className="h-full w-full  object-center object-fill"
                 src={slide.image}
                 alt={`Slide ${index + 1}`}
               />
@@ -69,7 +69,7 @@ const Home = () => {
                   <button className="btn w-fit mt-4 text-white bg-orange-600 border-none hover:bg-white hover:border-2 hover:text-orange-600">
                     Enroll Now
                   </button>
-                  <button className="btn w-fit mt-4 text-white  border-2 border-orange-600 bg-transparent">
+                  <button className="btn w-fit mt-4 text-white  border-2 border-prime bg-transparent">
                     Learn More
                   </button>
                 </div>
@@ -95,7 +95,7 @@ const Home = () => {
         <OurCourses />
       </section>
       {/* features-section */}
-      <section className="my-12 p-4">
+      <section>
         <KeyFeatures />
       </section>
       {/* SimpleSteps-section */}

@@ -5,9 +5,12 @@ import contactAnimation from "../../../public/contactAnimation.json"
 const ContactUs = () => {
   return (
     <div>
-      <h3 className="text-3xl md:text-4 lg:text-5xl font-black text-center">
+      <h3 className="text-highlight text-3xl md:text-4 lg:text-5xl font-black text-center">
         Contact Us
       </h3>
+      <p className="text-sm font-medium w-11/12 md:w-2/3 mx-auto text-center mt-3">
+      We're here to help! Reach out to us anytime with your questions, feedback, or inquiries. Our dedicated support team is ready to assist you and will respond as quickly as possible.
+      </p>
       <div className="flex flex-col md:flex-row items-center justify-between gap-5 my-12 ">
         <div className="w-full md:w-1/2">
         <Lottie 
