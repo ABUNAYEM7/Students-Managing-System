@@ -5,10 +5,12 @@ import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import { useNavigate } from "react-router";
 
 const Courses = () => {
-  const { data: courses,refetch } = useFetchData("Courses", "/all-courses");
-  const axiosInstance = AxiosSecure()
-  const navigate = useNavigate()
-
+  const { data: courses, refetch } = useFetchData(
+    "Courses",
+    "/all-courses-by-department"
+  );
+  const axiosInstance = AxiosSecure();
+  const navigate = useNavigate();
 
   // deleteHandler
   const deleteHandler = (id) => {
@@ -20,11 +22,11 @@ const Courses = () => {
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
       confirmButtonText: "Yes, delete it!",
-    }).then(async(result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        const res = await axiosInstance.delete(`/delete-course/${id}`)
-        if(res?.data?.deletedCount > 0){
-          refetch()
+        const res = await axiosInstance.delete(`/delete-course/${id}`);
+        if (res?.data?.deletedCount > 0) {
+          refetch();
           Swal.fire({
             title: "Deleted!",
             text: "Course has been deleted.",
@@ -37,7 +39,7 @@ const Courses = () => {
 
   // updateHandler
   const updateHandler = (id) => {
-    navigate(`/edit-course/${id}`)
+    navigate(`/edit-course/${id}`);
   };
 
   return (
@@ -45,14 +47,14 @@ const Courses = () => {
       <h3 className="text-3xl font-black text-center mt-6">
         Course Management
       </h3>
-      <div className="mt-6 p-4 ">
+      <div className="mt-6 p-2 max-w-full md:max-w-[90%] lg:max-w-full  mx-auto">
         <div className="overflow-x-auto">
           <table className="table">
             {/* head */}
             <thead>
               <tr>
                 <th>No</th>
-                <th>Course </th>
+                <th>Course ID</th>
                 <th>Name </th>
                 <th>Credit</th>
                 <th>Description</th>
@@ -64,7 +66,7 @@ const Courses = () => {
               {courses?.map((c, i) => (
                 <tr key={c?._id} className="bg-base-200">
                   <th>{i + 1}</th>
-                  <td>{c?.course}</td>
+                  <td>{c?.courseId}</td>
                   <td>{c?.name}</td>
                   <td>{c?.credit}</td>
                   <td>{c?.description}</td>

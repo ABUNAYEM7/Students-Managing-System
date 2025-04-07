@@ -8,6 +8,14 @@ import useFetchData from "../../../Components/Hooks/useFetchData";
 const CreateAssignment = () => {
   const { id } = useParams();
   const { data } = id ? useFetchData(`${id}`, `/assignment/${id}`) : { data: null };
+  const {user:faculty} = useAuth()
+  const email = faculty?.email;
+
+  const {
+    data: courses,
+    loading,
+  } = useFetchData(`${email}`, `/faculty-assign/courses/${email}`)
+
   const [formData, setFormData] = useState({
     courseId: "",
     title: "",
@@ -143,9 +151,11 @@ const CreateAssignment = () => {
             required
           >
             <option disabled value="">Select Course</option>
-            <option value="455">455 - DSA</option>
-            <option value="456">456 - Web Development</option>
-            <option value="457">457 - Database Systems</option>
+            {
+              courses?.map((c,i)=>(
+                <option  value={`${c?.name}`}>{c?.name}</option>
+              ))
+            }
           </select>
 
           <label className="label">

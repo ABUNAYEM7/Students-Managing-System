@@ -38,7 +38,15 @@ const AddCourses = () => {
       department,
     } = formData;
 
-    if (!courseId || !name || !credit || !description || !facultyEmail || !semester || !department) {
+    if (
+      !courseId ||
+      !name ||
+      !credit ||
+      !description ||
+      !facultyEmail ||
+      !semester ||
+      !department
+    ) {
       return Swal.fire({
         icon: "warning",
         title: "All fields are required",
@@ -75,6 +83,29 @@ const AddCourses = () => {
     }
   };
 
+  const BachelorProgram = [
+    "Bachelor of Science in Business Administration",
+    "Bachelor of Science in Civil Engineering",
+    "Bachelor of Science in Computer Science",
+    "Bachelor of Science in Information System Management",
+  ];
+
+  const Masters = [
+    "Master of Public Health",
+    "Master of Science in Civil Engineering (M.Sc.)",
+    "Master of Science in Business Administration (MSBA)",
+    "Master of Science in Computer Science Engineering (MSCSE)",
+  ];
+
+  const Doctorate = [
+    "Doctor of Business Management",
+    "Doctor of Public Health",
+    "Doctor of Science in Computer Science",
+    "Doctor of Management",
+  ];
+
+  const Associate = ["English as a Second Language"];
+
   return (
     <div className="mockup-window border border-base-300 w-full p-4 mt-6">
       <div className="flex gap-5 flex-col-reverse md:flex-row items-center">
@@ -87,7 +118,9 @@ const AddCourses = () => {
             onSubmit={handleSubmit}
             className="bg-white p-6 rounded-lg shadow-lg w-full"
           >
-            <h2 className="text-xl font-bold text-center mb-4">Create Course</h2>
+            <h2 className="text-xl font-bold text-center mb-4">
+              Create Course
+            </h2>
 
             {/* Semester Dropdown */}
             <div className="form-control w-full mb-4">
@@ -121,11 +154,38 @@ const AddCourses = () => {
                 required
               >
                 <option value="">Select Department</option>
-                <option value="Computer Science">Computer Science</option>
-                <option value="Business Administration">Business Administration</option>
-                <option value="Hospitality Management">Hospitality Management</option>
-                <option value="Data Science">Data Science</option>
-                <option value="Artificial Intelligence">Artificial Intelligence</option>
+
+                <optgroup label="Bachelor Programs">
+                  {BachelorProgram.map((program) => (
+                    <option key={program} value={program}>
+                      {program}
+                    </option>
+                  ))}
+                </optgroup>
+
+                <optgroup label="Master Programs">
+                  {Masters.map((program) => (
+                    <option key={program} value={program}>
+                      {program}
+                    </option>
+                  ))}
+                </optgroup>
+
+                <optgroup label="Doctorate Programs">
+                  {Doctorate.map((program) => (
+                    <option key={program} value={program}>
+                      {program}
+                    </option>
+                  ))}
+                </optgroup>
+
+                <optgroup label="Associate Programs">
+                  {Associate.map((program) => (
+                    <option key={program} value={program}>
+                      {program}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
 
@@ -207,40 +267,44 @@ const AddCourses = () => {
                 <option value="">Select Faculty</option>
                 {faculties?.result?.map((faculty) => (
                   <option key={faculty._id} value={faculty.email}>
-                    {faculty.firstName} {faculty.lastName} - {faculty.department}
+                    {faculty.firstName} {faculty.lastName} -{" "}
+                    {faculty.department}
                   </option>
                 ))}
               </select>
 
               {/* Preview Card */}
-              {formData.facultyEmail && (() => {
-                const selectedFaculty = faculties?.result?.find(
-                  (f) => f.email === formData.facultyEmail
-                );
-                return selectedFaculty ? (
-                  <div className="card shadow-md mt-4 border p-4 flex flex-col md:flex-row items-center gap-4 bg-gray-50">
-                    <img
-                      src={selectedFaculty.staffPhoto}
-                      alt="faculty"
-                      className="w-24 h-24 rounded-full object-cover border"
-                    />
-                    <div>
-                      <h3 className="text-lg font-semibold">
-                        {selectedFaculty.firstName} {selectedFaculty.lastName}
-                      </h3>
-                      <p className="text-sm text-gray-700">
-                        <strong>Department:</strong> {selectedFaculty.department}
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        <strong>Designation:</strong> {selectedFaculty.designation}
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        <strong>Email:</strong> {selectedFaculty.email}
-                      </p>
+              {formData.facultyEmail &&
+                (() => {
+                  const selectedFaculty = faculties?.result?.find(
+                    (f) => f.email === formData.facultyEmail
+                  );
+                  return selectedFaculty ? (
+                    <div className="card shadow-md mt-4 border p-4 flex flex-col md:flex-row items-center gap-4 bg-gray-50">
+                      <img
+                        src={selectedFaculty.staffPhoto}
+                        alt="faculty"
+                        className="w-24 h-24 rounded-full object-cover border"
+                      />
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          {selectedFaculty.firstName} {selectedFaculty.lastName}
+                        </h3>
+                        <p className="text-sm text-gray-700">
+                          <strong>Department:</strong>{" "}
+                          {selectedFaculty.department}
+                        </p>
+                        <p className="text-sm text-gray-700">
+                          <strong>Designation:</strong>{" "}
+                          {selectedFaculty.designation}
+                        </p>
+                        <p className="text-sm text-gray-700">
+                          <strong>Email:</strong> {selectedFaculty.email}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ) : null;
-              })()}
+                  ) : null;
+                })()}
             </div>
 
             <button type="submit" className="btn btn-primary w-full">

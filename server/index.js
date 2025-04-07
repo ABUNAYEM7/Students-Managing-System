@@ -337,7 +337,6 @@ async function run() {
       const result = await courseCollection.find(filter).toArray();
       res.send(result);
     });
-    
 
     // get-faculties
     app.get("/all-faculties", async (req, res) => {
@@ -393,16 +392,39 @@ async function run() {
       res.send(result);
     });
 
-    // get all students
+    // get all students and for courses based student for attendance
     app.get("/all-students", async (req, res) => {
-      const result = await studentsCollection.find({}).toArray();
-      res.send(result);
+      const courseIds = req.query.courseId;
+      let query = {};
+
+      if (courseIds) {
+        const idsArray = Array.isArray(courseIds) ? courseIds : [courseIds];
+        query = {
+          courses: {
+            $elemMatch: {
+              courseId: { $in: idsArray },
+            },
+          },
+        };
+      }
+
+      try {
+        const result = await studentsCollection
+          .find(query)
+          .project({ name: 1, email: 1, photo: 1, courses: 1 })
+          .toArray();
+          console.log(result)
+        res.send(result);
+      } catch (err) {
+        console.error("Error fetching students by course enrollment", err);
+        res.status(500).send({ error: "Failed to fetch students" });
+      }
     });
 
     // get specific students
     app.get("/student/:email", async (req, res) => {
-      const {email} = req.params;
-      const filter = {email}
+      const { email } = req.params;
+      const filter = { email };
       const result = await studentsCollection.findOne(filter);
       res.send(result);
     });
@@ -573,7 +595,8 @@ async function run() {
     // save-assignment to db
     app.post("/upload-assignment", upload.single("file"), async (req, res) => {
       try {
-        const { courseId, title, instructions, email, deadline,semester } = req.body;
+        const { courseId, title, instructions, email, deadline, semester } =
+          req.body;
         const fileInfo = req.file;
         const assignment = {
           courseId,

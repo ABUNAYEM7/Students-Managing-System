@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 const FacultyAttendance = () => {
   const { user } = useAuth();
   const axiosInstance = AxiosSecure();
-  const { data: courses } = useFetchData("courses", `/all-courses`);
+  const { data: courses } = useFetchData("courses", "/all-courses-by-department");
 
   const [courseId, setCourseId] = useState("");
   const [students, setStudents] = useState([]);
@@ -21,14 +21,15 @@ const FacultyAttendance = () => {
   const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    if (!courseId) {
-      setStudents([]);
-      setAttendance([]);
-      return;
-    }
+    const fetchAttendanceData = async () => {
+      if (!courseId) {
+        setStudents([]);
+        setAttendance([]);
+        return;
+      }
 
-    const fetchAttendanceStatus = async () => {
       try {
+        // Check if attendance has already been submitted for this course and date
         const res = await axiosInstance.get(
           `/attendance-status?courseId=${courseId}&date=${today}`
         );
@@ -39,7 +40,10 @@ const FacultyAttendance = () => {
         }));
 
         if (!alreadySubmitted) {
-          const studentRes = await axiosInstance.get(`/all-users?role=student`);
+          // Fetch students enrolled in the selected course
+          const studentRes = await axiosInstance.get(`/all-students`, {
+            params: { courseId },
+          });
           const enrolledStudents = studentRes.data;
           const initialAttendance = enrolledStudents.map((student) => ({
             email: student.email,
@@ -48,6 +52,7 @@ const FacultyAttendance = () => {
           setStudents(enrolledStudents);
           setAttendance(initialAttendance);
         } else {
+          // Fetch already submitted attendance data
           const submittedRes = await axiosInstance.get(
             `/submitted-attendance?courseId=${courseId}&date=${today}`
           );
@@ -55,12 +60,12 @@ const FacultyAttendance = () => {
           setAttendance(submittedRes.data.students);
         }
       } catch (error) {
-        console.error("Error fetching attendance status:", error);
+        console.error("Error fetching attendance data:", error);
         Swal.fire("Error", "Could not load attendance data.", "error");
       }
     };
 
-    fetchAttendanceStatus();
+    fetchAttendanceData();
   }, [courseId, axiosInstance, today]);
 
   const handleStatusChange = (email, status) => {
@@ -109,7 +114,7 @@ const FacultyAttendance = () => {
           <option value="">-- Select Course --</option>
           {facultyCourses?.map((course) => (
             <option key={course._id} value={course._id}>
-              {course.name} ({course.course})
+              {course.name} {course.course ? `(${course.course})` : ""}
             </option>
           ))}
         </select>
@@ -141,9 +146,12 @@ const FacultyAttendance = () => {
                       <select
                         className="select select-sm"
                         value={
-                          attendance.find((a) => a.email === student.email)?.status || "present"
+                          attendance.find((a) => a.email === student.email)
+                            ?.status || "present"
                         }
-                        onChange={(e) => handleStatusChange(student.email, e.target.value)}
+                        onChange={(e) =>
+                          handleStatusChange(student.email, e.target.value)
+                        }
                         disabled={isDisabled}
                       >
                         <option value="present">Present</option>

@@ -53,7 +53,10 @@ const FacultyCourses = () => {
                 </h2>
 
                 <p className="text-sm text-gray-600 mt-1">
-                  <strong>Course Code:</strong> {course.course}
+                  <strong>Department:</strong> {course.department}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  <strong>Course Code:</strong> {course.courseId}
                 </p>
 
                 <p className="text-sm text-gray-600 mt-1">

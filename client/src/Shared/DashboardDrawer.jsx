@@ -1,10 +1,40 @@
 import React, { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router";
-import { FaBars, FaChartBar } from "react-icons/fa6";
+import { FaBars, FaChartBar, FaHome, FaBook, FaUserGraduate, FaUsers, FaUserTie, FaClipboardList, FaMoneyBill } from "react-icons/fa";
 import Swal from "sweetalert2";
 import useAuth from "../Components/Hooks/useAuth";
 import useUserRole from "../Components/Hooks/useUserRole";
 import logo from "../assets/logo.jfif";
+
+const navIcons = {
+  "ADMIN Dashboard": <FaHome />, 
+  Courses: <FaBook />, 
+  "Add Courses": <FaClipboardList />, 
+  Students: <FaUserGraduate />, 
+  Faculty: <FaUserTie />, 
+  "Manage Users": <FaUsers />, 
+  Dashboard: <FaHome />, 
+  Grades: <FaClipboardList />, 
+  Attendance: <FaClipboardList />, 
+  Assignment: <FaClipboardList />, 
+  Materials: <FaBook />, 
+  Assignments: <FaClipboardList />, 
+  Fees: <FaMoneyBill />,
+};
+
+const getNavClass = ({ isActive }) =>
+  isActive
+    ? "bg-primary/10 text-primary font-semibold border-l-4 border-primary rounded-md px-3 py-2"
+    : "text-gray-700 hover:bg-gray-100 rounded-md px-3 py-2";
+
+const ResponsiveNavLink = ({ to, label, icon, end = false }) => (
+  <NavLink to={to} className={getNavClass} end={end}>
+    <div className="flex sm:flex-col items-center sm:items-start gap-2">
+      <span>{icon}</span>
+      <span>{label}</span>
+    </div>
+  </NavLink>
+);
 
 const DashboardDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,11 +58,6 @@ const DashboardDrawer = () => {
       console.error(err);
     }
   };
-
-  const getNavClass = ({ isActive }) =>
-    isActive
-      ? "bg-primary/10 text-primary font-semibold border-l-4 border-primary rounded-md px-3 py-2"
-      : "text-gray-700 hover:bg-gray-100 rounded-md px-3 py-2";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -91,34 +116,22 @@ const DashboardDrawer = () => {
               {userRole === "admin" && (
                 <>
                   <li>
-                    <NavLink to="/dashboard/admin/home" className={getNavClass} end>
-                      ADMIN Dashboard
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/admin/home" label="ADMIN Dashboard" icon={navIcons["ADMIN Dashboard"]} end />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/courses" className={getNavClass}>
-                      Courses
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/courses" label="Courses" icon={navIcons["Courses"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/add-courses" className={getNavClass}>
-                      Add Courses
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/add-courses" label="Add Courses" icon={navIcons["Add Courses"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/manage-students" className={getNavClass}>
-                      Students
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/manage-students" label="Students" icon={navIcons["Students"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/manage-faculty" className={getNavClass}>
-                      Faculty
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/manage-faculty" label="Faculty" icon={navIcons["Faculty"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/manage-users" className={getNavClass}>
-                      Manage Users
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/manage-users" label="Manage Users" icon={navIcons["Manage Users"]} />
                   </li>
                 </>
               )}
@@ -126,34 +139,22 @@ const DashboardDrawer = () => {
               {userRole === "faculty" && (
                 <>
                   <li>
-                    <NavLink to="/dashboard/faculty/home" className={getNavClass} end>
-                      Dashboard
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/faculty/home" label="Dashboard" icon={navIcons["Dashboard"]} end />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/faculty-courses" className={getNavClass}>
-                      Courses
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/faculty-courses" label="Courses" icon={navIcons["Courses"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/faculty-grades" className={getNavClass}>
-                      Grades
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/faculty-grades" label="Grades" icon={navIcons["Grades"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/faculty-attendance" className={getNavClass}>
-                      Attendance
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/faculty-attendance" label="Attendance" icon={navIcons["Attendance"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/assignment" className={getNavClass}>
-                      Assignment
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/assignment" label="Assignment" icon={navIcons["Assignment"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/materials" className={getNavClass}>
-                      Materials
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/materials" label="Materials" icon={navIcons["Materials"]} />
                   </li>
                 </>
               )}
@@ -161,34 +162,22 @@ const DashboardDrawer = () => {
               {userRole === "student" && (
                 <>
                   <li>
-                    <NavLink to="/dashboard/student/home" className={getNavClass} end>
-                      Dashboard
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/student/home" label="Dashboard" icon={navIcons["Dashboard"]} end />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/student-courses" className={getNavClass}>
-                      Courses
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/student-courses" label="Courses" icon={navIcons["Courses"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/student-assignment" className={getNavClass}>
-                      Assignments
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/student-assignment" label="Assignments" icon={navIcons["Assignments"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/attendance" className={getNavClass}>
-                      Attendance
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/attendance" label="Attendance" icon={navIcons["Attendance"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/grade" className={getNavClass}>
-                      Grades
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/grade" label="Grades" icon={navIcons["Grades"]} />
                   </li>
                   <li>
-                    <NavLink to="/dashboard/fee" className={getNavClass}>
-                      Fees
-                    </NavLink>
+                    <ResponsiveNavLink to="/dashboard/fee" label="Fees" icon={navIcons["Fees"]} />
                   </li>
                 </>
               )}
