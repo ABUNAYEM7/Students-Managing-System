@@ -251,6 +251,41 @@ async function run() {
       res.send(result);
     });
 
+    // ✅ PATCH: Update leave status (approve/decline)
+    app.patch("/update-leave-status/:id", async (req, res) => {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      // Ensure status is either "approved" or "declined"
+      if (!["approved", "declined"].includes(status)) {
+        return res.status(400).send({ message: "Invalid status value" });
+      }
+
+      try {
+        const result = await leavesCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              status,
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+        if (result.modifiedCount > 0) {
+          res.send({ success: true, modifiedCount: result.modifiedCount });
+        } else {
+          res.status(404).send({
+            success: false,
+            message: "Leave not found or already updated",
+          });
+        }
+      } catch (err) {
+        console.error("Error updating leave status:", err);
+        res.status(500).send({ message: "Failed to update leave status" });
+      }
+    });
+
     // delete-course
     app.delete("/delete-course/:id", async (req, res) => {
       const id = req.params.id;
@@ -413,7 +448,6 @@ async function run() {
           .find(query)
           .project({ name: 1, email: 1, photo: 1, courses: 1 })
           .toArray();
-          console.log(result)
         res.send(result);
       } catch (err) {
         console.error("Error fetching students by course enrollment", err);
@@ -427,6 +461,30 @@ async function run() {
       const filter = { email };
       const result = await studentsCollection.findOne(filter);
       res.send(result);
+    });
+
+    // get specific student attendance
+    app.get("/student-assignment/:email", async (req, res) => {
+      const { email } = req.params;
+
+      // Step 1: Find all attendance documents where the student is present
+      const cursor = attendanceCollection.find({ "students.email": email });
+
+      const allDocs = await cursor.toArray();
+
+      // Step 2: For each matching doc, extract only the student record + date
+      const studentAttendance = allDocs.map((doc) => {
+        const student = doc.students.find((s) => s.email === email);
+        return {
+          date: doc.date,
+          courseId: doc.courseId,
+          status: student?.status || "not found",
+          takenBy: doc.takenBy,
+          createdAt: doc.createdAt,
+        };
+      });
+
+      res.send({ email, records: studentAttendance });
     });
 
     // get all materials
@@ -548,6 +606,63 @@ async function run() {
       res.send({ submitted: !!existing });
     });
 
+    app.get('/student-leave/request/:email',async(req,res)=>{
+      const {email} = req.params;
+      const filter = {email}
+      const result = await leavesCollection.find(filter).toArray()
+      res.send(result)
+    })
+    // ✅ Faculty-specific leave requests
+    app.get("/faculty-leaves", async (req, res) => {
+      const { facultyEmail, courseId } = req.query;
+      if (!facultyEmail || !courseId) {
+        return res
+          .status(400)
+          .send({ error: "facultyEmail and courseId are required" });
+      }
+    
+      try {
+        // Step 1: Verify the course belongs to the faculty
+        const isAssigned = await courseCollection.findOne({
+          _id: new ObjectId(courseId),
+          facultyEmail,
+        });
+    
+        if (!isAssigned) {
+          return res.status(403).send({ error: "Unauthorized access to course" });
+        }
+    
+        // Step 2: Get all students enrolled in this course
+        const students = await studentsCollection
+          .find({
+            courses: {
+              $elemMatch: { courseId },
+            },
+          })
+          .project({ email: 1 })
+          .toArray();
+    
+        const studentEmails = students.map((s) => s.email);
+    
+        // Step 3: Get today's ISO date string part (YYYY-MM-DD)
+        const todayDateStr = new Date().toISOString().split("T")[0];
+    
+        // Step 4: Match applicationDate string starting with todayDateStr
+        const leaves = await leavesCollection
+          .find({
+            email: { $in: studentEmails },
+            applicationDate: { $regex: `^${todayDateStr}` },
+          })
+          .sort({ applicationDate: -1 })
+          .toArray();
+    
+        res.send(leaves);
+      } catch (err) {
+        console.error("Error fetching course-specific leaves:", err);
+        res.status(500).send({ error: "Internal server error" });
+      }
+    });
+    
     // get specific student grade
     app.get("/student-result/:email", async (req, res) => {
       const { email } = req.params;

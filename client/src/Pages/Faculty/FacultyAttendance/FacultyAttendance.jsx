@@ -3,6 +3,7 @@ import useFetchData from "../../../Components/Hooks/useFetchData";
 import useAuth from "../../../Components/Hooks/useAuth";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import Swal from "sweetalert2";
+import FacultyLeaveRequests from "../../../Components/FacultyLeaveRequests/FacultyLeaveRequests";
 
 const FacultyAttendance = () => {
   const { user } = useAuth();
@@ -100,6 +101,7 @@ const FacultyAttendance = () => {
 
   const isDisabled = attendanceStatusMap[courseId];
 
+
   return (
     <div className="max-w-5xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6 text-center">Mark Attendance</h1>
@@ -176,6 +178,11 @@ const FacultyAttendance = () => {
           </div>
         </div>
       )}
+
+      {/* leaves request section */}
+      <div>
+        <FacultyLeaveRequests facultyEmail={user?.email} courseId={courseId}/>
+      </div>
     </div>
   );
 };
