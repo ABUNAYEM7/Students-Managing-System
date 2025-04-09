@@ -1,13 +1,41 @@
 import React from "react";
 import useFetchData from "../Hooks/useFetchData";
 import useUserRole from "../Hooks/useUserRole";
+import useAuth from "../Hooks/useAuth";
+import Swal from "sweetalert2";
+import AxiosSecure from "../Hooks/AxiosSecure";
 
 const StudentsLeaveRequest = () => {
-  const { data } = useUserRole();
-  const { data: leaveReq } = useFetchData(
-    `${data?.data?.email}`,
-    `/student-leave/request/${data?.data?.email}`
+  const { user } = useAuth();
+  const { data: leaveReq,refetch } = useFetchData(
+    `${user?.email}`,
+    `/student-leave/request/${user?.email}`
   );
+  const axiosInstance = AxiosSecure()
+
+  const deleteHandler = (id) => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        const res = await axiosInstance.delete(`/delete-leaveReq/${id}`);
+        if (res?.data?.deletedCount > 0) {
+          refetch();
+          Swal.fire({
+            title: "Deleted!",
+            text: "Faculty has been deleted.",
+            icon: "success",
+          });
+        }
+      }
+    });
+  };
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -41,6 +69,11 @@ const StudentsLeaveRequest = () => {
                     {leave.status || "pending"}
                   </span>
                 </p>
+                <div>
+                  <button 
+                  onClick={()=>deleteHandler(leave._id)}
+                  className="btn border-2 border-black">Delete</button>
+                </div>
               </div>
             );
           })}

@@ -3,6 +3,7 @@ import useAuth from "../../../Components/Hooks/useAuth";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router";
+import StudentsLeaveRequest from "../../../Components/StudnetsLeaveRequest/StudentsLeaveRequest";
 
 const LeaveForm = () => {
   const { user } = useAuth();
@@ -77,8 +78,8 @@ const LeaveForm = () => {
   };
 
   return (
-    <div className="p-6 w-full md:max-w-[80%] mx-auto">
-      <div className="bg-white rounded-2xl shadow p-6">
+    <div className="p-6 w-full ">
+      <div className="bg-white rounded-2xl shadow p-6 md:max-w-[80%] mx-auto">
         <h1 className="text-2xl font-bold mb-4 text-center">
           Student Leave Application Form
         </h1>
@@ -179,6 +180,7 @@ const LeaveForm = () => {
           </div>
         </form>
       </div>
+      <StudentsLeaveRequest/>
     </div>
   );
 };

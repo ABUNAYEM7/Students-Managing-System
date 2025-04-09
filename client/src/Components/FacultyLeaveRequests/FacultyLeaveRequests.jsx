@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AxiosSecure from "../Hooks/AxiosSecure";
 import Swal from "sweetalert2";
+import LeaveRequestsLive from "../LeaveRequestLive/LeaveRequestLive";
 
 const FacultyLeaveRequests = ({ facultyEmail, courseId }) => {
   const [leaves, setLeaves] = useState([]);
@@ -110,6 +111,10 @@ const FacultyLeaveRequests = ({ facultyEmail, courseId }) => {
           })}
         </ul>
       )}
+
+      <div>
+        <LeaveRequestsLive/>
+      </div>
     </div>
   );
 };

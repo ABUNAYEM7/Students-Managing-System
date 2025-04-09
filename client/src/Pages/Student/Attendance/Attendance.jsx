@@ -11,9 +11,12 @@ const Attendance = () => {
     `${data?.data?.email}`,
     `/student-assignment/${data?.data?.email}`
   );
+  console.log(attendanceResponse)
   const navigate = useNavigate();
 
+  console.log(attendanceResponse)
   const records = attendanceResponse?.records || [];
+
 
   let presentDays = 0;
   let absentDays = 0;
@@ -107,10 +110,6 @@ const Attendance = () => {
           </button>
         </div>
 
-        {/* Leave Request History */}
-        <div>
-          <StudentsLeaveRequest/>
-        </div>
 
       </div>
     </div>

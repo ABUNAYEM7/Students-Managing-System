@@ -5,13 +5,17 @@ const port = process.env.PORT || 3000;
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const multer = require("multer");
+const http = require("http");
+const { Server } = require("socket.io");
+const server = http.createServer(app);
 
 // middleware
 app.use(express.json());
 app.use(cors());
 app.use("/files", express.static("files"));
 
-const uri = `mongodb+srv://${process.env.VITE_USER}:${process.env.VITE_PASS}.ppsob.mongodb.net/?appName=Cluster404`;
+// mongodb url
+const uri = `mongodb+srv://${process.env.VITE_USER}:${process.env.VITE_PASS}@cluster404.ppsob.mongodb.net/?retryWrites=true&w=majority`;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -21,10 +25,35 @@ const client = new MongoClient(uri, {
   },
 });
 
+// socket io server
+const io = new Server(server, {
+  cors: {
+    origin: "*", // allow frontend origin here for safety in production
+    methods: ["GET", "POST"],
+  },
+});
+
+// Socket.IO event listeners
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+
+  // example event
+  socket.on("chat-message", (msg) => {
+    console.log("Message received:", msg);
+    io.emit("chat-message", msg); // broadcast to all connected clients
+  });
+});
+
+// mongodb function
 async function run() {
   try {
     await client.connect();
 
+    // collections
     const usersCollection = client.db("academi_core").collection("users");
     const facultiesCollection = client
       .db("academi_core")
@@ -73,9 +102,19 @@ async function run() {
     });
 
     // save leave application
+    // app.post("/leave-application", async (req, res) => {
+    //   const application = req.body;
+    //   const result = await leavesCollection.insertOne(application);
+    //   res.send(result);
+    // });
+
+    // Notify clients when a new leave is submitted
     app.post("/leave-application", async (req, res) => {
       const application = req.body;
       const result = await leavesCollection.insertOne(application);
+      console.log("🚀 Emitting new-leave-request:", application); // Add this
+      io.emit("new-leave-request", application); // 🚨 Real-time broadcast!
+
       res.send(result);
     });
 
@@ -326,6 +365,14 @@ async function run() {
       res.send(result);
     });
 
+    // delete leave request
+    app.delete("/delete-leaveReq/:id", async (req, res) => {
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const result = await leavesCollection.deleteOne(filter);
+      res.send(result);
+    });
+
     // get user state
     app.get("/user-state", async (req, res) => {
       const totalUser = await usersCollection.estimatedDocumentCount({});
@@ -467,12 +514,10 @@ async function run() {
     app.get("/student-assignment/:email", async (req, res) => {
       const { email } = req.params;
 
-      // Step 1: Find all attendance documents where the student is present
       const cursor = attendanceCollection.find({ "students.email": email });
 
       const allDocs = await cursor.toArray();
 
-      // Step 2: For each matching doc, extract only the student record + date
       const studentAttendance = allDocs.map((doc) => {
         const student = doc.students.find((s) => s.email === email);
         return {
@@ -483,7 +528,6 @@ async function run() {
           createdAt: doc.createdAt,
         };
       });
-
       res.send({ email, records: studentAttendance });
     });
 
@@ -606,12 +650,12 @@ async function run() {
       res.send({ submitted: !!existing });
     });
 
-    app.get('/student-leave/request/:email',async(req,res)=>{
-      const {email} = req.params;
-      const filter = {email}
-      const result = await leavesCollection.find(filter).toArray()
-      res.send(result)
-    })
+    app.get("/student-leave/request/:email", async (req, res) => {
+      const { email } = req.params;
+      const filter = { email };
+      const result = await leavesCollection.find(filter).toArray();
+      res.send(result);
+    });
     // ✅ Faculty-specific leave requests
     app.get("/faculty-leaves", async (req, res) => {
       const { facultyEmail, courseId } = req.query;
@@ -620,18 +664,20 @@ async function run() {
           .status(400)
           .send({ error: "facultyEmail and courseId are required" });
       }
-    
+
       try {
         // Step 1: Verify the course belongs to the faculty
         const isAssigned = await courseCollection.findOne({
           _id: new ObjectId(courseId),
           facultyEmail,
         });
-    
+
         if (!isAssigned) {
-          return res.status(403).send({ error: "Unauthorized access to course" });
+          return res
+            .status(403)
+            .send({ error: "Unauthorized access to course" });
         }
-    
+
         // Step 2: Get all students enrolled in this course
         const students = await studentsCollection
           .find({
@@ -641,12 +687,12 @@ async function run() {
           })
           .project({ email: 1 })
           .toArray();
-    
+
         const studentEmails = students.map((s) => s.email);
-    
+
         // Step 3: Get today's ISO date string part (YYYY-MM-DD)
         const todayDateStr = new Date().toISOString().split("T")[0];
-    
+
         // Step 4: Match applicationDate string starting with todayDateStr
         const leaves = await leavesCollection
           .find({
@@ -655,14 +701,14 @@ async function run() {
           })
           .sort({ applicationDate: -1 })
           .toArray();
-    
+
         res.send(leaves);
       } catch (err) {
         console.error("Error fetching course-specific leaves:", err);
         res.status(500).send({ error: "Internal server error" });
       }
     });
-    
+
     // get specific student grade
     app.get("/student-result/:email", async (req, res) => {
       const { email } = req.params;
@@ -878,6 +924,6 @@ app.get("/", (req, res) => {
   res.send("Students Management");
 });
 
-app.listen(port, () => {
-  console.log("server running on");
+server.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port}`);
 });
