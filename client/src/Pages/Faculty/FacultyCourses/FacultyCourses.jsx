@@ -41,7 +41,7 @@ const FacultyCourses = () => {
 
       {!loading && courses?.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course, idx) => (
+          {courses?.map((course, idx) => (
             <div
               key={idx}
               className="card bg-white shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-300"

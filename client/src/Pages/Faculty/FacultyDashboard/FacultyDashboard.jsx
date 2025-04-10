@@ -35,7 +35,6 @@ const FacultyDashboard = () => {
       color: 'bg-red-500',
     },
   ];
-  console.log(states)
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-4xl font-bold text-[#243c5a] mb-8 ">Faculty Dashboard</h1>

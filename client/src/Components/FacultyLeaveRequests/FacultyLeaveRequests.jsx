@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import AxiosSecure from "../Hooks/AxiosSecure";
 import Swal from "sweetalert2";
-import LeaveRequestsLive from "../LeaveRequestLive/LeaveRequestLive";
+import socket from "../Hooks/useSocket";
+import { useNotification } from "../Hooks/NotificationProvider/NotificationProvider";
 
 const FacultyLeaveRequests = ({ facultyEmail, courseId }) => {
   const [leaves, setLeaves] = useState([]);
   const axiosInstance = AxiosSecure();
+  const {addNotification} = useNotification()
 
   useEffect(() => {
     const fetchLeaves = async () => {
@@ -26,6 +28,7 @@ const FacultyLeaveRequests = ({ facultyEmail, courseId }) => {
     fetchLeaves();
   }, [facultyEmail, courseId, axiosInstance]);
 
+
   const handleAction = async (id, status) => {
     try {
       const res = await axiosInstance.patch(`/update-leave-status/${id}`, {
@@ -45,6 +48,42 @@ const FacultyLeaveRequests = ({ facultyEmail, courseId }) => {
       Swal.fire("Error", "Unable to update leave status", "error");
     }
   };
+
+  useEffect(() => {
+    if (!facultyEmail || !courseId) {
+      console.warn("⏳ Waiting for facultyEmail and courseId:", { facultyEmail, courseId });
+      return;
+    }
+  
+    console.log("🎯 LeaveRequestsLive mounted");
+    console.log("📡 Socket connected:", socket.connected);
+  
+    // Load existing leave applications from backend
+    axiosInstance
+      .get(`/faculty-leaves?facultyEmail=${facultyEmail}&courseId=${courseId}`)
+      .then((res) => {
+        if(res?.data){
+          addNotification(res?.data)
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Failed to fetch previous leaves:", error);
+      });
+  
+    // Listen for new leave applications in real-time
+    const handleNewLeave = (newLeave) => {
+      console.log("📩 New leave received:", newLeave);
+      setLeaves((prev) => [newLeave, ...prev]);
+    };
+  
+    socket.on("new-leave-request", handleNewLeave);
+  
+    return () => {
+      console.log("👋 LeaveRequestsLive unmounted");
+      socket.off("new-leave-request", handleNewLeave);
+    };
+  }, [facultyEmail, courseId]);
+  
 
   return (
     <div className="mt-10">
@@ -112,9 +151,9 @@ const FacultyLeaveRequests = ({ facultyEmail, courseId }) => {
         </ul>
       )}
 
-      <div>
-        <LeaveRequestsLive/>
-      </div>
+      {/* <div>
+        <LeaveRequestsLive facultyEmail={facultyEmail} courseId={courseId}/>
+      </div> */}
     </div>
   );
 };

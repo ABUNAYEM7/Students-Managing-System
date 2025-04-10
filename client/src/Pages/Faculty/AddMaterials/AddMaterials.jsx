@@ -62,7 +62,6 @@ const AddMaterials = () => {
         const res = await axiosInstance.patch(`/update-material/${id}`,data,{
           headers: { "Content-Type": "multipart/form-data" },
         })
-        console.log('update material res',res)
         if (res?.data?.modifiedCount > 0) {
           return Swal.fire("Updated!", "Material has been updated.", "success");
         }

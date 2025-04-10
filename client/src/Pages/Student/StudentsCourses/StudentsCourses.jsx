@@ -15,6 +15,7 @@ const StudentsCourses = () => {
     `${user?.email}`,
     `/student/${user?.email}`
   );
+
   const {
     data: courses = [],
     loading,
@@ -51,7 +52,7 @@ const StudentsCourses = () => {
         refetchStudent();
       }
     } catch (error) {
-      console.error(error);
+      console.error("Enrollment error:", error);
       Swal.fire({
         icon: "error",
         title: "Enrollment Failed",
@@ -60,36 +61,29 @@ const StudentsCourses = () => {
     }
   };
 
-  const enrolledCourses = courses?.filter((c) =>
-    enrolledCourseIds.includes(c._id)
-  );
-  const availableCourses = courses?.filter(
-    (c) => !enrolledCourseIds.includes(c._id)
-  );
-
   const renderCourseCard = (course, isEnrolled) => (
     <div
       key={course._id}
-      className="card bg-white shadow-xl hover:shadow-2xl transition duration-300 border-t-4 border-prime"
+      className="card bg-white shadow-md hover:shadow-xl transition duration-300 border-t-4 border-primary"
     >
       <div className="card-body">
         <h2 className="card-title text-xl text-highlight">
           <FaBookOpen /> {course.name}
         </h2>
-        <p className="text-sm text-gray-600 flex items-center gap-2">
+        <p className="text-sm text-gray-700 flex items-center gap-2">
           <FaChalkboardTeacher /> Instructor: {course.facultyName || "TBD"}
         </p>
-        <p className="text-sm text-gray-600 flex items-center gap-2">
+        <p className="text-sm text-gray-700 flex items-center gap-2">
           <FaClock /> Credit Hours: {course.credit}
         </p>
-        <p className="text-sm text-gray-600 flex items-center gap-2">
+        <p className="text-sm text-gray-700 flex items-center gap-2">
           🎓 Semester: {course.semester || "Not specified"}
         </p>
-        <p className="text-sm text-gray-600 flex items-center gap-2">
+        <p className="text-sm text-gray-700 flex items-center gap-2">
           <MdOutlineCalendarToday /> Start Date: {course.date || "N/A"}
         </p>
-        <p className="text-gray-500 mt-2 text-sm">
-          {course.description?.slice(0, 100) || "No description provided..."}
+        <p className="text-gray-600 mt-2 text-sm">
+          {course.description?.slice(0, 100) || "No description available."}
         </p>
 
         <div className="card-actions justify-end mt-4">
@@ -97,7 +91,7 @@ const StudentsCourses = () => {
             disabled={isEnrolled}
             onClick={() => handleEnroll(course)}
             className={`btn btn-sm ${
-              isEnrolled ? "btn-disabled bg-gray-400" : "bg-prime"
+              isEnrolled ? "btn-disabled bg-gray-400" : "bg-primary text-white"
             }`}
           >
             {isEnrolled ? "Enrolled" : "Enroll"}
@@ -107,39 +101,47 @@ const StudentsCourses = () => {
     </div>
   );
 
-  const BachelorProgram = [
-    "Bachelor of Science in Business Administration",
-    "Bachelor of Science in Civil Engineering",
-    "Bachelor of Science in Computer Science",
-    "Bachelor of Science in Information System Management",
+  const departmentOptions = [
+    {
+      label: "Bachelor Programs",
+      programs: [
+        "Bachelor of Science in Business Administration",
+        "Bachelor of Science in Civil Engineering",
+        "Bachelor of Science in Computer Science",
+        "Bachelor of Science in Information System Management",
+      ],
+    },
+    {
+      label: "Master Programs",
+      programs: [
+        "Master of Public Health",
+        "Master of Science in Civil Engineering (M.Sc.)",
+        "Master of Science in Business Administration (MSBA)",
+        "Master of Science in Computer Science Engineering (MSCSE)",
+      ],
+    },
+    {
+      label: "Doctorate Programs",
+      programs: [
+        "Doctor of Business Management",
+        "Doctor of Public Health",
+        "Doctor of Science in Computer Science",
+        "Doctor of Management",
+      ],
+    },
+    {
+      label: "Associate Programs",
+      programs: ["English as a Second Language"],
+    },
   ];
-
-  const Masters = [
-    "Master of Public Health",
-    "Master of Science in Civil Engineering (M.Sc.)",
-    "Master of Science in Business Administration (MSBA)",
-    "Master of Science in Computer Science Engineering (MSCSE)",
-  ];
-
-  const Doctorate = [
-    "Doctor of Business Management",
-    "Doctor of Public Health",
-    "Doctor of Science in Computer Science",
-    "Doctor of Management",
-  ];
-
-  const Associate = ["English as a Second Language"];
 
   return (
     <div className="min-h-screen bg-base-200 p-6">
-      <h2 className="text-3xl font-bold text-center text-black mb-4">
-        Courses
-      </h2>
+      <h2 className="text-3xl font-bold text-center mb-6">Courses</h2>
 
-      {/* Department Dropdown */}
       <div className="form-control w-full max-w-xs mx-auto mb-8">
         <label className="label mb-2">
-          <span className="label-text font-medium ">Filter by Department</span>
+          <span className="label-text font-medium">Filter by Department</span>
         </label>
         <select
           className="select select-bordered"
@@ -147,67 +149,29 @@ const StudentsCourses = () => {
           onChange={(e) => setSelectedDept(e.target.value)}
         >
           <option value="">All Departments</option>
-
-          <optgroup label="Bachelor Programs">
-            <option value="Bachelor of Science in Business Administration">
-              Bachelor of Science in Business Administration
-            </option>
-            <option value="Bachelor of Science in Civil Engineering">
-              Bachelor of Science in Civil Engineering
-            </option>
-            <option value="Bachelor of Science in Computer Science">
-              Bachelor of Science in Computer Science
-            </option>
-            <option value="Bachelor of Science in Information System Management">
-              Bachelor of Science in Information System Management
-            </option>
-          </optgroup>
-
-          <optgroup label="Master Programs">
-            <option value="Master of Public Health">
-              Master of Public Health
-            </option>
-            <option value="Master of Science in Civil Engineering (M.Sc.)">
-              Master of Science in Civil Engineering (M.Sc.)
-            </option>
-            <option value="Master of Science in Business Administration (MSBA)">
-              Master of Science in Business Administration (MSBA)
-            </option>
-            <option value="Master of Science in Computer Science Engineering (MSCSE)">
-              Master of Science in Computer Science Engineering (MSCSE)
-            </option>
-          </optgroup>
-
-          <optgroup label="Doctorate Programs">
-            <option value="Doctor of Business Management">
-              Doctor of Business Management
-            </option>
-            <option value="Doctor of Public Health">
-              Doctor of Public Health
-            </option>
-            <option value="Doctor of Science in Computer Science">
-              Doctor of Science in Computer Science
-            </option>
-            <option value="Doctor of Management">Doctor of Management</option>
-          </optgroup>
-
-          <optgroup label="Associate Programs">
-            <option value="English as a Second Language">
-              English as a Second Language
-            </option>
-          </optgroup>
+          {departmentOptions.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.programs.map((program) => (
+                <option key={program} value={program}>
+                  {program}
+                </option>
+              ))}
+            </optgroup>
+          ))}
         </select>
       </div>
 
       {loading && <p className="text-center text-lg">Loading courses...</p>}
 
-      {enrolledCourses.length > 0 && (
+      {enrolledCourseIds.length > 0 && (
         <div className="mb-10">
           <h3 className="text-2xl font-semibold text-primary mb-4">
             Enrolled Courses
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {enrolledCourses.map((course) => renderCourseCard(course, true))}
+            {courses
+              .filter((c) => enrolledCourseIds.includes(c._id))
+              .map((course) => renderCourseCard(course, true))}
           </div>
         </div>
       )}
@@ -217,11 +181,13 @@ const StudentsCourses = () => {
           Other Available Courses
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {availableCourses.map((course) => renderCourseCard(course, false))}
+          {courses
+            .filter((c) => !enrolledCourseIds.includes(c._id))
+            .map((course) => renderCourseCard(course, false))}
         </div>
       </div>
 
-      {courses?.length === 0 && !loading && (
+      {!loading && courses?.length === 0 && (
         <p className="text-center col-span-3 text-gray-500">
           No courses available for the selected department.
         </p>

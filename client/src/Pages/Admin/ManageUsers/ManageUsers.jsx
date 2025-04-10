@@ -41,21 +41,31 @@ const ManageUsers = () => {
       const user = await axiosInstance.get(`/specific-user/${id}`);
       if (user) {
         const { email, name, photo } = user?.data;
-        const studentInfo = {
-          email,
-          name,
-          photo,
-        };
-        const res = await axiosInstance.post(`/create-student`, studentInfo);
-        if (res?.data?.insertedId) {
-          Swal.fire({
-            position: "center",
-            icon: "success",
-            title: "User Role Updated Successfully",
-            showConfirmButton: false,
-            timer: 1500,
-          });
-          refetch()
+        const updateRole = await axiosInstance.patch(
+          `/update/user-role/${id}`,
+          { role: "student" }
+        );
+        console.log(updateRole);
+        if (
+          updateRole?.data?.modifiedCount > 0 &&
+          updateRole?.data?.matchedCount > 0
+        ) {
+          const studentInfo = {
+            email,
+            name,
+            photo,
+          };
+          const res = await axiosInstance.post(`/create-student`, studentInfo);
+          if (res?.data?.insertedId) {
+            Swal.fire({
+              position: "center",
+              icon: "success",
+              title: "User Role Updated Successfully",
+              showConfirmButton: false,
+              timer: 1500,
+            });
+            refetch();
+          }
         }
       }
     } catch (err) {
@@ -128,7 +138,11 @@ const ManageUsers = () => {
                   <td>{user?.email}</td>
                   <td>
                     <div className="dropdown dropdown-start">
-                      <div tabIndex={0} role="button" className="btn btn-sm m-1">
+                      <div
+                        tabIndex={0}
+                        role="button"
+                        className="btn btn-sm m-1"
+                      >
                         Click ⬇️
                       </div>
                       <ul

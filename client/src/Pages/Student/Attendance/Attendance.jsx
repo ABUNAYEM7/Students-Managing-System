@@ -11,10 +11,8 @@ const Attendance = () => {
     `${data?.data?.email}`,
     `/student-assignment/${data?.data?.email}`
   );
-  console.log(attendanceResponse)
   const navigate = useNavigate();
 
-  console.log(attendanceResponse)
   const records = attendanceResponse?.records || [];
 
 

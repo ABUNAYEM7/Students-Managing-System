@@ -4,46 +4,69 @@ import useAuth from "../../../Components/Hooks/useAuth";
 import { FaChalkboardTeacher } from "react-icons/fa";
 import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
-import { all } from "axios";
 
 const FacultyGrades = () => {
   const { user } = useAuth();
   const email = user?.email;
   const axiosInstance = AxiosSecure();
+
   const {
-    data: courses,
+    data: fetchedCourses,
     loading: courseLoading,
-    error,
   } = useFetchData(`${email}`, `/faculty-assign/courses/${email}`);
+
+  const courses = Array.isArray(fetchedCourses)
+    ? fetchedCourses
+    : fetchedCourses?.data || [];
 
   const [selectedCourse, setSelectedCourse] = useState("");
   const [semester, setSemester] = useState("");
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState({});
 
-  useEffect(() => {
-    if (selectedCourse) {
-      const dummyStudents = [
-        { id: 1, name: "Alice Johnson", email: "alice@mail.com" },
-        { id: 2, name: "Bob Smith", email: "bob@mail.com" },
-        { id: 3, name: "Charlie Brown", email: "charlie@mail.com" },
-        { id: 4, name: "Test", email: "test@gmail.com" },
-      ];
-      setStudents(dummyStudents);
-      setGrades({});
+  // 🔁 Reusable fetch students function
+  const fetchStudents = async () => {
+    if (!selectedCourse || !semester) return;
+
+    try {
+      const res = await axiosInstance.get(
+        `/students-by-course?courseId=${selectedCourse}&semester=${semester}`
+      );
+      const studentsData = res.data;
+      if (Array.isArray(studentsData)) {
+        setStudents(studentsData);
+        setGrades({});
+      } else {
+        setStudents([]);
+      }
+    } catch (error) {
+      console.error("❌ Failed to fetch students:", error);
+      setStudents([]);
     }
-  }, [selectedCourse]);
+  };
+
+  // 📦 Call fetch on dependency change
+  useEffect(() => {
+    fetchStudents();
+  }, [selectedCourse, semester, axiosInstance]);
 
   const handleGradeChange = (studentEmail, point) => {
     setGrades({ ...grades, [studentEmail]: point });
   };
 
-  // submitHandler
   const handleSubmit = async () => {
+    if (!semester) {
+      return Swal.fire({
+        icon: "warning",
+        title: "Select Semester",
+        text: "Please select a semester.",
+      });
+    }
+
     const gradedData = students
       .filter((s) => {
         const point = parseFloat(grades[s.email]);
-        return !isNaN(point) && point >= 0 && point <= 5;
+        return !s.alreadyGraded?.point && !isNaN(point) && point >= 0 && point <= 5;
       })
       .map((student) => ({
         studentEmail: student.email,
@@ -54,15 +77,7 @@ const FacultyGrades = () => {
         outOf: 5.0,
         submittedAt: new Date(),
       }));
-  
-    if (!semester) {
-      return Swal.fire({
-        icon: "warning",
-        title: "Select Semester",
-        text: "Please select a semester.",
-      });
-    }
-  
+
     if (gradedData.length === 0) {
       return Swal.fire({
         icon: "warning",
@@ -70,24 +85,40 @@ const FacultyGrades = () => {
         text: "Please enter at least one valid grade (0.00 – 5.00).",
       });
     }
-  
+
     try {
       const res = await axiosInstance.post("/student-grades/upsert", {
         studentGrades: gradedData,
         semester,
       });
 
-      if (res.data?.success) {
+      const { success, alreadyGraded, upsertCount } = res.data;
+
+      if (success) {
         Swal.fire({
           icon: "success",
           title: "Grades Submitted",
-          text: `${gradedData.length} grade(s) submitted successfully!`,
+          text: `${upsertCount} grade(s) submitted successfully!`,
           timer: 2000,
           showConfirmButton: false,
         });
+        setGrades({});
+        await fetchStudents(); // ✅ REFETCH to update UI
+      }
+
+      if (!success && alreadyGraded?.length > 0) {
+        const list = alreadyGraded
+          .map((s, i) => `${i + 1}. ${s.studentName}`)
+          .join("\n");
+
+        Swal.fire({
+          icon: "warning",
+          title: "Some Grades Already Submitted",
+          html: `<pre style="text-align:left">${list}</pre>`,
+        });
       }
     } catch (err) {
-      console.error(err);
+      console.error("❌ Grade submission failed:", err);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -95,7 +126,6 @@ const FacultyGrades = () => {
       });
     }
   };
-  
 
   return (
     <div className="p-6 bg-base-200 min-h-screen">
@@ -104,7 +134,6 @@ const FacultyGrades = () => {
       </h1>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center sm:gap-5">
-        {/* Semester Dropdown */}
         <div className="form-control w-full sm:max-w-xs mb-4">
           <label className="label">
             <span className="label-text font-medium">Select Semester</span>
@@ -121,7 +150,6 @@ const FacultyGrades = () => {
           </select>
         </div>
 
-        {/* Course Dropdown */}
         <div className="form-control w-full sm:max-w-xs mb-4">
           <label className="label">
             <span className="label-text font-medium">Select a Course</span>
@@ -133,8 +161,8 @@ const FacultyGrades = () => {
           >
             <option value="">-- Choose a course --</option>
             {!courseLoading &&
-              courses?.map((course) => (
-                <option key={course._id} value={course.courseId || course.name}>
+              courses.map((course) => (
+                <option key={course._id} value={course.courseId}>
                   {course.name}
                 </option>
               ))}
@@ -155,8 +183,8 @@ const FacultyGrades = () => {
               </tr>
             </thead>
             <tbody>
-              {students?.map((student, idx) => (
-                <tr key={student.id}>
+              {students.map((student, idx) => (
+                <tr key={student.email}>
                   <td>{idx + 1}</td>
                   <td>{student.name}</td>
                   <td>{student.email}</td>
@@ -167,10 +195,24 @@ const FacultyGrades = () => {
                       min="0"
                       max="5"
                       placeholder="e.g. 4.50"
-                      className="input input-bordered input-sm w-full max-w-xs"
-                      value={grades[student.email] || ""}
+                      value={
+                        student.alreadyGraded?.point !== undefined
+                          ? student.alreadyGraded.point.toFixed(2)
+                          : grades[student.email] || ""
+                      }
+                      disabled={!!student.alreadyGraded?.point}
                       onChange={(e) =>
                         handleGradeChange(student.email, e.target.value)
+                      }
+                      className={`input input-bordered input-sm w-full max-w-xs ${
+                        student.alreadyGraded?.point
+                          ? "border-green-500 bg-green-50 font-semibold text-green-700"
+                          : ""
+                      }`}
+                      title={
+                        student.alreadyGraded?.point
+                          ? "Grade already submitted"
+                          : "Enter grade"
                       }
                     />
                   </td>
@@ -189,7 +231,7 @@ const FacultyGrades = () => {
 
       {selectedCourse && students?.length === 0 && (
         <div className="text-center mt-10 text-gray-500">
-          No students found for this course.
+          No students found for this course and semester.
         </div>
       )}
     </div>

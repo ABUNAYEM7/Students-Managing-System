@@ -112,9 +112,7 @@ async function run() {
     app.post("/leave-application", async (req, res) => {
       const application = req.body;
       const result = await leavesCollection.insertOne(application);
-      console.log("🚀 Emitting new-leave-request:", application); // Add this
       io.emit("new-leave-request", application); // 🚨 Real-time broadcast!
-
       res.send(result);
     });
 
@@ -172,40 +170,78 @@ async function run() {
     app.post("/student-grades/upsert", async (req, res) => {
       try {
         const { studentGrades, semester } = req.body;
-
+    
+        if (!Array.isArray(studentGrades) || !semester) {
+          return res.status(400).send({ success: false, message: "Invalid data" });
+        }
+    
+        let upsertCount = 0;
+        const alreadyGraded = [];
+    
         for (const record of studentGrades) {
-          const filter = {
-            studentEmail: record.studentEmail,
-            semester,
-          };
-
+          const { studentEmail, courseId, studentName } = record;
+    
+          // Check for existing grade for this course and semester
+          const exists = await gradesCollection.findOne({
+            studentEmail,
+            "grades.courseId": courseId,
+            "grades.semester": semester,
+          });
+    
+          if (exists) {
+            alreadyGraded.push({
+              studentEmail,
+              studentName,
+              courseId,
+            });
+            continue;
+          }
+    
+          // Insert the new grade
+          const filter = { studentEmail, semester };
+    
           const update = {
             $setOnInsert: {
-              studentEmail: record.studentEmail,
-              studentName: record.studentName,
+              studentEmail,
+              studentName,
               semester,
               createdAt: new Date(),
             },
             $set: {
               updatedAt: new Date(),
             },
-            $addToSet: {
+            $push: {
               grades: {
-                courseId: record.courseId,
+                courseId,
                 facultyEmail: record.facultyEmail,
-                point: parseFloat(record.point), // ✅ FIXED: correctly access "point"
+                point: parseFloat(record.point),
                 outOf: record.outOf || 5.0,
+                semester,
                 submittedAt: new Date(record.submittedAt),
               },
             },
           };
-
+    
           await gradesCollection.updateOne(filter, update, { upsert: true });
+          upsertCount++;
         }
-
-        res.send({ success: true });
+    
+        // Return result
+        if (alreadyGraded.length > 0) {
+          return res.send({
+            success: false,
+            message: `${alreadyGraded.length} grade(s) were already submitted.`,
+            alreadyGraded, // Send list of blocked ones
+            upsertCount,
+          });
+        }
+    
+        res.send({
+          success: true,
+          message: `${upsertCount} grade(s) submitted successfully.`,
+        });
       } catch (err) {
-        console.error("Grade upsert error:", err);
+        console.error("❌ Grade upsert error:", err);
         res.status(500).send({ success: false, message: "Server error." });
       }
     });
@@ -478,7 +514,6 @@ async function run() {
     app.get("/all-students", async (req, res) => {
       const courseIds = req.query.courseId;
       let query = {};
-
       if (courseIds) {
         const idsArray = Array.isArray(courseIds) ? courseIds : [courseIds];
         query = {
@@ -501,6 +536,72 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch students" });
       }
     });
+
+    // get course enrolled based student for the grades page
+    app.get("/students-by-course", async (req, res) => {
+      const courseId = req.query.courseId;
+      const semester = req.query.semester;
+    
+      if (!courseId || !semester) {
+        return res.status(400).send({ error: "Missing courseId or semester" });
+      }
+    
+      try {
+        // Get actual course _id from courseId string
+        const course = await courseCollection.findOne({ courseId: courseId });
+        if (!course) {
+          return res.status(404).send({ error: "Course not found" });
+        }
+    
+        const courseObjectId = course._id.toString();
+    
+        // Fetch students enrolled in that course (_id match)
+        const students = await studentsCollection
+          .find({
+            courses: {
+              $elemMatch: {
+                courseId: courseObjectId,
+              },
+            },
+          })
+          .project({ name: 1, email: 1, photo: 1 })
+          .toArray();
+    
+        // Fetch grades for those students (by email)
+        const studentEmails = students.map((s) => s.email);
+        const gradeRecords = await gradesCollection
+          .find({ studentEmail: { $in: studentEmails }, semester })
+          .toArray();
+    
+        const studentMap = students.map((student) => {
+          const gradeDoc = gradeRecords.find((g) => g.studentEmail === student.email);
+          let alreadyGraded = null;
+    
+          if (gradeDoc && Array.isArray(gradeDoc.grades)) {
+            const foundGrade = gradeDoc.grades.find(
+              (g) => g.courseId === courseId && g.semester === semester
+            );
+            if (foundGrade) {
+              alreadyGraded = { point: foundGrade.point };
+            }
+          }
+    
+          return {
+            name: student.name,
+            email: student.email,
+            photo: student.photo,
+            alreadyGraded, // Will be null if not graded
+          };
+        });
+    
+        res.send(studentMap);
+      } catch (error) {
+        console.error("❌ Error fetching students with grade status:", error);
+        res.status(500).send({ error: "Internal server error" });
+      }
+    });
+    
+      
 
     // get specific students
     app.get("/student/:email", async (req, res) => {
@@ -701,7 +802,6 @@ async function run() {
           })
           .sort({ applicationDate: -1 })
           .toArray();
-
         res.send(leaves);
       } catch (err) {
         console.error("Error fetching course-specific leaves:", err);

@@ -59,7 +59,6 @@ const LeaveForm = () => {
     const data = {...formData}
     try{
       const res =await axiosInstance.post('/leave-application',data)
-    console.log(res)
     if(res?.data?.insertedId){
       Swal.fire({
         position: "center",

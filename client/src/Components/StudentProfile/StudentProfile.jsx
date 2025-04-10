@@ -6,7 +6,6 @@ import Swal from 'sweetalert2';
 const StudentProfile = () => {
   const { data } = useUserRole();
   const student = data?.data;
-  console.log(student)
   const [isEditable, setIsEditable] = useState(false);
   const [formData, setFormData] = useState({});
   const axiosInstance = AxiosSecure()
@@ -34,7 +33,6 @@ const StudentProfile = () => {
 
   const handleSubmit =async (e) => {
     e.preventDefault();
-    console.log(formData);
     const res =await axiosInstance.patch(`/update/user-info/${student?.email}`,formData)
     if(res?.data?.matchedCount > 0 && res?.data?.
       modifiedCount > 0 || res?.data?.matchedCount > 0 && res?.data?.
