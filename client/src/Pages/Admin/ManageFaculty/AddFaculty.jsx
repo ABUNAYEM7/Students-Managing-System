@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 
 const AddFaculty = () => {
+  const [isSubmitting,setIsSubmitting] = useState(false)
     const { data } = useFetchData(
         "faculties",
         "/all-faculties"
@@ -14,7 +15,6 @@ const AddFaculty = () => {
   const [formData, setFormData] = useState({
     staffNo: totalStaff +1,
     role: "",
-    department: "",
     designation: "",
     firstName: "",
     lastName: "",
@@ -44,35 +44,37 @@ const AddFaculty = () => {
 
 //   handle submit
 const handleSubmit = async (e) => {
-    e.preventDefault();
-  
-    let finalData = { ...formData };
-  
-    if (formData?.staffPhoto) {
-      try {
-        const imgFormData = new FormData();
-        imgFormData.append("image", formData.staffPhoto);
-  
-        const photoUrl = await getImageUrl(imgFormData);
-        finalData.staffPhoto = photoUrl; 
-        const res = await axiosInstance.post('/add-faculty',finalData)
-        if(res?.data?.insertedId){
-            navigate('/dashboard/manage-faculty')
-            Swal.fire({
-                position: "center",
-                icon: "success",
-                title: "Faculty  has been saved",
-                showConfirmButton: false,
-                timer: 1500
-              });
-        }
-      } catch (err) {
-        console.error("Image upload failed", err);
-        return;
-      }
-    }
+  e.preventDefault();
 
-  };
+  let finalData = { ...formData };
+
+  if (formData?.staffPhoto) {
+    try {
+      setIsSubmitting(true);
+      const imgFormData = new FormData();
+      imgFormData.append("image", formData.staffPhoto);
+
+      const photoUrl = await getImageUrl(imgFormData);
+      finalData.staffPhoto = photoUrl;
+      
+      const res = await axiosInstance.post('/add-faculty', finalData);
+      if(res?.data?.insertedId){
+        navigate('/dashboard/manage-faculty');
+        Swal.fire({
+          position: "center",
+          icon: "success",
+          title: "Faculty has been saved",
+          showConfirmButton: false,
+          timer: 1500
+        });
+      }
+    } catch (err) {
+      console.error("Image upload failed", err);
+    } finally {
+      setIsSubmitting(false); 
+    }
+  }
+};
 
   return (
     <div className="p-6">
@@ -112,22 +114,6 @@ const handleSubmit = async (e) => {
             <option>Staff</option>
           </select>
         </div>
-
-        <div>
-          <label className="block text-sm font-semibold mb-1">Department</label>
-          <select
-            name="department"
-            value={formData.department}
-            onChange={handleChange}
-            className="select select-bordered w-full"
-            required
-          >
-            <option disabled value="">Department</option>
-            <option>Computer Science</option>
-            <option>Management</option>
-          </select>
-        </div>
-
         <div>
           <label className="block text-sm font-semibold mb-1">Designation</label>
           <select
@@ -261,14 +247,14 @@ const handleSubmit = async (e) => {
           />
         </div>
 
-        <div className="col-span-1 md:col-span-2">
+        <div className="col-span-1 md:col-span-3">
           <label className="block text-sm font-semibold mb-1">Staff Photo</label>
           <input
             name="staffPhoto"
             type="file"
             onChange={handleChange}
             accept="image/png, image/jpeg, image/jpg"
-            className="file-input file-input-bordered w-full max-w-xs"
+            className="file-input file-input-bordered w-full"
             required
           />
           <p className="text-xs text-purple-500 mt-1">
@@ -303,8 +289,10 @@ const handleSubmit = async (e) => {
         </div>
 
         <div className="col-span-1 md:col-span-3 mt-4">
-          <button type="submit" className="btn btn-primary w-full">
-            Save
+          <button 
+          disabled={isSubmitting}
+          type="submit" className="btn btn-primary w-full">
+            {isSubmitting ? 'Submitting' : 'Submit'}
           </button>
         </div>
       </form>

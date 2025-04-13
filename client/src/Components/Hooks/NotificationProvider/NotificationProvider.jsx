@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import AxiosSecure from "../AxiosSecure";
 
 const NotificationContext = createContext();
@@ -6,9 +7,7 @@ const NotificationContext = createContext();
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
 
-  // add notifications
   const addNotification = (newNotification) => {
-    console.log(newNotification);
     if (Array.isArray(newNotification)) {
       setNotifications((prev) => [...newNotification, ...prev]);
     } else {
@@ -16,40 +15,33 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  const fetchLeaveNotifications = async (facultyEmail) => {
-    try {
-      const axiosInstance = AxiosSecure();
+  const clearNotifications = () => setNotifications([]);
 
-      const courseRes = await axiosInstance.get(
-        `/faculty-assign/courses/${facultyEmail}`
-      );
-      const assignedCourses = courseRes?.data || [];
-
-      let allLeaves = [];
-
-      // Step 2: For each course, fetch leave applications
-      for (const course of assignedCourses) {
-        const leaveRes = await axiosInstance.get(
-          `/faculty-leaves?facultyEmail=${facultyEmail}&courseId=${course.courseId}`
+  // ✅ NEW: Hook to fetch with React Query
+  const useFacultyNotifications = (facultyEmail) => {
+    return useQuery({
+      queryKey: ["facultyNotifications", facultyEmail],
+      queryFn: async () => {
+        const axiosInstance = AxiosSecure();
+        const res = await axiosInstance.get(
+          `/faculty-leave-notifications?facultyEmail=${facultyEmail}`
         );
-
-        if (Array.isArray(leaveRes.data)) {
-          allLeaves = [...allLeaves, ...leaveRes.data];
-        }
-      }
-
-      // Step 3: Add all to notifications
-      if (allLeaves.length > 0) {
-        addNotification(allLeaves);
-      }
-    } catch (error) {
-      console.error("❌ Failed to fetch initial notifications:", error);
-    }
+        return res.data || [];
+      },
+      enabled: !!facultyEmail, // only fetch if email is available
+      staleTime: 1000 * 60 * 5, // 5 minutes cache
+    });
   };
 
   return (
     <NotificationContext.Provider
-      value={{ notifications, addNotification, fetchLeaveNotifications }}
+      value={{
+        notifications,
+        setNotifications,
+        addNotification,
+        clearNotifications,
+        useFacultyNotifications, // ✅ Export React Query hook
+      }}
     >
       {children}
     </NotificationContext.Provider>

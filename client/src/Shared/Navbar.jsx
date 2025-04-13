@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import logo from "../assets/logo.jfif";
 import { Link, NavLink } from "react-router";
 import useAuth from "../Components/Hooks/useAuth";
@@ -10,33 +10,48 @@ import { useNotification } from "../Components/Hooks/NotificationProvider/Notifi
 const Navbar = () => {
   const { user, userLogOut } = useAuth();
   const { data: userRole, refetch } = useUserRole();
-  const { notifications } = useNotification();
+  const {
+    notifications,
+    setNotifications,
+    useFacultyNotifications,
+  } = useNotification();
 
-  const Links = (
-    <>
-      <li>
-        <NavLink to={"/"}>Home</NavLink>
-      </li>
-      <li>
-        <NavLink to={"/"}>About</NavLink>
-      </li>
-      <li>
-        <NavLink to={"/"}>Products</NavLink>
-      </li>
-    </>
-  );
+  const [hasSeenNotifications, setHasSeenNotifications] = useState(() => {
+    return localStorage.getItem("hasSeen") === "true";
+  });
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const { data: fetchedNotifications = [] } = useFacultyNotifications(user?.email);
 
   useEffect(() => {
-    if (user?.email) {
-      refetch();
-    }
-  }, [user, refetch]);
+    if (fetchedNotifications.length) {
+      const existingIds = new Set(notifications.map((n) => n._id));
+      const unique = fetchedNotifications.filter((n) => !existingIds.has(n._id));
 
-  // logoutHandler
+      if (unique.length > 0) {
+        setNotifications((prev) => [...unique, ...prev]);
+
+        const alreadySeen = localStorage.getItem("hasSeen") === "true";
+        if (!alreadySeen) {
+          setHasSeenNotifications(false);
+        }
+      }
+    }
+  }, [fetchedNotifications]);
+
+  const handleNotificationClick = () => {
+    setDropdownOpen((prev) => !prev);
+    if (!hasSeenNotifications) {
+      setHasSeenNotifications(true);
+      localStorage.setItem("hasSeen", "true");
+    }
+  };
+
   const logoutHandler = async () => {
     await userLogOut()
-      .then((user) => {
-        if (!user) {
+      .then((res) => {
+        if (!res) {
           Swal.fire({
             position: "center",
             icon: "success",
@@ -45,24 +60,25 @@ const Navbar = () => {
             timer: 1500,
           });
         }
+        localStorage.removeItem("hasSeen");
       })
-      .catch((err) => {
-        console.log(err);
-      });
+      .catch((err) => console.log(err));
   };
+
+  const Links = (
+    <>
+      <li><NavLink to={"/"}>Home</NavLink></li>
+      <li><NavLink to={"/"}>About</NavLink></li>
+      <li><NavLink to={"/"}>Products</NavLink></li>
+    </>
+  );
 
   return (
     <div className="navbar bg-prime/60 backdrop-blur-md shadow-sm fixed top-0 z-50 mx-auto max-w-[1480px]">
       <div className="navbar-start">
         <div className="dropdown">
           <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
             </svg>
           </div>
@@ -82,42 +98,45 @@ const Navbar = () => {
       </div>
 
       <div className="navbar-end gap-3">
-        {/* 🔔 Notification Bell using react-icons */}
-        <div className="dropdown dropdown-end">
-          <div tabIndex={0} role="button" className="btn btn-ghost btn-circle relative">
+        {/* 🔔 Notification Bell */}
+        <div className="relative dropdown-end">
+          <button
+            onClick={handleNotificationClick}
+            className="btn btn-ghost btn-circle relative"
+          >
             <FaBell className="text-xl" />
-            {notifications.length > 0 && (
+            {!hasSeenNotifications && notifications.length > 0 && (
               <span className="badge badge-sm bg-red-600 text-white absolute -top-1 -right-1">
                 {notifications.length}
               </span>
             )}
-          </div>
-          <div
-            tabIndex={0}
-            className="mt-3 z-[1] card card-compact dropdown-content w-80 bg-white shadow-lg"
-          >
-            <div className="card-body">
-              <h3 className="font-bold text-lg">Notifications</h3>
-              <ul className="divide-y max-h-64 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <li className="py-2 text-gray-500">No new notifications</li>
-                ) : (
-                  notifications.map((n, i) => (
-                    <li key={i} className="py-2 text-sm">
-                      <strong>{n.leaveType}</strong> request by <strong>{n.name}</strong>
-                      <br />
-                      <span className="text-xs text-gray-400">
-                        {new Date(n.applicationDate).toLocaleString()}
-                      </span>
-                    </li>
-                  ))
-                )}
-              </ul>
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-3 z-[1] card card-compact w-80 bg-white shadow-lg">
+              <div className="card-body">
+                <h3 className="font-bold text-lg">Notifications</h3>
+                <ul className="divide-y max-h-64 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <li className="py-2 text-gray-500">No new notifications</li>
+                  ) : (
+                    notifications.map((n, i) => (
+                      <li key={i} className="py-2 text-sm">
+                        <strong>{n.reason || "Leave Request"}</strong> by <strong>{n.email}</strong>
+                        <br />
+                        <span className="text-xs text-gray-400">
+                          {new Date(n.applicationDate).toLocaleString()}
+                        </span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* 👤 User Avatar + Dropdown */}
+        {/* 👤 User Avatar */}
         {user ? (
           <div className="dropdown dropdown-bottom">
             <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">

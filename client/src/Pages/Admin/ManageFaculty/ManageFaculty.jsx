@@ -2,14 +2,16 @@ import React from "react";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 const ManageFaculty = () => {
   const axiosInstance = AxiosSecure();
   const { data, refetch } = useFetchData("faculties", "/all-faculties");
+  const navigate = useNavigate()
 
   const faculties = data?.result;
 
+  // deleteHandler
   const deleteHandler = (id) => {
     Swal.fire({
       title: "Are you sure?",
@@ -21,7 +23,8 @@ const ManageFaculty = () => {
       confirmButtonText: "Yes, delete it!",
     }).then(async (result) => {
       if (result.isConfirmed) {
-        const res = await axiosInstance.delete(`/delete-user/${id}`);
+        const res = await axiosInstance.delete(`/delete-faculty/${id}`);
+        console.log(res);
         if (res?.data?.deletedCount > 0) {
           refetch();
           Swal.fire({
@@ -34,9 +37,15 @@ const ManageFaculty = () => {
     });
   };
 
+  const viewDetails=(email)=>{
+    navigate(`/dashboard/view-details/${email}`)
+  }
+
   return (
     <div className="px-4 md:px-10 py-6 min-h-screen bg-base-200">
-      <h3 className="text-3xl font-black text-center mt-6">Faculties Management</h3>
+      <h3 className="text-3xl font-black text-center mt-6">
+        Faculties Management
+      </h3>
 
       <div className="mt-3 p-4 flex items-center justify-end">
         <Link
@@ -61,6 +70,7 @@ const ManageFaculty = () => {
                   <th>Email</th>
                   <th>Staff No</th>
                   <th>Contact No</th>
+                  <th>View Details</th>
                   <th>Delete</th>
                 </tr>
               </thead>
@@ -94,6 +104,15 @@ const ManageFaculty = () => {
                     <td>{faculty?.email}</td>
                     <td>{faculty?.staffNo}</td>
                     <td>{faculty?.mobile}</td>
+                    <td>
+                      {" "}
+                      <button
+                        onClick={() => viewDetails(faculty?.email)}
+                        className="btn btn-sm bg-prime mr-2"
+                      >
+                        View Details
+                      </button>
+                    </td>
                     <td>
                       <button
                         onClick={() => deleteHandler(faculty?._id)}

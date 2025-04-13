@@ -97,8 +97,34 @@ async function run() {
     // save new faculty
     app.post("/add-faculty", async (req, res) => {
       const info = req.body;
-      const result = await facultiesCollection.insertOne(info);
-      res.send(result);
+    
+      try {
+        const user = await usersCollection.findOne({ email: info.email });
+    
+        if (user) {
+          // Update role to 'faculty' if user exists
+          await usersCollection.updateOne(
+            { email: info.email },
+            { $set: { role: "faculty" } }
+          );
+        } else {
+          // Create new user with role 'faculty' if user doesn't exist
+          await usersCollection.insertOne({
+            name: `${info.firstName} ${info.lastName}`,
+            photo: info.staffPhoto,
+            email: info.email,
+            role: "faculty",
+          });
+        }
+    
+        // Create faculty in the facultiesCollection regardless
+        const result = await facultiesCollection.insertOne(info);
+    
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ error: "Failed to add faculty" });
+      }
     });
 
     // save leave application
@@ -170,24 +196,26 @@ async function run() {
     app.post("/student-grades/upsert", async (req, res) => {
       try {
         const { studentGrades, semester } = req.body;
-    
+
         if (!Array.isArray(studentGrades) || !semester) {
-          return res.status(400).send({ success: false, message: "Invalid data" });
+          return res
+            .status(400)
+            .send({ success: false, message: "Invalid data" });
         }
-    
+
         let upsertCount = 0;
         const alreadyGraded = [];
-    
+
         for (const record of studentGrades) {
           const { studentEmail, courseId, studentName } = record;
-    
+
           // Check for existing grade for this course and semester
           const exists = await gradesCollection.findOne({
             studentEmail,
             "grades.courseId": courseId,
             "grades.semester": semester,
           });
-    
+
           if (exists) {
             alreadyGraded.push({
               studentEmail,
@@ -196,10 +224,10 @@ async function run() {
             });
             continue;
           }
-    
+
           // Insert the new grade
           const filter = { studentEmail, semester };
-    
+
           const update = {
             $setOnInsert: {
               studentEmail,
@@ -221,11 +249,11 @@ async function run() {
               },
             },
           };
-    
+
           await gradesCollection.updateOne(filter, update, { upsert: true });
           upsertCount++;
         }
-    
+
         // Return result
         if (alreadyGraded.length > 0) {
           return res.send({
@@ -235,7 +263,7 @@ async function run() {
             upsertCount,
           });
         }
-    
+
         res.send({
           success: true,
           message: `${upsertCount} grade(s) submitted successfully.`,
@@ -361,6 +389,29 @@ async function run() {
       }
     });
 
+    // patch notification for the leave req mark seen
+    app.patch("/faculty-leave-notifications/mark-seen", async (req, res) => {
+      const { leaveIds } = req.body;
+    
+      if (!Array.isArray(leaveIds) || leaveIds.length === 0) {
+        return res.status(400).send({ error: "leaveIds must be a non-empty array" });
+      }
+    
+      try {
+        const objectIds = leaveIds.map((id) => new ObjectId(id));
+    
+        const result = await leavesCollection.updateMany(
+          { _id: { $in: objectIds } },
+          { $set: { isSeen: true } }
+        );
+    
+        res.send({ success: true, modified: result.modifiedCount });
+      } catch (err) {
+        console.error("❌ Failed to mark leaves as seen:", err);
+        res.status(500).send({ error: "Server error" });
+      }
+    });
+
     // delete-course
     app.delete("/delete-course/:id", async (req, res) => {
       const id = req.params.id;
@@ -374,6 +425,14 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    // delete-faculty
+    app.delete("/delete-faculty/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await facultiesCollection.deleteOne(filter);
       res.send(result);
     });
 
@@ -440,10 +499,18 @@ async function run() {
       res.send(result);
     });
 
-    // get specific user
+    // get specific user by id
     app.get("/specific-user/:id", async (req, res) => {
       const { id } = req.params;
-      const filter = { _id: new ObjectId(id) };
+      const filter = {_id: new ObjectId(id) };
+      const result = await usersCollection.findOne(filter);
+      res.send(result);
+    });
+
+    // get specific user by email
+    app.get("/user-details/:email", async (req, res) => {
+      const { email } = req.params;
+      const filter = {email};
       const result = await usersCollection.findOne(filter);
       res.send(result);
     });
@@ -462,6 +529,24 @@ async function run() {
       const result = await facultiesCollection.find(filter).toArray();
       const totalStaff = await facultiesCollection.estimatedDocumentCount();
       res.send({ result, totalStaff });
+    });
+
+    // get-specific-faculty by id
+    app.get("/specific-faculty/:id", async (req, res) => {
+      const {id} = req.params;
+      const filter = {_id : new ObjectId(id)}
+      const result = await facultiesCollection.findOne(filter);
+      res.send(result);
+    });
+
+    // get-specific-faculty by email
+    app. get("/faculty-email/:email", async (req, res) => {
+      const { email } = req.params;
+      const result = await facultiesCollection.findOne({ email });
+      if (!result) {
+        return res.status(404).send({ error: "Faculty not found" });
+      }
+      res.send(result);
     });
 
     // get specific courses from db
@@ -541,20 +626,20 @@ async function run() {
     app.get("/students-by-course", async (req, res) => {
       const courseId = req.query.courseId;
       const semester = req.query.semester;
-    
+
       if (!courseId || !semester) {
         return res.status(400).send({ error: "Missing courseId or semester" });
       }
-    
+
       try {
         // Get actual course _id from courseId string
         const course = await courseCollection.findOne({ courseId: courseId });
         if (!course) {
           return res.status(404).send({ error: "Course not found" });
         }
-    
+
         const courseObjectId = course._id.toString();
-    
+
         // Fetch students enrolled in that course (_id match)
         const students = await studentsCollection
           .find({
@@ -566,17 +651,19 @@ async function run() {
           })
           .project({ name: 1, email: 1, photo: 1 })
           .toArray();
-    
+
         // Fetch grades for those students (by email)
         const studentEmails = students.map((s) => s.email);
         const gradeRecords = await gradesCollection
           .find({ studentEmail: { $in: studentEmails }, semester })
           .toArray();
-    
+
         const studentMap = students.map((student) => {
-          const gradeDoc = gradeRecords.find((g) => g.studentEmail === student.email);
+          const gradeDoc = gradeRecords.find(
+            (g) => g.studentEmail === student.email
+          );
           let alreadyGraded = null;
-    
+
           if (gradeDoc && Array.isArray(gradeDoc.grades)) {
             const foundGrade = gradeDoc.grades.find(
               (g) => g.courseId === courseId && g.semester === semester
@@ -585,7 +672,7 @@ async function run() {
               alreadyGraded = { point: foundGrade.point };
             }
           }
-    
+
           return {
             name: student.name,
             email: student.email,
@@ -593,15 +680,13 @@ async function run() {
             alreadyGraded, // Will be null if not graded
           };
         });
-    
+
         res.send(studentMap);
       } catch (error) {
         console.error("❌ Error fetching students with grade status:", error);
         res.status(500).send({ error: "Internal server error" });
       }
     });
-    
-      
 
     // get specific students
     app.get("/student/:email", async (req, res) => {
@@ -809,6 +894,54 @@ async function run() {
       }
     });
 
+    // ✅ get instead notification for the leave request
+    app.get("/faculty-leave-notifications", async (req, res) => {
+      const { facultyEmail } = req.query;
+    
+      if (!facultyEmail) {
+        return res.status(400).send({ error: "facultyEmail is required" });
+      }
+    
+      try {
+        // 1. Get assigned course IDs
+        const assignedCourses = await courseCollection
+          .find({ facultyEmail })
+          .project({ _id: 1 })
+          .toArray();
+    
+        const courseIds = assignedCourses.map((c) => c._id.toString());
+    
+        if (courseIds.length === 0) return res.send([]);
+    
+        // 2. Get enrolled students' emails
+        const students = await studentsCollection
+          .find({
+            courses: {
+              $elemMatch: { courseId: { $in: courseIds } },
+            },
+          })
+          .project({ email: 1 })
+          .toArray();
+    
+        const studentEmails = students.map((s) => s.email);
+        if (studentEmails.length === 0) return res.send([]);
+    
+        // 3. Fetch unseen leave requests only
+        const leaves = await leavesCollection
+          .find({
+            email: { $in: studentEmails },
+            isSeen: { $ne: true }, // Only unseen
+          })
+          .sort({ applicationDate: -1 })
+          .toArray();
+    
+        res.send(leaves);
+      } catch (err) {
+        console.error("❌ Error in faculty-leave-notifications:", err);
+        res.status(500).send({ error: "Server error" });
+      }
+    });
+    
     // get specific student grade
     app.get("/student-result/:email", async (req, res) => {
       const { email } = req.params;

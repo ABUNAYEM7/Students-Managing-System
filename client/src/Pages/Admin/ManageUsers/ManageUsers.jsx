@@ -3,12 +3,14 @@ import useFetchData from "../../../Components/Hooks/useFetchData";
 import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import useAuth from "../../../Components/Hooks/useAuth";
+import { useNavigate } from "react-router";
 
 const ManageUsers = () => {
   const [users, setUsers] = useState([]);
   const { data: user, refetch } = useFetchData("users", "/all-users");
   const { user: admin } = useAuth();
   const axiosInstance = AxiosSecure();
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (user) {
@@ -37,40 +39,7 @@ const ManageUsers = () => {
   };
 
   const studentHandler = async (id) => {
-    try {
-      const user = await axiosInstance.get(`/specific-user/${id}`);
-      if (user) {
-        const { email, name, photo } = user?.data;
-        const updateRole = await axiosInstance.patch(
-          `/update/user-role/${id}`,
-          { role: "student" }
-        );
-        console.log(updateRole);
-        if (
-          updateRole?.data?.modifiedCount > 0 &&
-          updateRole?.data?.matchedCount > 0
-        ) {
-          const studentInfo = {
-            email,
-            name,
-            photo,
-          };
-          const res = await axiosInstance.post(`/create-student`, studentInfo);
-          if (res?.data?.insertedId) {
-            Swal.fire({
-              position: "center",
-              icon: "success",
-              title: "User Role Updated Successfully",
-              showConfirmButton: false,
-              timer: 1500,
-            });
-            refetch();
-          }
-        }
-      }
-    } catch (err) {
-      console.log(err);
-    }
+    navigate(`/dashboard/add-student/${id}`)
   };
 
   const deleteHandler = (id) => {

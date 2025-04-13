@@ -32,6 +32,9 @@ import AssignmentDetails from "../Pages/Faculty/AssingmentDetails/AssignmentDeta
 import LeaveForm from "../Pages/Student/LeaveForm/LeaveForm";
 import StudentAssignment from "../Pages/Student/StudentAssignment/StudentAssignment";
 import StudentsCourses from "../Pages/Student/StudentsCourses/StudentsCourses";
+import CreateStudentForm from "../Components/CreateStudentForm/CreateStudentForm";
+import ViewUserDetails from "../Components/ViewUserDetails/ViewUserDetails";
+
 
 const AppRouter = () => {
   return (
@@ -63,6 +66,8 @@ const AppRouter = () => {
           <Route path="manage-faculty" element={<ManageFaculty />} />
           <Route path="manage-users" element={<ManageUsers />} />
           <Route path="/dashboard/add-faculty" element={<AddFaculty />} />
+          <Route path="/dashboard/add-student/:id" element={<CreateStudentForm />} />
+          <Route path="/dashboard/view-details/:email" element={<ViewUserDetails />} />
 
           {/* Student Routes */}
           <Route path="profile" element={<Profile />} />

@@ -2,10 +2,12 @@ import React from "react";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import Swal from "sweetalert2";
+import { useNavigate } from "react-router";
 
 const ManageStudents = () => {
   const axiosInstance = AxiosSecure();
   const { data: students, refetch } = useFetchData("students", "/all-students");
+  const navigate = useNavigate();
 
   const deleteHandler = (id) => {
     Swal.fire({
@@ -31,6 +33,11 @@ const ManageStudents = () => {
     });
   };
 
+  const viewDetails = (email) => {
+    console.log(email)
+    navigate(`/dashboard/view-details/${email}`);
+  };
+
   return (
     <div className="px-4 md:px-10 py-6 min-h-screen bg-base-200">
       <h3 className="text-xl md:text-3xl font-black text-center mb-6">
@@ -49,6 +56,7 @@ const ManageStudents = () => {
                 <tr>
                   <th className="text-sm">Name</th>
                   <th className="text-sm">Email</th>
+                  <th className="text-sm">View Details</th>
                   <th className="text-sm">Action</th>
                 </tr>
               </thead>
@@ -71,7 +79,18 @@ const ManageStudents = () => {
                         </div>
                       </div>
                     </td>
+
                     <td className="text-sm">{student.email}</td>
+
+                    <td>
+                      <button
+                        onClick={() => viewDetails(student?.email)}
+                        className="btn btn-sm bg-prime text-white"
+                      >
+                        View Details
+                      </button>
+                    </td>
+
                     <td>
                       <button
                         onClick={() => deleteHandler(student._id)}
