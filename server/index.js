@@ -8,6 +8,7 @@ const multer = require("multer");
 const http = require("http");
 const { Server } = require("socket.io");
 const server = http.createServer(app);
+const dayjs = require("dayjs");
 
 // middleware
 app.use(express.json());
@@ -80,6 +81,8 @@ async function run() {
 
     const leavesCollection = client.db("academi_core").collection("leaves");
 
+    const routinesCollection = client.db("academi_core").collection("routine");
+
     // save new user data in db
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -97,10 +100,10 @@ async function run() {
     // save new faculty
     app.post("/add-faculty", async (req, res) => {
       const info = req.body;
-    
+
       try {
         const user = await usersCollection.findOne({ email: info.email });
-    
+
         if (user) {
           // Update role to 'faculty' if user exists
           await usersCollection.updateOne(
@@ -116,10 +119,10 @@ async function run() {
             role: "faculty",
           });
         }
-    
+
         // Create faculty in the facultiesCollection regardless
         const result = await facultiesCollection.insertOne(info);
-    
+
         res.send(result);
       } catch (error) {
         console.error(error);
@@ -328,6 +331,36 @@ async function run() {
       }
     });
 
+    // post weekly routine
+    app.post("/add/weekly-routine", async (req, res) => {
+      try {
+        const data = req.body;
+
+        // Validate required fields
+        if (
+          !data.semester ||
+          !data.department ||
+          !Array.isArray(data.routines)
+        ) {
+          return res.status(400).send({ message: "Missing required fields." });
+        }
+
+        const result = await routinesCollection.insertOne({
+          semester: data.semester,
+          department: data.department,
+          weekStartDate: data.weekStartDate,
+          routines: data.routines,
+          createdBy: data.createdBy,
+          createdAt: new Date(),
+        });
+
+        res.send({ success: true, insertedId: result.insertedId });
+      } catch (err) {
+        console.error("❌ Error storing weekly routine:", err);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
     // update user role
     app.patch("/update/user-role/:id", async (req, res) => {
       const id = req.params.id;
@@ -392,23 +425,69 @@ async function run() {
     // patch notification for the leave req mark seen
     app.patch("/faculty-leave-notifications/mark-seen", async (req, res) => {
       const { leaveIds } = req.body;
-    
+
       if (!Array.isArray(leaveIds) || leaveIds.length === 0) {
-        return res.status(400).send({ error: "leaveIds must be a non-empty array" });
+        return res
+          .status(400)
+          .send({ error: "leaveIds must be a non-empty array" });
       }
-    
+
       try {
         const objectIds = leaveIds.map((id) => new ObjectId(id));
-    
+
         const result = await leavesCollection.updateMany(
           { _id: { $in: objectIds } },
           { $set: { isSeen: true } }
         );
-    
+
         res.send({ success: true, modified: result.modifiedCount });
       } catch (err) {
         console.error("❌ Failed to mark leaves as seen:", err);
         res.status(500).send({ error: "Server error" });
+      }
+    });
+
+    // PATCH: Update a single day in the weekly routine
+    app.patch("/update-routine-day/:routineId/:dayIndex", async (req, res) => {
+      const { routineId, dayIndex } = req.params;
+      const updatedDay = req.body;
+
+      if (!ObjectId.isValid(routineId)) {
+        return res.status(400).send({ message: "Invalid routine ID" });
+      }
+
+      try {
+        const routine = await routinesCollection.findOne({
+          _id: new ObjectId(routineId),
+        });
+
+        if (!routine) {
+          return res.status(404).send({ message: "Routine not found" });
+        }
+
+        // Ensure dayIndex is valid
+        const index = parseInt(dayIndex, 10);
+        if (isNaN(index) || index < 0 || index >= routine.routines.length) {
+          return res.status(400).send({ message: "Invalid day index" });
+        }
+
+        // Update specific day's routine
+        const updateQuery = {
+          $set: {
+            [`routines.${index}`]: updatedDay,
+            updatedAt: new Date(),
+          },
+        };
+
+        const result = await routinesCollection.updateOne(
+          { _id: new ObjectId(routineId) },
+          updateQuery
+        );
+
+        res.send({ success: true, modifiedCount: result.modifiedCount });
+      } catch (error) {
+        console.error("Error updating routine day:", error);
+        res.status(500).send({ message: "Internal server error" });
       }
     });
 
@@ -468,6 +547,14 @@ async function run() {
       res.send(result);
     });
 
+    // delete weekly  routine
+    app.delete("/delete/weekly-routine/:id", async (req, res) => {
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const result = await routinesCollection.deleteOne(filter);
+      res.send(result);
+    });
+
     // get user state
     app.get("/user-state", async (req, res) => {
       const totalUser = await usersCollection.estimatedDocumentCount({});
@@ -502,7 +589,7 @@ async function run() {
     // get specific user by id
     app.get("/specific-user/:id", async (req, res) => {
       const { id } = req.params;
-      const filter = {_id: new ObjectId(id) };
+      const filter = { _id: new ObjectId(id) };
       const result = await usersCollection.findOne(filter);
       res.send(result);
     });
@@ -510,7 +597,7 @@ async function run() {
     // get specific user by email
     app.get("/user-details/:email", async (req, res) => {
       const { email } = req.params;
-      const filter = {email};
+      const filter = { email };
       const result = await usersCollection.findOne(filter);
       res.send(result);
     });
@@ -533,14 +620,14 @@ async function run() {
 
     // get-specific-faculty by id
     app.get("/specific-faculty/:id", async (req, res) => {
-      const {id} = req.params;
-      const filter = {_id : new ObjectId(id)}
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
       const result = await facultiesCollection.findOne(filter);
       res.send(result);
     });
 
     // get-specific-faculty by email
-    app. get("/faculty-email/:email", async (req, res) => {
+    app.get("/faculty-email/:email", async (req, res) => {
       const { email } = req.params;
       const result = await facultiesCollection.findOne({ email });
       if (!result) {
@@ -585,6 +672,16 @@ async function run() {
         console.error(error);
         res.status(500).send({ error: "Failed to fetch dashboard data" });
       }
+    });
+
+    // GET all faculties by department
+    app.get("/faculties-by-department", async (req, res) => {
+      const { department } = req.query;
+      if (!department)
+        return res.status(400).send({ error: "Department is required" });
+
+      const result = await courseCollection.find({ department }).toArray();
+      res.send(result);
     });
 
     // get all users from db
@@ -897,22 +994,22 @@ async function run() {
     // ✅ get instead notification for the leave request
     app.get("/faculty-leave-notifications", async (req, res) => {
       const { facultyEmail } = req.query;
-    
+
       if (!facultyEmail) {
         return res.status(400).send({ error: "facultyEmail is required" });
       }
-    
+
       try {
         // 1. Get assigned course IDs
         const assignedCourses = await courseCollection
           .find({ facultyEmail })
           .project({ _id: 1 })
           .toArray();
-    
+
         const courseIds = assignedCourses.map((c) => c._id.toString());
-    
+
         if (courseIds.length === 0) return res.send([]);
-    
+
         // 2. Get enrolled students' emails
         const students = await studentsCollection
           .find({
@@ -922,10 +1019,10 @@ async function run() {
           })
           .project({ email: 1 })
           .toArray();
-    
+
         const studentEmails = students.map((s) => s.email);
         if (studentEmails.length === 0) return res.send([]);
-    
+
         // 3. Fetch unseen leave requests only
         const leaves = await leavesCollection
           .find({
@@ -934,20 +1031,77 @@ async function run() {
           })
           .sort({ applicationDate: -1 })
           .toArray();
-    
+
         res.send(leaves);
       } catch (err) {
         console.error("❌ Error in faculty-leave-notifications:", err);
         res.status(500).send({ error: "Server error" });
       }
     });
-    
+
     // get specific student grade
     app.get("/student-result/:email", async (req, res) => {
       const { email } = req.params;
       const filter = { studentEmail: email };
       const result = await gradesCollection.findOne(filter);
       res.send(result);
+    });
+
+    // GET: All weekly routines sorted by months
+    app.get("/all/weekly-routines", async (req, res) => {
+      try {
+        const { monthYear } = req.query; // e.g., "April 2025"
+        let filter = {};
+
+        if (monthYear) {
+          const [monthName, year] = monthYear.split(" ");
+          const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
+
+          const startOfMonth = new Date(`${year}-${monthIndex + 1}-01`);
+          const endOfMonth = new Date(year, monthIndex + 1, 0); // Last day of the month
+
+          filter = {
+            weekStartDate: {
+              $gte: startOfMonth.toISOString().split("T")[0],
+              $lte: endOfMonth.toISOString().split("T")[0],
+            },
+          };
+        }
+
+        const routines = await routinesCollection
+          .find(filter)
+          .sort({ weekStartDate: -1 })
+          .toArray();
+
+        res.send(routines);
+      } catch (err) {
+        console.error("❌ Failed to fetch weekly routines:", err);
+        res.status(500).send({ error: "Internal server error" });
+      }
+    });
+
+    // GET: Fetch single weekly routine by ID
+    app.get("/get-routine/:routineId", async (req, res) => {
+      const { routineId } = req.params;
+
+      if (!ObjectId.isValid(routineId)) {
+        return res.status(400).send({ message: "Invalid routine ID" });
+      }
+
+      try {
+        const routine = await routinesCollection.findOne({
+          _id: new ObjectId(routineId),
+        });
+
+        if (!routine) {
+          return res.status(404).send({ message: "Routine not found" });
+        }
+
+        res.send(routine);
+      } catch (error) {
+        console.error("❌ Error fetching routine:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
     // upload pdf procedures

@@ -34,6 +34,8 @@ import StudentAssignment from "../Pages/Student/StudentAssignment/StudentAssignm
 import StudentsCourses from "../Pages/Student/StudentsCourses/StudentsCourses";
 import CreateStudentForm from "../Components/CreateStudentForm/CreateStudentForm";
 import ViewUserDetails from "../Components/ViewUserDetails/ViewUserDetails";
+import Routine from "../Pages/Admin/Routine/Routine";
+import AddRoutine from "../Components/AddRoutine/AddRoutine";
 
 
 const AppRouter = () => {
@@ -65,6 +67,9 @@ const AppRouter = () => {
           <Route path="manage-students" element={<ManageStudents />} />
           <Route path="manage-faculty" element={<ManageFaculty />} />
           <Route path="manage-users" element={<ManageUsers />} />
+          <Route path="routine" element={<Routine />} />
+          <Route path="add-routine" element={<AddRoutine />} />
+          <Route path="edit-routine/:routineId/:dayIndex" element={<AddRoutine />} />
           <Route path="/dashboard/add-faculty" element={<AddFaculty />} />
           <Route path="/dashboard/add-student/:id" element={<CreateStudentForm />} />
           <Route path="/dashboard/view-details/:email" element={<ViewUserDetails />} />

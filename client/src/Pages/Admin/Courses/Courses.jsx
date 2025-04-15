@@ -2,7 +2,7 @@ import React from "react";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 const Courses = () => {
   const { data: courses, refetch } = useFetchData(
@@ -47,6 +47,15 @@ const Courses = () => {
       <h3 className="text-3xl font-black text-center mt-6">
         Course Management
       </h3>
+            {/* button-container */}
+            <div className="mt-3 p-4 flex items-center justify-end">
+        <Link
+          to={"/dashboard/add-courses"}
+          className="btn uppercase hover:bg-green-400 hover:text-white"
+        >
+          Add Courses ➕
+        </Link>
+      </div>
       <div className="mt-6 p-2 max-w-full md:max-w-[90%] lg:max-w-full  mx-auto">
         <div className="overflow-x-auto">
           <table className="table">

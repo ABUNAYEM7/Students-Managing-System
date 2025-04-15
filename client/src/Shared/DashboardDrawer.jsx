@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router";
 import { FaBars, FaChartBar, FaHome, FaBook, FaUserGraduate, FaUsers, FaUserTie, FaClipboardList, FaMoneyBill } from "react-icons/fa";
+import { BiCalendar } from "react-icons/bi"
 import Swal from "sweetalert2";
 import useAuth from "../Components/Hooks/useAuth";
 import useUserRole from "../Components/Hooks/useUserRole";
@@ -11,6 +12,7 @@ const navIcons = {
   Courses: <FaBook />, 
   "Add Courses": <FaClipboardList />, 
   Students: <FaUserGraduate />, 
+  Routine : <BiCalendar/>,
   Faculty: <FaUserTie />, 
   "Manage Users": <FaUsers />, 
   Dashboard: <FaHome />, 
@@ -122,7 +124,7 @@ const DashboardDrawer = () => {
                     <ResponsiveNavLink to="/dashboard/courses" label="Courses" icon={navIcons["Courses"]} />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/add-courses" label="Add Courses" icon={navIcons["Add Courses"]} />
+                    <ResponsiveNavLink to="/dashboard/routine" label="Routine" icon={navIcons["Routine"]} />
                   </li>
                   <li>
                     <ResponsiveNavLink to="/dashboard/manage-students" label="Students" icon={navIcons["Students"]} />
