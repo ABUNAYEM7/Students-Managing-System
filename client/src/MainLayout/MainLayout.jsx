@@ -6,7 +6,7 @@ import Footer from '../Shared/Footer'
 const MainLayout = () => {
   const {pathname} = useLocation()
   return (
-    <div className='border-2 border-black max-w-[1480px] mx-auto'> 
+    <div className='max-w-[1480px] mx-auto'> 
       <div>
         <div>
              {/* Hide Navbar if pathname starts with /dashboard */}

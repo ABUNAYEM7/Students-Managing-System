@@ -491,6 +491,36 @@ async function run() {
       }
     });
 
+    // PATCH: Update routine day status
+    app.patch(
+      "/update-routine-day-status/:routineId/:dayIndex",
+      async (req, res) => {
+        const { routineId, dayIndex } = req.params;
+        const { status } = req.body;
+
+        if (!["pending", "completed"].includes(status)) {
+          return res.status(400).send({ message: "Invalid status" });
+        }
+
+        try {
+          const index = parseInt(dayIndex);
+          const result = await routinesCollection.updateOne(
+            { _id: new ObjectId(routineId) },
+            {
+              $set: {
+                [`routines.${index}.status`]: status,
+              },
+            }
+          );
+
+          res.send({ success: true, modifiedCount: result.modifiedCount });
+        } catch (error) {
+          console.error("Error updating status:", error);
+          res.status(500).send({ message: "Failed to update status" });
+        }
+      }
+    );
+
     // delete-course
     app.delete("/delete-course/:id", async (req, res) => {
       const id = req.params.id;
@@ -833,9 +863,23 @@ async function run() {
     // get all assignment with the status
     app.get("/students-assignment/:email", async (req, res) => {
       const { email } = req.params;
-
-      const assignments = await assignmentsCollection
-        .aggregate([
+    
+      try {
+        // 1. Get student's enrolled courses
+        const student = await studentsCollection.findOne({ email });
+        if (!student || !student.courses) {
+          return res.send([]); // Return empty if no student or not enrolled
+        }
+    
+        const enrolledCourseIds = student.courses.map((c) => c.courseId);
+    
+        // 2. Get assignments for enrolled courses with submission info
+        const assignments = await assignmentsCollection.aggregate([
+          {
+            $match: {
+              courseId: { $in: enrolledCourseIds },
+            },
+          },
           {
             $lookup: {
               from: "subAssignment",
@@ -868,12 +912,15 @@ async function run() {
               preserveNullAndEmptyArrays: true,
             },
           },
-        ])
-        .toArray();
-
-      res.send(assignments);
+        ]).toArray();
+    
+        res.send(assignments);
+      } catch (err) {
+        console.error("Error fetching assignments:", err);
+        res.status(500).send({ error: "Internal server error" });
+      }
     });
-
+    
     // get specific materials
     app.get("/material/:id", async (req, res) => {
       const { id } = req.params;
@@ -1101,6 +1148,77 @@ async function run() {
       } catch (error) {
         console.error("❌ Error fetching routine:", error);
         res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
+    // get routine by faculty email
+    app.get("/get-weekly/routine/:email", async (req, res) => {
+      const { email } = req.params;
+      const { monthYear } = req.query;
+
+      try {
+        const filter = {
+          "routines.facultyEmails": email,
+        };
+
+        if (monthYear) {
+          const [monthName, year] = monthYear.split(" ");
+          const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
+
+          const startOfMonth = new Date(`${year}-${monthIndex + 1}-01`);
+          const endOfMonth = new Date(year, monthIndex + 1, 0); // Last day of the month
+
+          filter.weekStartDate = {
+            $gte: startOfMonth.toISOString().split("T")[0],
+            $lte: endOfMonth.toISOString().split("T")[0],
+          };
+        }
+
+        const result = await routinesCollection.find(filter).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching faculty weekly routine:", error);
+        res.status(500).send({ error: "Internal server error" });
+      }
+    });
+
+    // GET: Routine for a specific student by department (with optional month filter)
+    app.get("/student/routine/:email", async (req, res) => {
+      const { email } = req.params;
+      const { monthYear } = req.query;
+
+      try {
+        // Get the student's department
+        const student = await studentsCollection.findOne({ email });
+        if (!student || !student.department) {
+          return res
+            .status(404)
+            .send({ message: "Student or department not found" });
+        }
+
+        let filter = { department: student.department };
+
+        if (monthYear) {
+          const [monthName, year] = monthYear.split(" ");
+          const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
+          const startOfMonth = new Date(`${year}-${monthIndex + 1}-01`);
+          const endOfMonth = new Date(year, monthIndex + 1, 0);
+
+          filter.weekStartDate = {
+            $gte: startOfMonth.toISOString().split("T")[0],
+            $lte: endOfMonth.toISOString().split("T")[0],
+          };
+        }
+
+        const routines = await routinesCollection
+          .find(filter)
+          .sort({ weekStartDate: -1 })
+          .toArray();
+
+        res.send(routines);
+      } catch (err) {
+        console.error("Error fetching student routine:", err);
+        res.status(500).send({ message: "Server error" });
       }
     });
 

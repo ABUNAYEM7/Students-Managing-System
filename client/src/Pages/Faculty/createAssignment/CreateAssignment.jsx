@@ -133,6 +133,7 @@ const CreateAssignment = () => {
     }
   };
 
+
   return (
     <div className="p-6">
       <div className="max-w-2xl mx-auto bg-white p-6 rounded shadow">
@@ -153,7 +154,7 @@ const CreateAssignment = () => {
             <option disabled value="">Select Course</option>
             {
               courses?.map((c,i)=>(
-                <option  value={`${c?.name}`}>{c?.name}</option>
+                <option  value={`${c?._id}`}>{c?.name}</option>
               ))
             }
           </select>

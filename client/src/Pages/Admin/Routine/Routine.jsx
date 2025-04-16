@@ -50,7 +50,7 @@ const Routine = () => {
           const res = await axiosInstance.delete(`/delete/weekly-routine/${id}`);
           if (res?.data?.deletedCount > 0) {
             Swal.fire("Deleted!", "Routine has been deleted.", "success");
-            fetchRoutines(); // ✅ Refetch after delete
+            fetchRoutines(); 
           }
         } catch (err) {
           console.error("Delete error:", err);
@@ -58,6 +58,7 @@ const Routine = () => {
       }
     });
   };
+
 
   return (
     <div className="p-6">
@@ -109,6 +110,7 @@ const Routine = () => {
                     <th>Created At</th>
                     <th>Created By</th>
                     <th>Online Link</th>
+                    <th>Status</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -121,6 +123,17 @@ const Routine = () => {
                       <td>{dayjs(routineItem.createdAt).format("DD MMM YYYY")}</td>
                       <td>{routineItem.createdBy}</td>
                       <td className="text-blue-600 underline break-all">{item?.onlineLink}</td>
+                      <td >
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              item?.status === "completed"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {item?.status || "pending"}
+                          </span>
+                        </td>
                       <td className="space-x-2">
                         <button
                           className="btn btn-xs bg-prime text-black"

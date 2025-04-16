@@ -36,6 +36,8 @@ import CreateStudentForm from "../Components/CreateStudentForm/CreateStudentForm
 import ViewUserDetails from "../Components/ViewUserDetails/ViewUserDetails";
 import Routine from "../Pages/Admin/Routine/Routine";
 import AddRoutine from "../Components/AddRoutine/AddRoutine";
+import FacultyRoutine from "../Pages/Faculty/FacultyRoutine/FacultyRoutine";
+import StudentRoutine from "../Pages/Student/StudentRoutine/StudentRoutine";
 
 
 const AppRouter = () => {
@@ -79,6 +81,7 @@ const AppRouter = () => {
           <Route path="student/home" element={<StudentsDashboardHome/>} />
           <Route path="student-courses" element={<StudentsCourses/>}/>
           <Route path="student-assignment" element={<StudentAssignment/>}/>
+          <Route path="student-routine" element={<StudentRoutine/>}/>
           <Route path="attendance" element={<Attendance/>}/>
           <Route path="grade" element={<Grade/>}/>
           <Route path="Fee" element={<Fee/>}/>
@@ -88,6 +91,7 @@ const AppRouter = () => {
           <Route>
             <Route path="faculty/home" element={<FacultyDashboard/>}/>
             <Route path="faculty-courses" element={<FacultyCourses/>}/>
+            <Route path="faculty-routine" element={<FacultyRoutine/>}/>
             <Route path="faculty-grades" element={<FacultyGrades/>}/>
             <Route path="faculty-attendance" element={<FacultyAttendance/>}/>
             <Route path="assignment" element={<Assignment/>}/>

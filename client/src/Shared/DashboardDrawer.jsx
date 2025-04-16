@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import useAuth from "../Components/Hooks/useAuth";
 import useUserRole from "../Components/Hooks/useUserRole";
 import logo from "../assets/logo.jfif";
+import FacultyRoutine from "../Pages/Faculty/FacultyRoutine/FacultyRoutine";
 
 const navIcons = {
   "ADMIN Dashboard": <FaHome />, 
@@ -17,6 +18,7 @@ const navIcons = {
   "Manage Users": <FaUsers />, 
   Dashboard: <FaHome />, 
   Grades: <FaClipboardList />, 
+  FacultyRoutine: <FacultyRoutine />, 
   Attendance: <FaClipboardList />, 
   Assignment: <FaClipboardList />, 
   Materials: <FaBook />, 
@@ -147,6 +149,9 @@ const DashboardDrawer = () => {
                     <ResponsiveNavLink to="/dashboard/faculty-courses" label="Courses" icon={navIcons["Courses"]} />
                   </li>
                   <li>
+                    <ResponsiveNavLink to="/dashboard/faculty-routine" label="Routine" icon={navIcons["Routine"]} />
+                  </li>
+                  <li>
                     <ResponsiveNavLink to="/dashboard/faculty-grades" label="Grades" icon={navIcons["Grades"]} />
                   </li>
                   <li>
@@ -171,6 +176,9 @@ const DashboardDrawer = () => {
                   </li>
                   <li>
                     <ResponsiveNavLink to="/dashboard/student-assignment" label="Assignments" icon={navIcons["Assignments"]} />
+                  </li>
+                  <li>
+                    <ResponsiveNavLink to="/dashboard/student-routine" label="Routine" icon={navIcons["Routine"]} />
                   </li>
                   <li>
                     <ResponsiveNavLink to="/dashboard/attendance" label="Attendance" icon={navIcons["Attendance"]} />

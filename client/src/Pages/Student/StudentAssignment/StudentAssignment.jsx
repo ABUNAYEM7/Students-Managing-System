@@ -7,10 +7,15 @@ import Swal from 'sweetalert2';
 
 const StudentAssignment = () => {
   const { user } = useAuth();
-  const { data: assignments, refetch } = useFetchData('assignments', `/students-assignment/${user?.email}`);
+  const axiosInstance = AxiosSecure();
   const [submissionFiles, setSubmissionFiles] = useState({});
   const [comments, setComments] = useState({});
-  const axiosInstance = AxiosSecure();
+
+  const {
+    data: assignments = [],
+    refetch,
+    loading
+  } = useFetchData(`student-assignments-${user?.email}`, `/students-assignment/${user?.email}`);
 
   const handleFileChange = (e, id) => {
     setSubmissionFiles({ ...submissionFiles, [id]: e.target.files[0] });
@@ -47,18 +52,23 @@ const StudentAssignment = () => {
     }
   };
 
-  // Countdown timer
   const renderer = ({ days, hours, minutes, seconds, completed }) => (
     <span className={`font-semibold ${completed ? 'text-red-500' : 'text-green-500'}`}>
       {completed
         ? 'Deadline Passed'
         : `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`}
     </span>
-  );
+  );  
+
+  console.log(assignments)
 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold text-center mb-8">My Assignments</h1>
+
+      {assignments.length === 0 && (
+        <p className="text-center text-gray-500">No assignments found. Please enroll in a course.</p>
+      )}
 
       {assignments?.map((item) => {
         const deadlinePassed = new Date(item.deadline) < new Date();
@@ -69,7 +79,7 @@ const StudentAssignment = () => {
             <div className="card-body">
               <h2 className="card-title text-xl">{item.title}</h2>
               <p><strong>Instructions:</strong> {item.instructions}</p>
-              <p><strong>Semester</strong> {item.semester || 'General'}</p>
+              <p><strong>Semester:</strong> {item.semester || 'General'}</p>
               <p><strong>Course ID:</strong> {item.courseId}</p>
               <p><strong>Uploaded By:</strong> {item.email}</p>
               <p><strong>Uploaded At:</strong> {new Date(item.uploadedAt).toLocaleString()}</p>

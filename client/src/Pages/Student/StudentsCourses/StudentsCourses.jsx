@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import { FaBookOpen, FaChalkboardTeacher, FaClock } from "react-icons/fa";
 import { MdOutlineCalendarToday } from "react-icons/md";
@@ -7,25 +7,38 @@ import useAuth from "../../../Components/Hooks/useAuth";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 
 const StudentsCourses = () => {
-  const [selectedDept, setSelectedDept] = useState("");
   const { user } = useAuth();
   const axiosSecure = AxiosSecure();
 
-  const { data: student, refetch: refetchStudent } = useFetchData(
+  const { data: student, refetch: refetchStudent, loading: studentLoading } = useFetchData(
     `${user?.email}`,
     `/student/${user?.email}`
   );
 
-  const {
-    data: courses = [],
-    loading,
-    refetch,
-  } = useFetchData(
-    `courses-${selectedDept}`,
-    `/all-courses-by-department?department=${selectedDept}`
-  );
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const enrolledCourseIds = student?.courses?.map((c) => c.courseId) || [];
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (student?.department) {
+        setLoading(true);
+        try {
+          const res = await axiosSecure.get(
+            `/all-courses-by-department?department=${student.department}`
+          );
+          setCourses(res.data);
+        } catch (err) {
+          console.error("Error fetching courses by department:", err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCourses();
+  }, [student?.department, axiosSecure]);
 
   const handleEnroll = async (course) => {
     try {
@@ -48,7 +61,6 @@ const StudentsCourses = () => {
           timer: 1500,
           showConfirmButton: false,
         });
-        refetch();
         refetchStudent();
       }
     } catch (error) {
@@ -101,96 +113,44 @@ const StudentsCourses = () => {
     </div>
   );
 
-  const departmentOptions = [
-    {
-      label: "Bachelor Programs",
-      programs: [
-        "Bachelor of Science in Business Administration",
-        "Bachelor of Science in Civil Engineering",
-        "Bachelor of Science in Computer Science",
-        "Bachelor of Science in Information System Management",
-      ],
-    },
-    {
-      label: "Master Programs",
-      programs: [
-        "Master of Public Health",
-        "Master of Science in Civil Engineering (M.Sc.)",
-        "Master of Science in Business Administration (MSBA)",
-        "Master of Science in Computer Science Engineering (MSCSE)",
-      ],
-    },
-    {
-      label: "Doctorate Programs",
-      programs: [
-        "Doctor of Business Management",
-        "Doctor of Public Health",
-        "Doctor of Science in Computer Science",
-        "Doctor of Management",
-      ],
-    },
-    {
-      label: "Associate Programs",
-      programs: ["English as a Second Language"],
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-base-200 p-6">
       <h2 className="text-3xl font-bold text-center mb-6">Courses</h2>
 
-      <div className="form-control w-full max-w-xs mx-auto mb-8">
-        <label className="label mb-2">
-          <span className="label-text font-medium">Filter by Department</span>
-        </label>
-        <select
-          className="select select-bordered"
-          value={selectedDept}
-          onChange={(e) => setSelectedDept(e.target.value)}
-        >
-          <option value="">All Departments</option>
-          {departmentOptions.map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.programs.map((program) => (
-                <option key={program} value={program}>
-                  {program}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </div>
+      {studentLoading || loading ? (
+        <p className="text-center text-lg">Loading courses...</p>
+      ) : (
+        <>
+          {enrolledCourseIds.length > 0 && (
+            <div className="mb-10">
+              <h3 className="text-2xl font-semibold text-primary mb-4">
+                Enrolled Courses
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {courses
+                  .filter((c) => enrolledCourseIds.includes(c._id))
+                  .map((course) => renderCourseCard(course, true))}
+              </div>
+            </div>
+          )}
 
-      {loading && <p className="text-center text-lg">Loading courses...</p>}
-
-      {enrolledCourseIds.length > 0 && (
-        <div className="mb-10">
-          <h3 className="text-2xl font-semibold text-primary mb-4">
-            Enrolled Courses
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses
-              .filter((c) => enrolledCourseIds.includes(c._id))
-              .map((course) => renderCourseCard(course, true))}
+          <div>
+            <h3 className="text-2xl font-semibold text-primary mb-4">
+              Other Available Courses
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {courses
+                .filter((c) => !enrolledCourseIds.includes(c._id))
+                .map((course) => renderCourseCard(course, false))}
+            </div>
           </div>
-        </div>
-      )}
 
-      <div>
-        <h3 className="text-2xl font-semibold text-primary mb-4">
-          Other Available Courses
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses
-            .filter((c) => !enrolledCourseIds.includes(c._id))
-            .map((course) => renderCourseCard(course, false))}
-        </div>
-      </div>
-
-      {!loading && courses?.length === 0 && (
-        <p className="text-center col-span-3 text-gray-500">
-          No courses available for the selected department.
-        </p>
+          {courses?.length === 0 && (
+            <p className="text-center col-span-3 text-gray-500 mt-8">
+              No courses available for your department.
+            </p>
+          )}
+        </>
       )}
     </div>
   );

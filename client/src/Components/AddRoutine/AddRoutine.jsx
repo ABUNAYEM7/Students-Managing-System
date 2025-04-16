@@ -117,6 +117,7 @@ const AddRoutine = () => {
       time: currentTime,
       onlineLink: currentLink,
       facultyEmails,
+      status : 'pending'
     };
 
     setFormData((prev) => ({
@@ -136,9 +137,7 @@ const AddRoutine = () => {
     if (!formData.semester) formErrors.semester = "Semester is required";
     if (!formData.department) formErrors.department = "Department is required";
     if (!formData.weekStartDate) formErrors.weekStartDate = "WeekStartDate is required";
-    if (!currentDay) formErrors.currentDay = "CurrentDay is required";
-    if (!currentTime) formErrors.currentTime = "CurrentTime is required";
-    if (!currentLink) formErrors.currentLink = "CurrentLink is required";
+    if (formData.routines.length === 0) formErrors.routines = "At least one day must be added to the routine.";
 
     if (Object.keys(formErrors).length > 0) {
       setErrors((prev) => ({ ...prev, ...formErrors }));
