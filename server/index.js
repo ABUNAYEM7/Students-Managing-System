@@ -82,6 +82,7 @@ async function run() {
     const leavesCollection = client.db("academi_core").collection("leaves");
 
     const routinesCollection = client.db("academi_core").collection("routine");
+    const messageCollection = client.db("academi_core").collection("message");
 
     // save new user data in db
     app.post("/users", async (req, res) => {
@@ -357,6 +358,50 @@ async function run() {
         res.send({ success: true, insertedId: result.insertedId });
       } catch (err) {
         console.error("❌ Error storing weekly routine:", err);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
+    // ✅ POST: Send & store message
+    app.post("/send-message", async (req, res) => {
+      const {
+        name,
+        email,
+        subject,
+        description,
+        recipients,
+        recipientRole,
+        replyTo, // ✅ capture replyTo from frontend
+      } = req.body;
+
+      if (
+        !name ||
+        !email ||
+        !subject ||
+        !description ||
+        !recipients?.length ||
+        !recipientRole
+      ) {
+        return res.status(400).send({ message: "Missing required fields" });
+      }
+
+      try {
+        const message = {
+          name,
+          email, // sender email
+          subject,
+          description,
+          recipients,
+          recipientRole,
+          sender: email,
+          replyTo: replyTo || null, // ✅ include replyTo if present
+          createdAt: new Date().toISOString(),
+        };
+
+        const result = await messageCollection.insertOne(message);
+        res.send({ success: true, insertedId: result.insertedId });
+      } catch (err) {
+        console.error("❌ Failed to send message:", err);
         res.status(500).send({ message: "Internal server error" });
       }
     });
@@ -863,64 +908,66 @@ async function run() {
     // get all assignment with the status
     app.get("/students-assignment/:email", async (req, res) => {
       const { email } = req.params;
-    
+
       try {
         // 1. Get student's enrolled courses
         const student = await studentsCollection.findOne({ email });
         if (!student || !student.courses) {
           return res.send([]); // Return empty if no student or not enrolled
         }
-    
+
         const enrolledCourseIds = student.courses.map((c) => c.courseId);
-    
+
         // 2. Get assignments for enrolled courses with submission info
-        const assignments = await assignmentsCollection.aggregate([
-          {
-            $match: {
-              courseId: { $in: enrolledCourseIds },
+        const assignments = await assignmentsCollection
+          .aggregate([
+            {
+              $match: {
+                courseId: { $in: enrolledCourseIds },
+              },
             },
-          },
-          {
-            $lookup: {
-              from: "subAssignment",
-              let: { assignmentId: { $toString: "$_id" } },
-              pipeline: [
-                {
-                  $match: {
-                    $expr: {
-                      $and: [
-                        { $eq: ["$assignmentId", "$$assignmentId"] },
-                        { $eq: ["$email", email] },
-                      ],
+            {
+              $lookup: {
+                from: "subAssignment",
+                let: { assignmentId: { $toString: "$_id" } },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          { $eq: ["$assignmentId", "$$assignmentId"] },
+                          { $eq: ["$email", email] },
+                        ],
+                      },
                     },
                   },
-                },
-                {
-                  $project: {
-                    _id: 0,
-                    submitted: { $literal: true },
-                    path: 1,
+                  {
+                    $project: {
+                      _id: 0,
+                      submitted: { $literal: true },
+                      path: 1,
+                    },
                   },
-                },
-              ],
-              as: "submission",
+                ],
+                as: "submission",
+              },
             },
-          },
-          {
-            $unwind: {
-              path: "$submission",
-              preserveNullAndEmptyArrays: true,
+            {
+              $unwind: {
+                path: "$submission",
+                preserveNullAndEmptyArrays: true,
+              },
             },
-          },
-        ]).toArray();
-    
+          ])
+          .toArray();
+
         res.send(assignments);
       } catch (err) {
         console.error("Error fetching assignments:", err);
         res.status(500).send({ error: "Internal server error" });
       }
     });
-    
+
     // get specific materials
     app.get("/material/:id", async (req, res) => {
       const { id } = req.params;
@@ -1219,6 +1266,90 @@ async function run() {
       } catch (err) {
         console.error("Error fetching student routine:", err);
         res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    // get message based on email
+    app.get("/messages/:email", async (req, res) => {
+      const { email } = req.params;
+
+      if (!email) {
+        return res.status(400).send({ message: "Email is required" });
+      }
+
+      try {
+        const messages = await messageCollection
+          .find({ recipients: email })
+          .sort({ createdAt: -1 }) // optional: latest first
+          .toArray();
+        res.send(messages);
+      } catch (err) {
+        console.error("❌ Error fetching messages:", err);
+        res.status(500).send({ message: "Failed to retrieve messages" });
+      }
+    });
+
+    // get specific message by id
+    app.get("/messages/:email", async (req, res) => {
+      const { email } = req.params;
+      console.log(email);
+      if (!email) {
+        return res.status(400).send({ message: "Email is required" });
+      }
+
+      try {
+        const messages = await messageCollection
+          .find({
+            $or: [{ recipients: email }, { sender: email }],
+          })
+          .sort({ createdAt: -1 })
+          .toArray();
+        console.log(messages);
+        res.send(messages);
+      } catch (err) {
+        console.error("❌ Error fetching messages:", err);
+        res.status(500).send({ message: "Failed to retrieve messages" });
+      }
+    });
+
+    // ✅ GET: A single message by its ID
+    app.get("/message/:id", async (req, res) => {
+      const { id } = req.params;
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid message ID" });
+      }
+
+      try {
+        const message = await messageCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (!message) {
+          return res.status(404).send({ message: "Message not found" });
+        }
+        res.send(message);
+      } catch (err) {
+        console.error("❌ Error fetching message by ID:", err);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
+    // get all reply for specific message
+    app.get("/message/:id/replies", async (req, res) => {
+      const { id } = req.params;
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid message ID" });
+      }
+
+      try {
+        const replies = await messageCollection
+          .find({ replyTo: id })
+          .sort({ createdAt: 1 }) // optional: newest first => sort({ createdAt: -1 })
+          .toArray();
+
+        res.send(replies);
+      } catch (err) {
+        console.error("❌ Error fetching replies:", err);
+        res.status(500).send({ message: "Internal server error" });
       }
     });
 
