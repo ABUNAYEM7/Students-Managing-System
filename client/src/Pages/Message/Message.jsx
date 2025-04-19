@@ -3,6 +3,7 @@ import { MdMailOutline, MdPerson, MdSubject, MdDateRange, MdReply } from 'react-
 import { useNavigate } from 'react-router';
 import useAuth from '../../Components/Hooks/useAuth';
 import AxiosSecure from '../../Components/Hooks/AxiosSecure';
+import useFetchData from '../../Components/Hooks/useFetchData';
 
 const Message = () => {
   const { user } = useAuth();
@@ -11,12 +12,13 @@ const Message = () => {
   const [expandedMessageId, setExpandedMessageId] = useState(null);
   const [replies, setReplies] = useState({});
   const [originalMessages, setOriginalMessages] = useState({});
+  const [expandedSendId, setExpandedSendId] = useState(null);
   const navigate = useNavigate();
+  const { data: sendMessage = [] } = useFetchData(`${user?.email}`, `/user-send/message/${user?.email}`);
 
   useEffect(() => {
     if (user?.email) {
-      axiosInstance
-        .get(`/messages/${user.email}`)
+      axiosInstance.get(`/messages/${user.email}`)
         .then((res) => {
           const formatted = res.data.map((msg) => ({
             id: msg._id,
@@ -35,14 +37,12 @@ const Message = () => {
   useEffect(() => {
     if (!expandedMessageId) return;
 
-    // Fetch replies
     axiosInstance.get(`/message/${expandedMessageId}/replies`)
       .then(res => {
         setReplies(prev => ({ ...prev, [expandedMessageId]: res.data }));
       })
       .catch(err => console.error("Failed to fetch replies:", err));
 
-    // Fetch original message if this one is a reply
     const currentMsg = messages.find(m => m.id === expandedMessageId);
     if (currentMsg?.replyTo) {
       axiosInstance.get(`/message/${currentMsg.replyTo}`)
@@ -71,6 +71,11 @@ const Message = () => {
             Inbox
           </h2>
           <span className="text-sm text-gray-500">Logged in as: {user?.email}</span>
+          <div>
+            <label htmlFor="sendbox-modal" className="btn bg-highlight text-white mt-3">
+              Sent Box 📤
+            </label>
+          </div>
         </div>
         <button
           onClick={handleSendNew}
@@ -80,7 +85,7 @@ const Message = () => {
         </button>
       </div>
 
-      {/* Table */}
+      {/* Inbox Table */}
       <div className="overflow-x-auto border border-prime rounded-xl">
         <table className="table w-full">
           <thead className="bg-prime text-white text-sm">
@@ -153,6 +158,63 @@ const Message = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Sendbox Modal */}
+      <input type="checkbox" id="sendbox-modal" className="modal-toggle" />
+      <div className="modal">
+        <div className="modal-box max-w-5xl">
+          <h3 className="font-bold text-lg mb-4">Sent Messages</h3>
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="table w-full">
+              <thead className="bg-base-200">
+                <tr>
+                  <th>To</th>
+                  <th>Subject</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sendMessage.length > 0 ? (
+                  sendMessage.map((msg, i) => (
+                    <React.Fragment key={msg._id}>
+                      <tr
+                        className="hover:bg-base-100 cursor-pointer"
+                        onClick={() =>
+                          setExpandedSendId(expandedSendId === msg._id ? null : msg._id)
+                        }
+                      >
+                        <td>{msg.recipients.join(", ")}</td>
+                        <td>{msg.subject}</td>
+                        <td>{new Date(msg.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                      {expandedSendId === msg._id && (
+                        <tr className="bg-gray-50">
+                          <td colSpan="3" className="p-4">
+                            <div className="mb-2 text-gray-800">
+                              <strong>Description:</strong> {msg.description}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="3" className="text-center py-4 text-gray-500">
+                      No sent messages.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="modal-action">
+            <label htmlFor="sendbox-modal" className="btn">
+              Close
+            </label>
+          </div>
+        </div>
       </div>
     </div>
   );

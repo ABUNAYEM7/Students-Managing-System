@@ -36,16 +36,30 @@ const io = new Server(server, {
 
 // Socket.IO event listeners
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+  console.log("✅ A user connected:", socket.id);
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+  // Join role-based room (emitted from frontend)
+  socket.on("join-role", (role, email) => {
+    const room = `${role}-room`;
+
+    socket.join(room);
+    console.log(`🔐 Socket ${socket.id} joined room: ${room}`);
+
+    // Optionally, join email-based private room (for direct notifications)
+    if (email) {
+      socket.join(email);
+      console.log(`📩 Socket ${socket.id} also joined personal room: ${email}`);
+    }
   });
 
-  // example event
+  socket.on("disconnect", () => {
+    console.log("❌ User disconnected:", socket.id);
+  });
+
+  // Example chat event still optional
   socket.on("chat-message", (msg) => {
-    console.log("Message received:", msg);
-    io.emit("chat-message", msg); // broadcast to all connected clients
+    console.log("💬 Message received:", msg);
+    io.emit("chat-message", msg); // Broadcast to all
   });
 });
 
@@ -83,18 +97,14 @@ async function run() {
 
     const routinesCollection = client.db("academi_core").collection("routine");
     const messageCollection = client.db("academi_core").collection("message");
+    const notificationCollection = client
+      .db("academi_core")
+      .collection("notification");
 
     // save new user data in db
     app.post("/users", async (req, res) => {
       const user = req.body;
       const result = await usersCollection.insertOne(user);
-      res.send(result);
-    });
-
-    // save new courses data in db
-    app.post("/add-courses", async (req, res) => {
-      const course = req.body;
-      const result = await courseCollection.insertOne(course);
       res.send(result);
     });
 
@@ -137,14 +147,6 @@ async function run() {
     //   const result = await leavesCollection.insertOne(application);
     //   res.send(result);
     // });
-
-    // Notify clients when a new leave is submitted
-    app.post("/leave-application", async (req, res) => {
-      const application = req.body;
-      const result = await leavesCollection.insertOne(application);
-      io.emit("new-leave-request", application); // 🚨 Real-time broadcast!
-      res.send(result);
-    });
 
     // update specific course
     app.patch("/update-course/:id", async (req, res) => {
@@ -275,60 +277,6 @@ async function run() {
       } catch (err) {
         console.error("❌ Grade upsert error:", err);
         res.status(500).send({ success: false, message: "Server error." });
-      }
-    });
-
-    // POST: Enroll a student into a course
-    app.post("/enroll-course", async (req, res) => {
-      try {
-        const { email, course } = req.body;
-
-        if (!email || !course?.courseId || !course?.courseName) {
-          return res
-            .status(400)
-            .send({ success: false, message: "Missing required fields." });
-        }
-
-        // Optionally: fetch student info from users collection if needed
-        const user = await usersCollection.findOne({ email });
-
-        const studentName = user?.name || course.studentName || "Unknown";
-        const studentPhoto =
-          user?.photo ||
-          course.photo ||
-          "https://i.ibb.co/2K2tkj1/default-avatar.png";
-
-        const filter = { email };
-
-        const update = {
-          $setOnInsert: {
-            email,
-            name: studentName,
-            photo: studentPhoto,
-            createdAt: new Date(),
-          },
-          $addToSet: {
-            courses: {
-              courseId: course.courseId,
-              courseName: course.courseName,
-              credit: course.credit,
-              semester: course.semester,
-              enrolledAt: new Date(course.enrolledAt || Date.now()),
-            },
-          },
-          $set: {
-            updatedAt: new Date(),
-          },
-        };
-
-        const result = await studentsCollection.updateOne(filter, update, {
-          upsert: true,
-        });
-
-        res.send({ success: true, result });
-      } catch (error) {
-        console.error("Enroll Error:", error);
-        res.status(500).send({ success: false, message: "Server error" });
       }
     });
 
@@ -464,31 +412,6 @@ async function run() {
       } catch (err) {
         console.error("Error updating leave status:", err);
         res.status(500).send({ message: "Failed to update leave status" });
-      }
-    });
-
-    // patch notification for the leave req mark seen
-    app.patch("/faculty-leave-notifications/mark-seen", async (req, res) => {
-      const { leaveIds } = req.body;
-
-      if (!Array.isArray(leaveIds) || leaveIds.length === 0) {
-        return res
-          .status(400)
-          .send({ error: "leaveIds must be a non-empty array" });
-      }
-
-      try {
-        const objectIds = leaveIds.map((id) => new ObjectId(id));
-
-        const result = await leavesCollection.updateMany(
-          { _id: { $in: objectIds } },
-          { $set: { isSeen: true } }
-        );
-
-        res.send({ success: true, modified: result.modifiedCount });
-      } catch (err) {
-        console.error("❌ Failed to mark leaves as seen:", err);
-        res.status(500).send({ error: "Server error" });
       }
     });
 
@@ -1085,54 +1008,6 @@ async function run() {
       }
     });
 
-    // ✅ get instead notification for the leave request
-    app.get("/faculty-leave-notifications", async (req, res) => {
-      const { facultyEmail } = req.query;
-
-      if (!facultyEmail) {
-        return res.status(400).send({ error: "facultyEmail is required" });
-      }
-
-      try {
-        // 1. Get assigned course IDs
-        const assignedCourses = await courseCollection
-          .find({ facultyEmail })
-          .project({ _id: 1 })
-          .toArray();
-
-        const courseIds = assignedCourses.map((c) => c._id.toString());
-
-        if (courseIds.length === 0) return res.send([]);
-
-        // 2. Get enrolled students' emails
-        const students = await studentsCollection
-          .find({
-            courses: {
-              $elemMatch: { courseId: { $in: courseIds } },
-            },
-          })
-          .project({ email: 1 })
-          .toArray();
-
-        const studentEmails = students.map((s) => s.email);
-        if (studentEmails.length === 0) return res.send([]);
-
-        // 3. Fetch unseen leave requests only
-        const leaves = await leavesCollection
-          .find({
-            email: { $in: studentEmails },
-            isSeen: { $ne: true }, // Only unseen
-          })
-          .sort({ applicationDate: -1 })
-          .toArray();
-
-        res.send(leaves);
-      } catch (err) {
-        console.error("❌ Error in faculty-leave-notifications:", err);
-        res.status(500).send({ error: "Server error" });
-      }
-    });
-
     // get specific student grade
     app.get("/student-result/:email", async (req, res) => {
       const { email } = req.params;
@@ -1350,6 +1225,213 @@ async function run() {
       } catch (err) {
         console.error("❌ Error fetching replies:", err);
         res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
+    // get specific user email
+    app.get('/user-send/message/:email',async(req,res)=>{
+      const {email} = req.params;
+      const filter = {email};
+      const result = await  messageCollection.find(filter).toArray()
+      res.send(result)
+    })
+
+    // notifications routes
+
+    // ✅ Save new course and notify assigned faculty
+    app.post("/add-courses", async (req, res) => {
+      const course = req.body;
+      try {
+        const result = await courseCollection.insertOne(course);
+
+        // ✅ Store notification in DB
+        await notificationCollection.insertOne({
+          type: "course-assigned",
+          facultyEmail: course.facultyEmail,
+          courseId: result.insertedId,
+          courseName: course.name,
+          applicationDate: new Date(),
+          reason: "📚 New Course Assigned",
+          seen: false,
+        });
+
+        // ✅ Emit notification to faculty-room
+        io.to("faculty-room").emit("faculty-notification", {
+          type: "course-assigned",
+          facultyEmail: course.facultyEmail,
+          courseId: result.insertedId,
+          courseName: course.name,
+          applicationDate: new Date(),
+          reason: "📚 New Course Assigned",
+        });
+
+        res.send(result);
+      } catch (error) {
+        console.error("❌ Error adding course or sending notification:", error);
+        res.status(500).send({ error: "Failed to add course" });
+      }
+    });
+
+    // ✅ Notify clients when a new leave is submitted
+    app.post("/leave-application", async (req, res) => {
+      const application = req.body;
+      const result = await leavesCollection.insertOne(application);
+
+      // Derive facultyEmail from student's first course
+      let facultyEmail = null;
+      const student = await studentsCollection.findOne({
+        email: application.email,
+      });
+
+      if (student?.courses?.length) {
+        const courseIds = student.courses.map((c) => c.courseId);
+        const course = await courseCollection.findOne({
+          _id: new ObjectId(courseIds[0]),
+        });
+        facultyEmail = course?.facultyEmail || null;
+      }
+
+      const notification = {
+        type: "leave-request",
+        facultyEmail,
+        email: application.email,
+        applicationDate: new Date(),
+        reason: application.reason || "📩 New Leave Request",
+        seen: false,
+      };
+
+      await notificationCollection.insertOne(notification);
+
+      // Emit notification to faculty-room only
+      io.to("faculty-room").emit("faculty-notification", notification);
+      res.send(result);
+    });
+
+    // ✅ POST: Enroll a student into a course + Notify assigned faculty
+    app.post("/enroll-course", async (req, res) => {
+      try {
+        const { email, course } = req.body;
+        
+        if (!email || !course?.courseId || !course?.courseName) {
+          return res
+            .status(400)
+            .send({ success: false, message: "Missing required fields." });
+        }
+    
+        // ✅ Fetch student info
+        const user = await usersCollection.findOne({ email });    
+        const studentName = user?.name || course.studentName || "Unknown";
+        const studentPhoto =
+          user?.photo ||
+          course.photo ||
+          "https://i.ibb.co/2K2tkj1/default-avatar.png";
+    
+        const filter = { email };
+    
+        const update = {
+          $setOnInsert: {
+            email,
+            name: studentName,
+            photo: studentPhoto,
+            createdAt: new Date(),
+          },
+          $addToSet: {
+            courses: {
+              courseId: course.courseId,
+              courseName: course.courseName,
+              credit: course.credit,
+              semester: course.semester,
+              enrolledAt: new Date(course.enrolledAt || Date.now()),
+            },
+          },
+          $set: {
+            updatedAt: new Date(),
+          },
+        };
+    
+        const result = await studentsCollection.updateOne(filter, update, {
+          upsert: true,
+        });
+        // ✅ Find course by _id (parsed from string)
+        let actualCourse = null;
+        if (ObjectId.isValid(course.courseId)) {
+          actualCourse = await courseCollection.findOne({
+            _id: new ObjectId(course.courseId),
+          });
+        } else {
+          console.log("❌ Invalid ObjectId:", course.courseId);
+        }
+    
+        if (actualCourse?.facultyEmail) {
+          // ✅ Store notification in DB
+          const notification = {
+            type: "student-enrolled",
+            facultyEmail: actualCourse.facultyEmail,
+            email, // student email
+            courseId: actualCourse._id.toString(), // for clarity
+            courseName: actualCourse.name,
+            applicationDate: new Date(),
+            reason: `👨‍🎓 ${studentName} enrolled in ${actualCourse.name}`,
+            seen: false,
+          };
+    
+          console.log("🔔 Creating notification:", notification);
+    
+          await notificationCollection.insertOne(notification);
+          io.to("faculty-room").emit("faculty-notification", notification);
+    
+          console.log("📢 Notification emitted to faculty room.");
+        } else {
+          console.log("⚠️ No faculty email found for course:", actualCourse);
+        }
+    
+        res.send({ success: true, result });
+      } catch (error) {
+        console.error("❌ Enroll Error:", error);
+        res.status(500).send({ success: false, message: "Server error" });
+      }
+    });
+    
+    // ✅ PATCH: Mark faculty notifications as seen
+    app.patch("/faculty-notifications/mark-seen", async (req, res) => {
+      const { notificationIds } = req.body;
+      if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
+        return res
+          .status(400)
+          .send({ error: "notificationIds must be a non-empty array" });
+      }
+
+      try {
+        const objectIds = notificationIds.map((id) => new ObjectId(id));
+
+        const result = await notificationCollection.updateMany(
+          { _id: { $in: objectIds } },
+          { $set: { seen: true } }
+        );
+
+        res.send({ success: true, modified: result.modifiedCount });
+      } catch (err) {
+        console.error("❌ Failed to mark notifications as seen:", err);
+        res.status(500).send({ error: "Server error" });
+      }
+    });
+
+    // get faculty notification route
+    app.get("/faculty-notifications", async (req, res) => {
+      const { facultyEmail } = req.query;
+      if (!facultyEmail) {
+        return res.status(400).send({ error: "facultyEmail is required" });
+      }
+
+      try {
+        const notifications = await notificationCollection
+          .find({ facultyEmail })
+          .sort({ applicationDate: -1 })
+          .toArray();
+        res.send(notifications);
+      } catch (err) {
+        console.error("❌ Error fetching faculty notifications:", err);
+        res.status(500).send({ error: "Server error" });
       }
     });
 

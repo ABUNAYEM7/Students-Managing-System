@@ -1,6 +1,5 @@
-import { createContext, useContext, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import AxiosSecure from "../AxiosSecure";
+import { createContext, useContext, useState, useEffect } from "react";
+import socket from "../useSocket";
 
 const NotificationContext = createContext();
 
@@ -17,21 +16,18 @@ export const NotificationProvider = ({ children }) => {
 
   const clearNotifications = () => setNotifications([]);
 
-  // ✅ NEW: Hook to fetch with React Query
-  const useFacultyNotifications = (facultyEmail) => {
-    return useQuery({
-      queryKey: ["facultyNotifications", facultyEmail],
-      queryFn: async () => {
-        const axiosInstance = AxiosSecure();
-        const res = await axiosInstance.get(
-          `/faculty-leave-notifications?facultyEmail=${facultyEmail}`
-        );
-        return res.data || [];
-      },
-      enabled: !!facultyEmail, // only fetch if email is available
-      staleTime: 1000 * 60 * 5, // 5 minutes cache
-    });
-  };
+  // Optional: Listen for real-time socket notifications
+  useEffect(() => {
+    socket.on("faculty-notification", addNotification);
+    socket.on("admin-notification", addNotification);
+    socket.on("student-notification", addNotification);
+
+    return () => {
+      socket.off("faculty-notification");
+      socket.off("admin-notification");
+      socket.off("student-notification");
+    };
+  }, []);
 
   return (
     <NotificationContext.Provider
@@ -40,7 +36,6 @@ export const NotificationProvider = ({ children }) => {
         setNotifications,
         addNotification,
         clearNotifications,
-        useFacultyNotifications, 
       }}
     >
       {children}

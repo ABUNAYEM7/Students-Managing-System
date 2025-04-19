@@ -1,8 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router";
-import { FaBars, FaChartBar, FaHome, FaBook, FaUserGraduate, FaUsers, FaUserTie, FaClipboardList, FaMoneyBill } from "react-icons/fa";
-import { BiCalendar } from "react-icons/bi"
-import { MdMessage } from 'react-icons/md';
+import {
+  FaBars,
+  FaChartBar,
+  FaHome,
+  FaBook,
+  FaUserGraduate,
+  FaUsers,
+  FaUserTie,
+  FaClipboardList,
+  FaMoneyBill,
+} from "react-icons/fa";
+import { BiCalendar } from "react-icons/bi";
+import { MdMessage } from "react-icons/md";
 import Swal from "sweetalert2";
 import useAuth from "../Components/Hooks/useAuth";
 import useUserRole from "../Components/Hooks/useUserRole";
@@ -10,24 +20,26 @@ import logo from "../assets/logo.jfif";
 import FacultyRoutine from "../Pages/Faculty/FacultyRoutine/FacultyRoutine";
 import { FaBell } from "react-icons/fa";
 import { useNotification } from "../Components/Hooks/NotificationProvider/NotificationProvider";
+import { useFacultyNotifications } from "../Components/Hooks/NotificationProvider/useFacultyNotifications";
+import useMarkNotificationsSeen from "../Components/Hooks/NotificationProvider/useMarkNotificationsSeen";
 
 const navIcons = {
-  "ADMIN Dashboard": <FaHome />, 
-  Courses: <FaBook />, 
-  "Add Courses": <FaClipboardList />, 
-  Students: <FaUserGraduate />, 
-  Routine : <BiCalendar/>,
-  Faculty: <FaUserTie />, 
-  "Manage Users": <FaUsers />, 
-  Dashboard: <FaHome />, 
-  Grades: <FaClipboardList />, 
-  FacultyRoutine: <FacultyRoutine />, 
-  Attendance: <FaClipboardList />, 
-  Assignment: <FaClipboardList />, 
-  Materials: <FaBook />, 
-  Assignments: <FaClipboardList />, 
+  "ADMIN Dashboard": <FaHome />,
+  Courses: <FaBook />,
+  "Add Courses": <FaClipboardList />,
+  Students: <FaUserGraduate />,
+  Routine: <BiCalendar />,
+  Faculty: <FaUserTie />,
+  "Manage Users": <FaUsers />,
+  Dashboard: <FaHome />,
+  Grades: <FaClipboardList />,
+  FacultyRoutine: <FacultyRoutine />,
+  Attendance: <FaClipboardList />,
+  Assignment: <FaClipboardList />,
+  Materials: <FaBook />,
+  Assignments: <FaClipboardList />,
   Fees: <FaMoneyBill />,
-  Message :<MdMessage/>
+  Message: <MdMessage />,
 };
 
 const getNavClass = ({ isActive }) =>
@@ -50,39 +62,25 @@ const DashboardDrawer = () => {
   const { data } = useUserRole();
   const userRole = data?.data?.role;
 
-    const [hasSeenNotifications, setHasSeenNotifications] = useState(() => {
-      return localStorage.getItem("hasSeen") === "true";
-    });
-  
-    const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const toggleDrawer = () => setIsOpen(!isOpen);
 
+  const { notifications, setNotifications } = useNotification();
 
-    const {
-      notifications,
-      setNotifications,
-      useFacultyNotifications,
-    } = useNotification();
-  
-  
-    const { data: fetchedNotifications = [] } = useFacultyNotifications(user?.email);
-  
-    useEffect(() => {
-      if (fetchedNotifications.length) {
-        const existingIds = new Set(notifications.map((n) => n._id));
-        const unique = fetchedNotifications.filter((n) => !existingIds.has(n._id));
-  
-        if (unique.length > 0) {
-          setNotifications((prev) => [...unique, ...prev]);
-  
-          const alreadySeen = localStorage.getItem("hasSeen") === "true";
-          if (!alreadySeen) {
-            setHasSeenNotifications(false);
-          }
-        }
-      }
-    }, [fetchedNotifications]);
+  const { data: fetchedNotifications = [] } = useFacultyNotifications(
+    user?.email
+  );
+  const markSeen = useMarkNotificationsSeen();
+
+  useEffect(() => {
+    if (fetchedNotifications.length) {
+      const sorted = [...fetchedNotifications].sort(
+        (a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)
+      );
+      setNotifications(sorted);
+    }
+  }, [fetchedNotifications]);
 
   const logoutHandler = async () => {
     try {
@@ -99,16 +97,21 @@ const DashboardDrawer = () => {
     }
   };
 
+  const handleNotificationClick = async () => {
+    setDropdownOpen((prev) => !prev);
+    const unseenNotifications = notifications.filter((n) => !n.seen);
+    if (unseenNotifications.length > 0) {
+      await markSeen(unseenNotifications, "/faculty-notifications/mark-seen");
+      
+      const updated = notifications.map((n) =>
+        unseenNotifications.find((u) => u._id === n._id)
+          ? { ...n, seen: true }
+          : n
+      );
 
-    const handleNotificationClick = () => {
-      setDropdownOpen((prev) => !prev);
-      if (!hasSeenNotifications) {
-        setHasSeenNotifications(true);
-        localStorage.setItem("hasSeen", "true");
-      }
-    };
-  
-
+      setNotifications(updated);
+    }
+  };
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
@@ -117,48 +120,49 @@ const DashboardDrawer = () => {
           <button onClick={toggleDrawer}>
             {isOpen ? <FaBars size={25} /> : <FaChartBar size={25} />}
           </button>
-          <Link to={'/'}>
+          <Link to={"/"}>
             <img className="w-12 h-12 rounded-full" src={logo} alt="logo" />
           </Link>
         </div>
         <div className="flex items-center gap-2">
-                  {/* 🔔 Notification Bell */}
-                  <div className="relative dropdown-end">
-                    <button
-                      onClick={handleNotificationClick}
-                      className="btn btn-ghost btn-circle relative"
-                    >
-                      <FaBell className="text-xl" />
-                      {!hasSeenNotifications && notifications.length > 0 && (
-                        <span className="badge badge-sm bg-red-600 text-white absolute -top-1 -right-1">
-                          {notifications.length}
-                        </span>
-                      )}
-                    </button>
-          
-                    {dropdownOpen && (
-                      <div className="absolute right-0 mt-3 z-[1] card card-compact w-80 bg-white shadow-lg">
-                        <div className="card-body">
-                          <h3 className="font-bold text-lg">Notifications</h3>
-                          <ul className="divide-y max-h-64 overflow-y-auto">
-                            {notifications.length === 0 ? (
-                              <li className="py-2 text-gray-500">No new notifications</li>
-                            ) : (
-                              notifications.map((n, i) => (
-                                <li key={i} className="py-2 text-sm">
-                                  <strong>{n.reason || "Leave Request"}</strong> by <strong>{n.email}</strong>
-                                  <br />
-                                  <span className="text-xs text-gray-400">
-                                    {new Date(n.applicationDate).toLocaleString()}
-                                  </span>
-                                </li>
-                              ))
-                            )}
-                          </ul>
-                        </div>
-                      </div>
+          {/* 🔔 Notification Bell */}
+          <div className="relative dropdown-end">
+            <button
+              onClick={handleNotificationClick}
+              className="btn btn-ghost btn-circle relative"
+            >
+              <FaBell className="text-xl" />
+              {notifications.some((n) => !n.seen) && (
+                <span className="badge badge-sm bg-red-600 text-white absolute -top-1 -right-1">
+                  {notifications.filter((n) => !n.seen).length}
+                </span>
+              )}
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-3 z-[1] card card-compact w-80 bg-white shadow-lg">
+                <div className="card-body">
+                  <h3 className="font-bold text-lg">Notifications</h3>
+                  <ul className="divide-y max-h-64 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <li className="py-2 text-gray-500">No notifications</li>
+                    ) : (
+                      notifications.map((n, i) => (
+                        <li key={i} className="py-2 text-sm">
+                          <strong>{n.reason || "Leave Request"}</strong> by{" "}
+                          <strong>{n.email}</strong>
+                          <br />
+                          <span className="text-xs text-gray-400">
+                            {new Date(n.applicationDate).toLocaleString()}
+                          </span>
+                        </li>
+                      ))
                     )}
-                  </div>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="dropdown dropdown-bottom">
             <div
               tabIndex={0}
@@ -191,103 +195,195 @@ const DashboardDrawer = () => {
           </div>
         </div>
       </div>
-        {/* side drawer */}
+
+      {/* Sidebar and Page Content */}
       <div className="flex flex-col sm:flex-row flex-1">
-        {/* Sidebar Drawer */}
         <div
-          className={`transition-all duration-300 ${isOpen ? "h-auto sm:w-64" : "h-0 sm:w-0"} overflow-hidden bg-base-200 sm:h-auto sm:block`}
+          className={`transition-all duration-300 ${
+            isOpen ? "h-auto sm:w-64" : "h-0 sm:w-0"
+          } overflow-hidden bg-base-200 sm:h-auto sm:block`}
         >
           <div className="p-4">
             <ul className="menu w-full text-lg font-semibold space-y-2">
-              {/* admin navigation buttons */}
               {userRole === "admin" && (
                 <>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/admin/home" label="ADMIN Dashboard" icon={navIcons["ADMIN Dashboard"]} end />
+                    <ResponsiveNavLink
+                      to="/dashboard/admin/home"
+                      label="ADMIN Dashboard"
+                      icon={navIcons["ADMIN Dashboard"]}
+                      end
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/courses" label="Courses" icon={navIcons["Courses"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/courses"
+                      label="Courses"
+                      icon={navIcons.Courses}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/routine" label="Routine" icon={navIcons["Routine"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/routine"
+                      label="Routine"
+                      icon={navIcons.Routine}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/manage-students" label="Students" icon={navIcons["Students"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/manage-students"
+                      label="Students"
+                      icon={navIcons.Students}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/manage-faculty" label="Faculty" icon={navIcons["Faculty"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/manage-faculty"
+                      label="Faculty"
+                      icon={navIcons.Faculty}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/manage-users" label="Manage Users" icon={navIcons["Manage Users"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/manage-users"
+                      label="Manage Users"
+                      icon={navIcons["Manage Users"]}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/message" label="Message" icon={navIcons["Message"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/message"
+                      label="Message"
+                      icon={navIcons.Message}
+                    />
                   </li>
                 </>
               )}
-              {/* faculty navigation buttons */}
               {userRole === "faculty" && (
                 <>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/faculty/home" label="Dashboard" icon={navIcons["Dashboard"]} end />
+                    <ResponsiveNavLink
+                      to="/dashboard/faculty/home"
+                      label="Dashboard"
+                      icon={navIcons.Dashboard}
+                      end
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/faculty-courses" label="Courses" icon={navIcons["Courses"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/faculty-courses"
+                      label="Courses"
+                      icon={navIcons.Courses}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/faculty-routine" label="Routine" icon={navIcons["Routine"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/faculty-routine"
+                      label="Routine"
+                      icon={navIcons.Routine}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/faculty-grades" label="Grades" icon={navIcons["Grades"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/faculty-grades"
+                      label="Grades"
+                      icon={navIcons.Grades}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/faculty-attendance" label="Attendance" icon={navIcons["Attendance"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/faculty-attendance"
+                      label="Attendance"
+                      icon={navIcons.Attendance}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/assignment" label="Assignment" icon={navIcons["Assignment"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/assignment"
+                      label="Assignment"
+                      icon={navIcons.Assignment}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/materials" label="Materials" icon={navIcons["Materials"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/materials"
+                      label="Materials"
+                      icon={navIcons.Materials}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/message" label="Message" icon={navIcons["Message"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/message"
+                      label="Message"
+                      icon={navIcons.Message}
+                    />
                   </li>
                 </>
               )}
-              {/* student navigation buttons */}
               {userRole === "student" && (
                 <>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/student/home" label="Dashboard" icon={navIcons["Dashboard"]} end />
+                    <ResponsiveNavLink
+                      to="/dashboard/student/home"
+                      label="Dashboard"
+                      icon={navIcons.Dashboard}
+                      end
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/student-courses" label="Courses" icon={navIcons["Courses"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/student-courses"
+                      label="Courses"
+                      icon={navIcons.Courses}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/student-assignment" label="Assignments" icon={navIcons["Assignments"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/student-assignment"
+                      label="Assignments"
+                      icon={navIcons.Assignments}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/student-routine" label="Routine" icon={navIcons["Routine"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/student-routine"
+                      label="Routine"
+                      icon={navIcons.Routine}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/attendance" label="Attendance" icon={navIcons["Attendance"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/attendance"
+                      label="Attendance"
+                      icon={navIcons.Attendance}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/grade" label="Grades" icon={navIcons["Grades"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/grade"
+                      label="Grades"
+                      icon={navIcons.Grades}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/fee" label="Fees" icon={navIcons["Fees"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/fee"
+                      label="Fees"
+                      icon={navIcons.Fees}
+                    />
                   </li>
                   <li>
-                    <ResponsiveNavLink to="/dashboard/message" label="Message" icon={navIcons["Message"]} />
+                    <ResponsiveNavLink
+                      to="/dashboard/message"
+                      label="Message"
+                      icon={navIcons.Message}
+                    />
                   </li>
                 </>
               )}
             </ul>
           </div>
         </div>
-
-        {/* Page Content */}
         <div className="p-2 flex-1 bg-base-100">
           <Outlet />
         </div>

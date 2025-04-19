@@ -1,73 +1,41 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { Link, NavLink } from "react-router"; 
 import logo from "../assets/logo.jfif";
-import { Link, NavLink } from "react-router";
 import useAuth from "../Components/Hooks/useAuth";
 import Swal from "sweetalert2";
 import useUserRole from "../Components/Hooks/useUserRole";
-import { FaBell } from "react-icons/fa";
-import { useNotification } from "../Components/Hooks/NotificationProvider/NotificationProvider";
 
 const Navbar = () => {
   const { user, userLogOut } = useAuth();
-  const { data: userRole, refetch } = useUserRole();
-  const {
-    notifications,
-    setNotifications,
-    useFacultyNotifications,
-  } = useNotification();
-
-  const [hasSeenNotifications, setHasSeenNotifications] = useState(() => {
-    return localStorage.getItem("hasSeen") === "true";
-  });
-
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  const { data: fetchedNotifications = [] } = useFacultyNotifications(user?.email);
-
-  useEffect(() => {
-    if (fetchedNotifications.length) {
-      const existingIds = new Set(notifications.map((n) => n._id));
-      const unique = fetchedNotifications.filter((n) => !existingIds.has(n._id));
-
-      if (unique.length > 0) {
-        setNotifications((prev) => [...unique, ...prev]);
-
-        const alreadySeen = localStorage.getItem("hasSeen") === "true";
-        if (!alreadySeen) {
-          setHasSeenNotifications(false);
-        }
-      }
-    }
-  }, [fetchedNotifications]);
-
+  const { data: userRole } = useUserRole();
 
   const logoutHandler = async () => {
-    await userLogOut()
-      .then((res) => {
-        if (!res) {
-          Swal.fire({
-            position: "center",
-            icon: "success",
-            title: "Logout Successful",
-            showConfirmButton: false,
-            timer: 1500,
-          });
-        }
-        localStorage.removeItem("hasSeen");
-      })
-      .catch((err) => console.log(err));
+    try {
+      await userLogOut();
+      Swal.fire({
+        position: "center",
+        icon: "success",
+        title: "Logout Successful",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+      localStorage.removeItem("hasSeen");
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const Links = (
     <>
       <li><NavLink to={"/"}>Home</NavLink></li>
-      <li><NavLink to={"/"}>About</NavLink></li>
-      <li><NavLink to={"/"}>Products</NavLink></li>
+      <li><NavLink to={"/about"}>About</NavLink></li>
+      <li><NavLink to={"/products"}>Products</NavLink></li>
     </>
   );
 
   return (
     <div className="navbar bg-prime/60 backdrop-blur-md shadow-sm fixed top-0 z-50 mx-auto max-w-[1480px]">
+      {/* Left: Logo & Mobile Menu */}
       <div className="navbar-start">
         <div className="dropdown">
           <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
@@ -75,7 +43,7 @@ const Navbar = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
             </svg>
           </div>
-          <ul className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 text-highlight">
+          <ul className="menu menu-sm dropdown-content bg-base-100 rounded-box z-10 mt-3 w-52 p-2 text-highlight">
             {Links}
           </ul>
         </div>
@@ -84,20 +52,20 @@ const Navbar = () => {
         </Link>
       </div>
 
+      {/* Center: Desktop Menu */}
       <div className="navbar-center hidden lg:flex">
         <ul className="menu menu-horizontal px-1 text-xl font-medium text-black">
           {Links}
         </ul>
       </div>
 
+      {/* Right: User Avatar / Auth */}
       <div className="navbar-end gap-3">
-
-        {/* 👤 User Avatar */}
         {user ? (
           <div className="dropdown dropdown-bottom">
             <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
               <div className="w-10 rounded-full">
-                <img referrerPolicy="no-referrer" alt="User" src={user?.photoURL} />
+                <img referrerPolicy="no-referrer" alt="User" src={user?.photoURL || "/default-avatar.png"} />
               </div>
             </div>
             <ul
@@ -106,12 +74,12 @@ const Navbar = () => {
             >
               <li>
                 {userRole?.data?.role !== "user" && (
-                  <Link to={"/dashboard"} className="hover:border-highlight border-2 hover:text-highlight">
+                  <Link to="/dashboard" className="hover:text-highlight">
                     Dashboard
                   </Link>
                 )}
                 <button
-                  className="hover:border-highlight border-2 hover:text-highlight mt-2"
+                  className="hover:text-highlight mt-2"
                   onClick={logoutHandler}
                 >
                   Logout
@@ -121,10 +89,10 @@ const Navbar = () => {
           </div>
         ) : (
           <NavLink
-            to={"/signIn"}
+            to="/signIn"
             className="btn bg-highlight text-white hover:bg-white hover:border-2 hover:border-highlight hover:text-highlight"
           >
-            SignIn
+            Sign In
           </NavLink>
         )}
       </div>
