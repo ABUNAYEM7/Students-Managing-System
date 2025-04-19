@@ -40,7 +40,7 @@ export const NotificationProvider = ({ children }) => {
         setNotifications,
         addNotification,
         clearNotifications,
-        useFacultyNotifications, // ✅ Export React Query hook
+        useFacultyNotifications, 
       }}
     >
       {children}

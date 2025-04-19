@@ -38,6 +38,8 @@ import Routine from "../Pages/Admin/Routine/Routine";
 import AddRoutine from "../Components/AddRoutine/AddRoutine";
 import FacultyRoutine from "../Pages/Faculty/FacultyRoutine/FacultyRoutine";
 import StudentRoutine from "../Pages/Student/StudentRoutine/StudentRoutine";
+import SendMessage from "../Components/SendMessage/SendMessage";
+import Message from "../Pages/Message/Message";
 
 
 const AppRouter = () => {
@@ -102,6 +104,11 @@ const AppRouter = () => {
             <Route path="add-materials" element={<AddMaterials/>}/>
             <Route path="add-materials/:id" element={<AddMaterials/>}/>
           </Route>
+          {/* message-route */}
+          <Route path="message" element={<Message/>}/>
+          {/* dynamic route */}
+          <Route path="send-message" element={<SendMessage/>}/>
+          <Route path="send-message/:id" element={<SendMessage/>}/>
         </Route>
       </Route>
     </Routes>

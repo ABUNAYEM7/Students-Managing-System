@@ -40,13 +40,6 @@ const Navbar = () => {
     }
   }, [fetchedNotifications]);
 
-  const handleNotificationClick = () => {
-    setDropdownOpen((prev) => !prev);
-    if (!hasSeenNotifications) {
-      setHasSeenNotifications(true);
-      localStorage.setItem("hasSeen", "true");
-    }
-  };
 
   const logoutHandler = async () => {
     await userLogOut()
@@ -98,43 +91,6 @@ const Navbar = () => {
       </div>
 
       <div className="navbar-end gap-3">
-        {/* 🔔 Notification Bell */}
-        <div className="relative dropdown-end">
-          <button
-            onClick={handleNotificationClick}
-            className="btn btn-ghost btn-circle relative"
-          >
-            <FaBell className="text-xl" />
-            {!hasSeenNotifications && notifications.length > 0 && (
-              <span className="badge badge-sm bg-red-600 text-white absolute -top-1 -right-1">
-                {notifications.length}
-              </span>
-            )}
-          </button>
-
-          {dropdownOpen && (
-            <div className="absolute right-0 mt-3 z-[1] card card-compact w-80 bg-white shadow-lg">
-              <div className="card-body">
-                <h3 className="font-bold text-lg">Notifications</h3>
-                <ul className="divide-y max-h-64 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <li className="py-2 text-gray-500">No new notifications</li>
-                  ) : (
-                    notifications.map((n, i) => (
-                      <li key={i} className="py-2 text-sm">
-                        <strong>{n.reason || "Leave Request"}</strong> by <strong>{n.email}</strong>
-                        <br />
-                        <span className="text-xs text-gray-400">
-                          {new Date(n.applicationDate).toLocaleString()}
-                        </span>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* 👤 User Avatar */}
         {user ? (
