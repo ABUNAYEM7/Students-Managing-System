@@ -294,6 +294,13 @@ async function run() {
           return res.status(400).send({ message: "Missing required fields." });
         }
 
+        const allHaveCourse = data.routines.every((r) => r.course);
+        if (!allHaveCourse) {
+          return res
+            .status(400)
+            .send({ message: "Each routine must include a course." });
+        }
+
         const result = await routinesCollection.insertOne({
           semester: data.semester,
           department: data.department,
@@ -1229,12 +1236,12 @@ async function run() {
     });
 
     // get specific user email
-    app.get('/user-send/message/:email',async(req,res)=>{
-      const {email} = req.params;
-      const filter = {email};
-      const result = await  messageCollection.find(filter).toArray()
-      res.send(result)
-    })
+    app.get("/user-send/message/:email", async (req, res) => {
+      const { email } = req.params;
+      const filter = { email };
+      const result = await messageCollection.find(filter).toArray();
+      res.send(result);
+    });
 
     // notifications routes
 
@@ -1311,23 +1318,23 @@ async function run() {
     app.post("/enroll-course", async (req, res) => {
       try {
         const { email, course } = req.body;
-        
+
         if (!email || !course?.courseId || !course?.courseName) {
           return res
             .status(400)
             .send({ success: false, message: "Missing required fields." });
         }
-    
+
         // ✅ Fetch student info
-        const user = await usersCollection.findOne({ email });    
+        const user = await usersCollection.findOne({ email });
         const studentName = user?.name || course.studentName || "Unknown";
         const studentPhoto =
           user?.photo ||
           course.photo ||
           "https://i.ibb.co/2K2tkj1/default-avatar.png";
-    
+
         const filter = { email };
-    
+
         const update = {
           $setOnInsert: {
             email,
@@ -1348,7 +1355,7 @@ async function run() {
             updatedAt: new Date(),
           },
         };
-    
+
         const result = await studentsCollection.updateOne(filter, update, {
           upsert: true,
         });
@@ -1361,7 +1368,7 @@ async function run() {
         } else {
           console.log("❌ Invalid ObjectId:", course.courseId);
         }
-    
+
         if (actualCourse?.facultyEmail) {
           // ✅ Store notification in DB
           const notification = {
@@ -1374,24 +1381,24 @@ async function run() {
             reason: `👨‍🎓 ${studentName} enrolled in ${actualCourse.name}`,
             seen: false,
           };
-    
+
           console.log("🔔 Creating notification:", notification);
-    
+
           await notificationCollection.insertOne(notification);
           io.to("faculty-room").emit("faculty-notification", notification);
-    
+
           console.log("📢 Notification emitted to faculty room.");
         } else {
           console.log("⚠️ No faculty email found for course:", actualCourse);
         }
-    
+
         res.send({ success: true, result });
       } catch (error) {
         console.error("❌ Enroll Error:", error);
         res.status(500).send({ success: false, message: "Server error" });
       }
     });
-    
+
     // ✅ PATCH: Mark faculty notifications as seen
     app.patch("/faculty-notifications/mark-seen", async (req, res) => {
       const { notificationIds } = req.body;

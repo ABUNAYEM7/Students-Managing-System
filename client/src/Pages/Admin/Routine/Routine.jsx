@@ -107,6 +107,7 @@ const Routine = () => {
                     <th>#</th>
                     <th>Day</th>
                     <th>Time</th>
+                    <th>Course</th>
                     <th>Created At</th>
                     <th>Created By</th>
                     <th>Online Link</th>
@@ -120,6 +121,7 @@ const Routine = () => {
                       <td>{index + 1}</td>
                       <td>{item?.day}</td>
                       <td>{item?.time}</td>
+                      <td>{item?.course || "N/A"}</td> 
                       <td>{dayjs(routineItem.createdAt).format("DD MMM YYYY")}</td>
                       <td>{routineItem.createdBy}</td>
                       <td className="text-blue-600 underline break-all">{item?.onlineLink}</td>

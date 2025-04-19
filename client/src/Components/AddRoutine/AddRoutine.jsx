@@ -19,6 +19,8 @@ const AddRoutine = () => {
 
   const [facultyList, setFacultyList] = useState([]);
   const [currentDay, setCurrentDay] = useState("");
+  const [courseList, setCourseList] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState("");
   const [currentTime, setCurrentTime] = useState("");
   const [currentLink, setCurrentLink] = useState("");
   const [errors, setErrors] = useState({});
@@ -46,6 +48,7 @@ const AddRoutine = () => {
 
   const Associate = ["English as a Second Language"];
   const semesters = ["Spring 2025", "Summer 2025", "Fall 2025", "Winter 2025"];
+
   const daysOfWeek = [
     "Sunday",
     "Monday",
@@ -88,6 +91,28 @@ const AddRoutine = () => {
     }
   }, [formData.department]);
 
+  useEffect(() => {
+    if (formData.department) {
+      axiosInstance
+        .get(`/faculties-by-department?department=${formData.department}`)
+        .then((res) => {
+          setFacultyList(res.data);
+        })
+        .catch((err) => {
+          console.error("Error fetching faculty list:", err);
+        });
+
+      // 🔥 NEW: fetch courses for selected department
+      axiosInstance
+        .get(`/all-courses-by-department?department=${formData.department}`)
+        .then((res) => setCourseList(res.data))
+        .catch((err) => console.error("Error fetching course list:", err));
+    } else {
+      setFacultyList([]);
+      setCourseList([]); // 🔥 reset course list if department is unselected
+    }
+  }, [formData.department]);
+
   const handleFieldChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -102,9 +127,12 @@ const AddRoutine = () => {
     if (!currentDay) routineErrors.currentDay = "CurrentDay is required";
     if (!currentTime) routineErrors.currentTime = "CurrentTime is required";
     if (!currentLink) routineErrors.currentLink = "CurrentLink is required";
-    if (facultyList.length === 0) routineErrors.faculty = "FacultyList is required";
+    if (facultyList.length === 0)
+      routineErrors.faculty = "FacultyList is required";
     if (!formData.semester) routineErrors.semester = "Semester is required";
-    if (!formData.department) routineErrors.department = "Department is required";
+    if (!formData.department)
+      routineErrors.department = "Department is required";
+    if (!selectedCourse) routineErrors.selectedCourse = "Course is required";
 
     if (Object.keys(routineErrors).length > 0) {
       setErrors((prev) => ({ ...prev, ...routineErrors }));
@@ -115,9 +143,10 @@ const AddRoutine = () => {
     const newRoutine = {
       day: currentDay,
       time: currentTime,
+      course: selectedCourse,
       onlineLink: currentLink,
       facultyEmails,
-      status : 'pending'
+      status: "pending",
     };
 
     setFormData((prev) => ({
@@ -136,8 +165,10 @@ const AddRoutine = () => {
 
     if (!formData.semester) formErrors.semester = "Semester is required";
     if (!formData.department) formErrors.department = "Department is required";
-    if (!formData.weekStartDate) formErrors.weekStartDate = "WeekStartDate is required";
-    if (formData.routines.length === 0) formErrors.routines = "At least one day must be added to the routine.";
+    if (!formData.weekStartDate)
+      formErrors.weekStartDate = "WeekStartDate is required";
+    if (formData.routines.length === 0)
+      formErrors.routines = "At least one day must be added to the routine.";
 
     if (Object.keys(formErrors).length > 0) {
       setErrors((prev) => ({ ...prev, ...formErrors }));
@@ -147,6 +178,7 @@ const AddRoutine = () => {
     const routineEntry = {
       day: currentDay,
       time: currentTime,
+      course: selectedCourse,
       onlineLink: currentLink,
       facultyEmails: facultyList.map((f) => f.facultyEmail),
     };
@@ -174,7 +206,10 @@ const AddRoutine = () => {
           createdBy: user?.email || "unknown",
         };
 
-        const res = await axiosInstance.post("/add/weekly-routine", fullRoutine);
+        const res = await axiosInstance.post(
+          "/add/weekly-routine",
+          fullRoutine
+        );
 
         if (res.data?.insertedId) {
           Swal.fire({
@@ -222,10 +257,14 @@ const AddRoutine = () => {
             >
               <option value="">Select Semester</option>
               {semesters.map((sem, idx) => (
-                <option key={idx} value={sem}>{sem}</option>
+                <option key={idx} value={sem}>
+                  {sem}
+                </option>
               ))}
             </select>
-            {errors.semester && <p className="text-red-500 text-sm mt-1">{errors.semester}</p>}
+            {errors.semester && (
+              <p className="text-red-500 text-sm mt-1">{errors.semester}</p>
+            )}
           </div>
 
           <div className="form-control">
@@ -240,26 +279,57 @@ const AddRoutine = () => {
               <option value="">Select Department</option>
               <optgroup label="Bachelor Programs">
                 {BachelorProgram.map((dept, idx) => (
-                  <option key={`b-${idx}`} value={dept}>{dept}</option>
+                  <option key={`b-${idx}`} value={dept}>
+                    {dept}
+                  </option>
                 ))}
               </optgroup>
               <optgroup label="Masters Programs">
                 {Masters.map((dept, idx) => (
-                  <option key={`m-${idx}`} value={dept}>{dept}</option>
+                  <option key={`m-${idx}`} value={dept}>
+                    {dept}
+                  </option>
                 ))}
               </optgroup>
               <optgroup label="Doctorate Programs">
                 {Doctorate.map((dept, idx) => (
-                  <option key={`d-${idx}`} value={dept}>{dept}</option>
+                  <option key={`d-${idx}`} value={dept}>
+                    {dept}
+                  </option>
                 ))}
               </optgroup>
               <optgroup label="Associate Program">
                 {Associate.map((dept, idx) => (
-                  <option key={`a-${idx}`} value={dept}>{dept}</option>
+                  <option key={`a-${idx}`} value={dept}>
+                    {dept}
+                  </option>
                 ))}
               </optgroup>
             </select>
-            {errors.department && <p className="text-red-500 text-sm mt-1">{errors.department}</p>}
+            {errors.department && (
+              <p className="text-red-500 text-sm mt-1">{errors.department}</p>
+            )}
+          </div>
+
+          <div className="form-control md:col-span-2">
+            <label className="label font-semibold">Course</label>
+            <select
+              className="select w-full border-2 border-prime focus:outline-none"
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+            >
+              <option value="">Select Course</option>
+              {courseList.map((course, idx) => (
+                <option key={idx} value={course.name}>
+                  {course.name}
+                </option>
+              ))}
+            </select>
+            {errors.selectedCourse && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.selectedCourse}
+              </p>
+            )}
           </div>
 
           <div className="form-control md:col-span-2">
@@ -272,7 +342,11 @@ const AddRoutine = () => {
               value={formData.weekStartDate}
               disabled={!!routineId}
             />
-            {errors.weekStartDate && <p className="text-red-500 text-sm mt-1">{errors.weekStartDate}</p>}
+            {errors.weekStartDate && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.weekStartDate}
+              </p>
+            )}
           </div>
 
           <div className="form-control">
@@ -287,10 +361,14 @@ const AddRoutine = () => {
             >
               <option value="">Select Day</option>
               {daysOfWeek.map((day, idx) => (
-                <option key={idx} value={day}>{day}</option>
+                <option key={idx} value={day}>
+                  {day}
+                </option>
               ))}
             </select>
-            {errors.currentDay && <p className="text-red-500 text-sm mt-1">{errors.currentDay}</p>}
+            {errors.currentDay && (
+              <p className="text-red-500 text-sm mt-1">{errors.currentDay}</p>
+            )}
           </div>
 
           <div className="form-control">
@@ -305,7 +383,9 @@ const AddRoutine = () => {
               }}
               placeholder="e.g., 10:00 AM - 11:30 AM"
             />
-            {errors.currentTime && <p className="text-red-500 text-sm mt-1">{errors.currentTime}</p>}
+            {errors.currentTime && (
+              <p className="text-red-500 text-sm mt-1">{errors.currentTime}</p>
+            )}
           </div>
 
           <div className="form-control md:col-span-2">
@@ -320,7 +400,9 @@ const AddRoutine = () => {
               }}
               placeholder="https://zoom.us/..."
             />
-            {errors.currentLink && <p className="text-red-500 text-sm mt-1">{errors.currentLink}</p>}
+            {errors.currentLink && (
+              <p className="text-red-500 text-sm mt-1">{errors.currentLink}</p>
+            )}
           </div>
 
           {!routineId && (
@@ -333,7 +415,9 @@ const AddRoutine = () => {
                 >
                   ➕ Add to Weekly Routine
                 </button>
-                {errors.routines && <p className="text-red-500 text-sm mt-2">{errors.routines}</p>}
+                {errors.routines && (
+                  <p className="text-red-500 text-sm mt-2">{errors.routines}</p>
+                )}
               </div>
 
               {formData.routines.length > 0 && (
@@ -344,7 +428,8 @@ const AddRoutine = () => {
                   <ul className="list-disc list-inside text-sm">
                     {formData.routines.map((entry, idx) => (
                       <li key={idx}>
-                        <strong>{entry.day}</strong>: {entry.time} | {entry.onlineLink}
+                        <strong>{entry.day}</strong>: {entry.time} |{" "}
+                        {entry.onlineLink} | {entry?.course}
                       </li>
                     ))}
                   </ul>
