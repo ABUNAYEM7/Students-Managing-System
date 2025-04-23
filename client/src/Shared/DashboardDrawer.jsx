@@ -22,6 +22,7 @@ import { FaBell } from "react-icons/fa";
 import { useNotification } from "../Components/Hooks/NotificationProvider/NotificationProvider";
 import { useFacultyNotifications } from "../Components/Hooks/NotificationProvider/useFacultyNotifications";
 import useMarkNotificationsSeen from "../Components/Hooks/NotificationProvider/useMarkNotificationsSeen";
+import { useStudentNotifications } from "../Components/Hooks/NotificationProvider/useStudentNotifications";
 
 const navIcons = {
   "ADMIN Dashboard": <FaHome />,
@@ -68,9 +69,13 @@ const DashboardDrawer = () => {
 
   const { notifications, setNotifications } = useNotification();
 
-  const { data: fetchedNotifications = [] } = useFacultyNotifications(
-    user?.email
-  );
+  const { data: fetchedNotifications = [] } =
+    userRole === "faculty"
+      ? useFacultyNotifications(user?.email)
+      : userRole === "student"
+      ? useStudentNotifications(user?.email)
+      : { data: [] };
+
   const markSeen = useMarkNotificationsSeen();
 
   useEffect(() => {
@@ -102,7 +107,7 @@ const DashboardDrawer = () => {
     const unseenNotifications = notifications.filter((n) => !n.seen);
     if (unseenNotifications.length > 0) {
       await markSeen(unseenNotifications, "/faculty-notifications/mark-seen");
-      
+
       const updated = notifications.map((n) =>
         unseenNotifications.find((u) => u._id === n._id)
           ? { ...n, seen: true }
@@ -112,6 +117,9 @@ const DashboardDrawer = () => {
       setNotifications(updated);
     }
   };
+
+  // console.log(notifications, userRole);
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
@@ -148,13 +156,69 @@ const DashboardDrawer = () => {
                       <li className="py-2 text-gray-500">No notifications</li>
                     ) : (
                       notifications.map((n, i) => (
-                        <li key={i} className="py-2 text-sm">
-                          <strong>{n.reason || "Leave Request"}</strong> by{" "}
-                          <strong>{n.email}</strong>
-                          <br />
-                          <span className="text-xs text-gray-400">
-                            {new Date(n.applicationDate).toLocaleString()}
-                          </span>
+                        <li key={i} className="py-2 text-sm space-y-1">
+                          {/* 🧑‍🏫 Faculty View */}
+                          {userRole === "faculty" && (
+                            <>
+                              {n.type === "leave-request" && (
+                                <>
+                                  <strong>📝 Leave Request</strong>
+                                  <div className="text-xs">From: {n.email}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {n.reason}
+                                  </div>
+                                </>
+                              )}
+                              {n.type === "course-assigned" && (
+                                <>
+                                  <strong>📘 New Course Assigned</strong>
+                                  <div className="text-xs">
+                                    Course: {n.courseName}
+                                  </div>
+                                </>
+                              )}
+                              {n.type === "student-enrolled" && (
+                                <>
+                                  <strong>👨‍🎓 New Student Enrolled</strong>
+                                  <div className="text-xs">
+                                    {n.email} → {n.courseName}
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          )}
+
+                          {/* 🎓 Student View */}
+                          {userRole === "student" && (
+                            <>
+                              {n.type === "assignment" && (
+                                <>
+                                  <strong>📚 New Assignment</strong>
+                                  <div className="text-xs">
+                                    Course: {n.courseName}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    Title: {n.title}
+                                  </div>
+                                </>
+                              )}
+                              {n.type === "grade" && (
+                                <>
+                                  <strong>📊 Grade Released</strong>
+                                  <div className="text-xs">
+                                    {n.courseName} → {n.point} / {n.outOf || 5}
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          )}
+
+                          {/* 🕒 Date (Common) */}
+                          <div className="text-[10px] text-gray-400">
+                            {new Date(
+                              n.applicationDate || n.time
+                            ).toLocaleString()}
+                          </div>
                         </li>
                       ))
                     )}

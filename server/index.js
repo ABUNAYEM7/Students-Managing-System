@@ -198,88 +198,6 @@ async function run() {
       res.send(result);
     });
 
-    // POST: Upsert grades by semester
-    app.post("/student-grades/upsert", async (req, res) => {
-      try {
-        const { studentGrades, semester } = req.body;
-
-        if (!Array.isArray(studentGrades) || !semester) {
-          return res
-            .status(400)
-            .send({ success: false, message: "Invalid data" });
-        }
-
-        let upsertCount = 0;
-        const alreadyGraded = [];
-
-        for (const record of studentGrades) {
-          const { studentEmail, courseId, studentName } = record;
-
-          // Check for existing grade for this course and semester
-          const exists = await gradesCollection.findOne({
-            studentEmail,
-            "grades.courseId": courseId,
-            "grades.semester": semester,
-          });
-
-          if (exists) {
-            alreadyGraded.push({
-              studentEmail,
-              studentName,
-              courseId,
-            });
-            continue;
-          }
-
-          // Insert the new grade
-          const filter = { studentEmail, semester };
-
-          const update = {
-            $setOnInsert: {
-              studentEmail,
-              studentName,
-              semester,
-              createdAt: new Date(),
-            },
-            $set: {
-              updatedAt: new Date(),
-            },
-            $push: {
-              grades: {
-                courseId,
-                facultyEmail: record.facultyEmail,
-                point: parseFloat(record.point),
-                outOf: record.outOf || 5.0,
-                semester,
-                submittedAt: new Date(record.submittedAt),
-              },
-            },
-          };
-
-          await gradesCollection.updateOne(filter, update, { upsert: true });
-          upsertCount++;
-        }
-
-        // Return result
-        if (alreadyGraded.length > 0) {
-          return res.send({
-            success: false,
-            message: `${alreadyGraded.length} grade(s) were already submitted.`,
-            alreadyGraded, // Send list of blocked ones
-            upsertCount,
-          });
-        }
-
-        res.send({
-          success: true,
-          message: `${upsertCount} grade(s) submitted successfully.`,
-        });
-      } catch (err) {
-        console.error("❌ Grade upsert error:", err);
-        res.status(500).send({ success: false, message: "Server error." });
-      }
-    });
-
     // post weekly routine
     app.post("/add/weekly-routine", async (req, res) => {
       try {
@@ -1399,6 +1317,114 @@ async function run() {
       }
     });
 
+    // POST: Upsert grades by semester
+    app.post("/student-grades/upsert", async (req, res) => {
+      try {
+        const { studentGrades, semester } = req.body;
+    
+        if (!Array.isArray(studentGrades) || !semester) {
+          return res
+            .status(400)
+            .send({ success: false, message: "Invalid data" });
+        }
+    
+        let upsertCount = 0;
+        const alreadyGraded = [];
+    
+        for (const record of studentGrades) {
+          const { studentEmail, courseId, studentName } = record;
+    
+          const exists = await gradesCollection.findOne({
+            studentEmail,
+            "grades.courseId": courseId,
+            "grades.semester": semester,
+          });
+    
+          if (exists) {
+            alreadyGraded.push({ studentEmail, studentName, courseId });
+            continue;
+          }
+    
+          const filter = { studentEmail, semester };
+    
+          const update = {
+            $setOnInsert: {
+              studentEmail,
+              studentName,
+              semester,
+              createdAt: new Date(),
+            },
+            $set: {
+              updatedAt: new Date(),
+            },
+            $push: {
+              grades: {
+                courseId,
+                facultyEmail: record.facultyEmail,
+                point: parseFloat(record.point),
+                outOf: record.outOf || 5.0,
+                semester,
+                submittedAt: new Date(record.submittedAt),
+              },
+            },
+          };
+    
+          await gradesCollection.updateOne(filter, update, { upsert: true });
+          upsertCount++;
+    
+          let courseName = "Your course";
+          let courseDoc = null;
+    
+          if (ObjectId.isValid(courseId)) {
+            courseDoc = await courseCollection.findOne({
+              _id: new ObjectId(courseId),
+            });
+          } else {
+            courseDoc = await courseCollection.findOne({ courseId: courseId });
+          }
+    
+          if (courseDoc?.name) {
+            courseName = courseDoc.name;
+          }
+    
+          const notification = {
+            type: "grade",
+            email: studentEmail,
+            courseId,
+            courseName,
+            point: record.point,
+            message: `📊 Grade submitted for ${courseName}`,
+            applicationDate: new Date(),
+            seen: false,
+          };
+    
+          await notificationCollection.insertOne(notification);
+          io.to(studentEmail).emit("student-notification", {
+            ...notification,
+            time: new Date(),
+          });
+        }
+    
+        if (alreadyGraded.length > 0) {
+          return res.send({
+            success: false,
+            message: `${alreadyGraded.length} grade(s) were already submitted.`,
+            alreadyGraded,
+            upsertCount,
+          });
+        }
+    
+        res.send({
+          success: true,
+          message: `${upsertCount} grade(s) submitted successfully.`,
+        });
+      } catch (err) {
+        res.status(500).send({ success: false, message: "Server error." });
+      }
+    });
+    
+    
+
     // ✅ PATCH: Mark faculty notifications as seen
     app.patch("/faculty-notifications/mark-seen", async (req, res) => {
       const { notificationIds } = req.body;
@@ -1442,6 +1468,25 @@ async function run() {
       }
     });
 
+    // ✅ GET: Fetch student notifications from DB
+    app.get("/student-notifications", async (req, res) => {
+      const { email } = req.query;
+      if (!email) {
+        return res.status(400).send({ error: "email is required" });
+      }
+
+      try {
+        const notifications = await notificationCollection
+          .find({ email, type: { $in: ["grade", "assignment"] } })
+          .sort({ applicationDate: -1 })
+          .toArray();
+        res.send(notifications);
+      } catch (err) {
+        console.error("❌ Error fetching student notifications:", err);
+        res.status(500).send({ error: "Server error" });
+      }
+    });
+
     // upload pdf procedures
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
@@ -1478,12 +1523,12 @@ async function run() {
       }
     });
 
-    // save-assignment to db
     app.post("/upload-assignment", upload.single("file"), async (req, res) => {
       try {
         const { courseId, title, instructions, email, deadline, semester } =
           req.body;
         const fileInfo = req.file;
+
         const assignment = {
           courseId,
           semester,
@@ -1498,9 +1543,49 @@ async function run() {
           mimetype: fileInfo.mimetype,
           uploadedAt: new Date().toISOString(),
         };
+
         const result = await assignmentsCollection.insertOne(assignment);
+
+        // ✅ Get course to find department
+        const course = await courseCollection.findOne({
+          _id: new ObjectId(courseId),
+        });
+        if (!course || !course.department) {
+          return res
+            .status(404)
+            .send({ message: "Course or department not found" });
+        }
+
+        // ✅ Get all students in that department
+        const students = await studentsCollection
+          .find({ department: course.department })
+          .toArray();
+
+        const now = new Date();
+
+        // ✅ Emit & Save notification for each student
+        for (const student of students) {
+          const notification = {
+            type: "assignment",
+            email: student.email,
+            courseId,
+            courseName: course.name,
+            title,
+            message: `📚 New assignment posted for ${course.name}`,
+            time: now,
+            seen: false,
+          };
+
+          // Emit real-time notification
+          io.to(student.email).emit("student-notification", notification);
+
+          // Save to DB
+          await notificationCollection.insertOne(notification);
+        }
+
         res.send(result);
       } catch (err) {
+        console.error("Upload failed", err);
         res.status(500).send({ message: "Upload failed" });
       }
     });
