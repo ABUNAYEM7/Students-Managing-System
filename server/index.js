@@ -9,11 +9,49 @@ const http = require("http");
 const { Server } = require("socket.io");
 const server = http.createServer(app);
 const dayjs = require("dayjs");
+const Stripe = require("stripe");
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 
 // middleware
 app.use(express.json());
-app.use(cors());
+app.use(cookieParser());
+
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
+
+// app.use(cors())
+
 app.use("/files", express.static("files"));
+
+// verifyToken   middleware
+const verifyToken = (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
+
+// verify admin middleware
+const verifyAdmin = (req, res, next) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).send({ message: "Admin only access." });
+  }
+  next();
+};
 
 // mongodb url
 const uri = `mongodb+srv://${process.env.VITE_USER}:${process.env.VITE_PASS}@cluster404.ppsob.mongodb.net/?retryWrites=true&w=majority`;
@@ -100,6 +138,7 @@ async function run() {
     const notificationCollection = client
       .db("academi_core")
       .collection("notification");
+    const paymentsCollection = client.db("academi_core").collection("payments");
 
     // save new user data in db
     app.post("/users", async (req, res) => {
@@ -140,13 +179,6 @@ async function run() {
         res.status(500).send({ error: "Failed to add faculty" });
       }
     });
-
-    // save leave application
-    // app.post("/leave-application", async (req, res) => {
-    //   const application = req.body;
-    //   const result = await leavesCollection.insertOne(application);
-    //   res.send(result);
-    // });
 
     // update specific course
     app.patch("/update-course/:id", async (req, res) => {
@@ -874,7 +906,7 @@ async function run() {
       const existing = await attendanceCollection.findOne({ courseId, date });
       res.send({ submitted: !!existing });
     });
-
+    // students leave for specific student
     app.get("/student-leave/request/:email", async (req, res) => {
       const { email } = req.params;
       const filter = { email };
@@ -933,10 +965,17 @@ async function run() {
       }
     });
 
-    // get specific student grade
+    // Get specific student grade with optional semester filter
     app.get("/student-result/:email", async (req, res) => {
       const { email } = req.params;
-      const filter = { studentEmail: email };
+      const { semester } = req.query; // get semester from query string
+
+      let filter = { studentEmail: email };
+
+      if (semester) {
+        filter.semester = semester;
+      }
+
       const result = await gradesCollection.findOne(filter);
       res.send(result);
     });
@@ -1161,7 +1200,7 @@ async function run() {
       res.send(result);
     });
 
-    // notifications routes
+    //✅ ✅ ✅  notifications routes
 
     // ✅ Save new course and notify assigned faculty
     app.post("/add-courses", async (req, res) => {
@@ -1321,32 +1360,32 @@ async function run() {
     app.post("/student-grades/upsert", async (req, res) => {
       try {
         const { studentGrades, semester } = req.body;
-    
+
         if (!Array.isArray(studentGrades) || !semester) {
           return res
             .status(400)
             .send({ success: false, message: "Invalid data" });
         }
-    
+
         let upsertCount = 0;
         const alreadyGraded = [];
-    
+
         for (const record of studentGrades) {
           const { studentEmail, courseId, studentName } = record;
-    
+
           const exists = await gradesCollection.findOne({
             studentEmail,
             "grades.courseId": courseId,
             "grades.semester": semester,
           });
-    
+
           if (exists) {
             alreadyGraded.push({ studentEmail, studentName, courseId });
             continue;
           }
-    
+
           const filter = { studentEmail, semester };
-    
+
           const update = {
             $setOnInsert: {
               studentEmail,
@@ -1368,13 +1407,13 @@ async function run() {
               },
             },
           };
-    
+
           await gradesCollection.updateOne(filter, update, { upsert: true });
           upsertCount++;
-    
+
           let courseName = "Your course";
           let courseDoc = null;
-    
+
           if (ObjectId.isValid(courseId)) {
             courseDoc = await courseCollection.findOne({
               _id: new ObjectId(courseId),
@@ -1382,11 +1421,11 @@ async function run() {
           } else {
             courseDoc = await courseCollection.findOne({ courseId: courseId });
           }
-    
+
           if (courseDoc?.name) {
             courseName = courseDoc.name;
           }
-    
+
           const notification = {
             type: "grade",
             email: studentEmail,
@@ -1397,14 +1436,14 @@ async function run() {
             applicationDate: new Date(),
             seen: false,
           };
-    
+
           await notificationCollection.insertOne(notification);
           io.to(studentEmail).emit("student-notification", {
             ...notification,
             time: new Date(),
           });
         }
-    
+
         if (alreadyGraded.length > 0) {
           return res.send({
             success: false,
@@ -1413,7 +1452,7 @@ async function run() {
             upsertCount,
           });
         }
-    
+
         res.send({
           success: true,
           message: `${upsertCount} grade(s) submitted successfully.`,
@@ -1422,8 +1461,6 @@ async function run() {
         res.status(500).send({ success: false, message: "Server error." });
       }
     });
-    
-    
 
     // ✅ PATCH: Mark faculty notifications as seen
     app.patch("/faculty-notifications/mark-seen", async (req, res) => {
@@ -1487,7 +1524,22 @@ async function run() {
       }
     });
 
-    // upload pdf procedures
+    // Get Admin Notifications
+    app.get("/admin-notifications", async (req, res) => {
+      try {
+        const notifications = await notificationCollection
+          .find({ type: "payment" }) // only payment-related notifications
+          .sort({ applicationDate: -1 })
+          .toArray();
+
+        res.send(notifications);
+      } catch (err) {
+        console.error("❌ Error fetching admin notifications:", err);
+        res.status(500).send({ error: "Failed to fetch admin notifications" });
+      }
+    });
+
+    //✅ ✅ ✅  upload pdf procedures
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
         cb(null, "./files");
@@ -1718,6 +1770,135 @@ async function run() {
         }
       }
     );
+
+    //✅ ✅ ✅  payment routes
+
+    // Create PaymentIntent API
+    app.post("/create-payment-intent", async (req, res) => {
+      const { amount } = req.body;
+
+      if (!amount) {
+        return res.status(400).send({ error: "Amount is required" });
+      }
+
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: parseInt(amount) * 100, // Convert dollars to cents
+          currency: "usd",
+          automatic_payment_methods: { enabled: true },
+        });
+
+        res.send({ clientSecret: paymentIntent.client_secret });
+      } catch (error) {
+        console.error("Stripe Error:", error);
+        res.status(500).send({ error: error.message });
+      }
+    });
+
+    // Save payment information and ✅  save notification
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+
+      if (!payment.transactionId || !payment.amount || !payment.userEmail) {
+        return res
+          .status(400)
+          .send({ error: "Missing required payment fields." });
+      }
+
+      try {
+        payment.date = new Date(); // store server time
+        const result = await paymentsCollection.insertOne(payment);
+
+        // ✅ Also create a notification for admin
+        const notification = {
+          type: "payment",
+          email: payment.userEmail,
+          applicationDate: new Date(),
+          message: `💳 Payment received: $${payment.amount} from ${payment.userEmail}`, // notification message
+          transactionId: payment.transactionId,
+          seen: false,
+        };
+        console.log(notification);
+        // Save the notification in the notifications collection
+        await notificationCollection.insertOne(notification);
+        res.send({ success: true, insertedId: result.insertedId });
+      } catch (error) {
+        console.error("❌ Failed to save payment:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    // ✅ GET: Payment history for specific student by email
+    app.get("/payments/:email", async (req, res) => {
+      const { email } = req.params;
+
+      if (!email) {
+        return res.status(400).send({ error: "Student email is required" });
+      }
+
+      try {
+        const payments = await paymentsCollection
+          .find({ userEmail: email })
+          .sort({ date: -1 }) // Sort by newest payments first
+          .toArray();
+
+        res.send(payments);
+      } catch (error) {
+        console.error("❌ Error fetching payment history:", error);
+        res.status(500).send({ error: "Failed to fetch payments" });
+      }
+    });
+
+    // authorization and authentication
+    // 🔵 Issue JWT and Set Cookie
+    app.post("/jwt", async (req, res) => {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).send({ message: "Email is required" });
+      }
+
+      try {
+        const user = await usersCollection.findOne({ email });
+
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        const payload = {
+          email: user.email,
+          role: user.role || "user",
+          name: user.name || "",
+        };
+
+        const token = jwt.sign(payload, process.env.JWT_SECRET, {
+          expiresIn: "1d",
+        });
+
+        res
+          .cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 1 * 24 * 60 * 60 * 1000,
+          })
+          .send({ success: true });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error generating token" });
+      }
+    });
+
+    // clean token
+    app.post("/logout", (req, res) => {
+      res
+        .clearCookie("token", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+        })
+        .send({ success: true, message: "Logged out successfully!" });
+    });
 
     await client.db("admin").command({ ping: 1 });
 
