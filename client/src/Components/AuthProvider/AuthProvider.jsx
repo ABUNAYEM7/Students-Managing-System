@@ -10,6 +10,7 @@ import {
   import { createContext, useEffect, useState } from "react";
   import Swal from "sweetalert2";
   import Auth from "../../Firebase/firebase";
+import axios from "axios";
   
   export const AuthContext = createContext();
   
@@ -50,31 +51,45 @@ import {
     };
   
     const userLogOut = async () => {
-      return signOut(Auth);
+        return await signOut(Auth);
     };
   
     useEffect(() => {
-        setLoading(true);
-      
-        const unsubscribe = onAuthStateChanged(Auth, async (currentUser) => {
-          try {
-            if (currentUser?.email) {
-              console.log(currentUser)
-              setUser(currentUser);
-            } else {
-              setUser(null);
-            }
-          } catch (error) {
-            console.error("Error during authentication or clearing cookies:", error);
+      setLoading(true);
+    
+      const unsubscribe = onAuthStateChanged(Auth, async (currentUser) => {
+        try {
+          if (currentUser?.email) {
+            setUser(currentUser);
+    
+            // ✅ Immediately request server to issue JWT
+            await axios.post(`${import.meta.env.VITE_API_URL}/jwt`, {
+              email: currentUser.email,
+            }, {
+              withCredentials: true, // important to set cookie properly
+            });
+    
+            console.log("✅ JWT issued and cookie saved!");
+          } else {
             setUser(null);
-          } finally {
-            setLoading(false);
+    
+            // ✅ If user is null (signed out), clear the cookie from server
+            await axios.post(`${import.meta.env.VITE_API_URL}/logout`, {}, {
+              withCredentials: true,
+            });
+    
+            console.log("✅ JWT cookie cleared on logout!");
           }
-        });
-      
-        // Cleanup function
-        return () => unsubscribe();
-      }, []);
+        } catch (error) {
+          console.error("❌ Error handling auth state:", error);
+          setUser(null);
+        } finally {
+          setLoading(false);
+        }
+      });
+    
+      return () => unsubscribe();
+    }, []);
 
     const authInfo = {
       registerUser,

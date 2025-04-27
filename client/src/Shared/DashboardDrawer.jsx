@@ -23,6 +23,7 @@ import { useNotification } from "../Components/Hooks/NotificationProvider/Notifi
 import { useFacultyNotifications } from "../Components/Hooks/NotificationProvider/useFacultyNotifications";
 import useMarkNotificationsSeen from "../Components/Hooks/NotificationProvider/useMarkNotificationsSeen";
 import { useStudentNotifications } from "../Components/Hooks/NotificationProvider/useStudentNotifications";
+import { useAdminNotifications } from "../Components/Hooks/NotificationProvider/useAdminNotifications";
 
 const navIcons = {
   "ADMIN Dashboard": <FaHome />,
@@ -74,6 +75,8 @@ const DashboardDrawer = () => {
       ? useFacultyNotifications(user?.email)
       : userRole === "student"
       ? useStudentNotifications(user?.email)
+      : userRole === "admin"
+      ? useAdminNotifications()
       : { data: [] };
 
   const markSeen = useMarkNotificationsSeen();
@@ -156,8 +159,8 @@ const DashboardDrawer = () => {
                       <li className="py-2 text-gray-500">No notifications</li>
                     ) : (
                       notifications.map((n, i) => (
-                        <li key={i} className="py-2 text-sm space-y-1">
-                          {/* 🧑‍🏫 Faculty View */}
+                        <li key={n._id || i} className="py-2 text-sm space-y-1">
+                          {/* 🔵 Faculty View */}
                           {userRole === "faculty" && (
                             <>
                               {n.type === "leave-request" && (
@@ -213,7 +216,25 @@ const DashboardDrawer = () => {
                             </>
                           )}
 
-                          {/* 🕒 Date (Common) */}
+                          {/* 🧑‍💼 Admin View */}
+                          {userRole === "admin" && (
+                            <>
+                              {n.type === "payment" && (
+                                <>
+                                  <strong>💳 Payment Received</strong>
+                                  <div className="text-xs">From: {n.email}</div>
+                                  <div className="text-xs">
+                                    Amount: ${n.amount}
+                                  </div>
+                                  <div className="text-[10px] text-gray-500">
+                                    Txn: {n.transactionId}
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          )}
+
+                          {/* 🕒 Date (Common for all) */}
                           <div className="text-[10px] text-gray-400">
                             {new Date(
                               n.applicationDate || n.time

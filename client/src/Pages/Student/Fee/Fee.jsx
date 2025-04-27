@@ -1,115 +1,62 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import CheckoutForm from '../../../Components/CheckoutForm/CheckoutForm';
+import useFetchData from '../../../Components/Hooks/useFetchData';
+import useAuth from '../../../Components/Hooks/useAuth';
+
+const stripePromise = loadStripe(`${import.meta.env.VITE_PAYMENT_PK}`);
 
 const Fee = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    amount: '',
-    cardNumber: '',
-    expiry: '',
-    cvv: ''
-  });
-
-  const [paymentHistory, setPaymentHistory] = useState([
-    { date: '2024-09-01', amount: '1000', method: 'Credit Card' },
-    { date: '2024-06-01', amount: '900', method: 'Credit Card' },
-  ]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const newPayment = {
-      date: new Date().toISOString().split('T')[0],
-      amount: formData.amount,
-      method: 'Credit Card'
-    };
-    setPaymentHistory([newPayment, ...paymentHistory]);
-    alert('Payment successful!');
-    setFormData({ name: '', amount: '', cardNumber: '', expiry: '', cvv: '' });
-  };
+  const { user } = useAuth();
+  const email = user?.email;
+  const { data: paymentHistory = [],refetch } = useFetchData(`${email}`, `/payments/${email}`);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-white rounded-2xl shadow p-6 space-y-6">
-        <h1 className="text-2xl font-bold text-center">Pay Your Fees</h1>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6 space-y-8">
+      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-3xl">
+        <h1 className="text-3xl font-bold text-center mb-6 text-highlight">Pay Your Fees</h1>
+        <p className="text-center  mb-8 text-highlight">Secure payment powered by Stripe</p>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            value={formData.name}
-            onChange={handleChange}
-            className="input input-bordered w-full"
-            required
-          />
-          <input
-            type="number"
-            name="amount"
-            placeholder="Amount"
-            value={formData.amount}
-            onChange={handleChange}
-            className="input input-bordered w-full"
-            required
-          />
-          <input
-            type="text"
-            name="cardNumber"
-            placeholder="Card Number"
-            value={formData.cardNumber}
-            onChange={handleChange}
-            className="input input-bordered w-full"
-            required
-          />
-          <input
-            type="text"
-            name="expiry"
-            placeholder="MM/YY"
-            value={formData.expiry}
-            onChange={handleChange}
-            className="input input-bordered w-full"
-            required
-          />
-          <input
-            type="password"
-            name="cvv"
-            placeholder="CVV"
-            value={formData.cvv}
-            onChange={handleChange}
-            className="input input-bordered w-full"
-            required
-          />
-          <button type="submit" className="btn btn-primary col-span-full">
-            Pay Now
-          </button>
-        </form>
+        <Elements stripe={stripePromise}>
+          <CheckoutForm  refetch={refetch}/>
+        </Elements>
+      </div>
 
-        <div className="mt-10">
-          <h2 className="text-xl font-semibold mb-2">Payment History</h2>
+      {/* Payment History Section */}
+      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl mt-10">
+        <h2 className="text-2xl font-bold mb-6 text-center text-green-600">Your Payment History</h2>
+
+        {paymentHistory.length === 0 ? (
+          <p className="text-center text-gray-500">No payments found.</p>
+        ) : (
           <div className="overflow-x-auto">
             <table className="table w-full">
               <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Method</th>
+                <tr className="text-gray-700 text-sm">
+                  <th className="p-3 text-left">Date</th>
+                  <th className="p-3 text-left">Amount</th>
+                  <th className="p-3 text-left">Phone</th>
+                  <th className="p-3 text-left">Status</th>
+                  <th className="p-3 text-left">Transaction ID</th>
                 </tr>
               </thead>
               <tbody>
-                {paymentHistory.map((payment, index) => (
-                  <tr key={index}>
-                    <td>{payment.date}</td>
-                    <td>${payment.amount}</td>
-                    <td>{payment.method}</td>
+                {paymentHistory.map((payment) => (
+                  <tr key={payment._id} className="hover:bg-gray-100">
+                    <td className="p-3">{new Date(payment.date).toLocaleDateString()}</td>
+                    <td className="p-3 font-semibold">${payment.amount}</td>
+                    <td className="p-3">{payment.phone}</td>
+                    <td className="p-3">
+                      <span className="badge badge-success">{payment.status}</span>
+                    </td>
+                    <td className="p-3 text-xs break-all">{payment.transactionId}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

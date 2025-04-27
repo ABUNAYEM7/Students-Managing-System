@@ -36,6 +36,8 @@ const StudentRoutine = () => {
     fetchStudentRoutine();
   }, [user?.email, filteredMonth]);
 
+
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold text-center mb-6">📘 My Weekly Class Routine</h1>
@@ -73,6 +75,7 @@ const StudentRoutine = () => {
               <thead>
                 <tr className="bg-gray-100 text-left">
                   <th className="border p-2">Day</th>
+                  <th className="border p-2">Course :</th>
                   <th className="border p-2">Time</th>
                   <th className="border p-2">Online Link</th>
                 </tr>
@@ -81,6 +84,7 @@ const StudentRoutine = () => {
                 {routine.routines.map((day, idx) => (
                   <tr key={idx}>
                     <td className="border p-2">{day.day}</td>
+                    <td className="border p-2">{day.course || 'N/A'}</td>
                     <td className="border p-2">{day.time}</td>
                     <td className="border p-2">
                       <a

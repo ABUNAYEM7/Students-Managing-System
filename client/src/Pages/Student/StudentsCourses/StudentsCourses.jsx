@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import useFetchData from "../../../Components/Hooks/useFetchData";
-import { FaBookOpen, FaChalkboardTeacher, FaClock } from "react-icons/fa";
+import { FaBookOpen, FaChalkboardTeacher, FaClock, FaReact } from "react-icons/fa";
 import { MdOutlineCalendarToday } from "react-icons/md";
 import Swal from "sweetalert2";
 import useAuth from "../../../Components/Hooks/useAuth";
@@ -79,9 +79,13 @@ const StudentsCourses = () => {
       className="card bg-white shadow-md hover:shadow-xl transition duration-300 border-t-4 border-primary"
     >
       <div className="card-body">
-        <h2 className="card-title text-xl text-highlight">
+      <h2 className="card-title text-xl text-highlight">
           <FaBookOpen /> {course.name}
         </h2>
+        <h2 className="card-title text-xl text-highlight">
+        Course Code : {course.courseId}
+        </h2>
+        
         <p className="text-sm text-gray-700 flex items-center gap-2">
           <FaChalkboardTeacher /> Instructor: {course.facultyName || "TBD"}
         </p>

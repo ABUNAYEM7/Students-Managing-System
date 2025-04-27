@@ -7,12 +7,17 @@ const Grade = () => {
   const semesterOptions = ['Fall 2024', 'Spring 2025', 'Summer 2025'];
   const [selectedSemester, setSelectedSemester] = useState(semesterOptions[1]);
   const { user } = useAuth();
-  const { data: dbGrades } = useFetchData(`${user?.email}`, `/student-result/${user?.email}`);
+
+  // Updated: added semester inside the key
+  const { data: dbGrades, refetch } = useFetchData(
+    `${user?.email}-${selectedSemester}`,
+    `/student-result/${user?.email}?semester=${encodeURIComponent(selectedSemester)}`
+  );
 
   const currentSemesterData = dbGrades?.semester === selectedSemester ? dbGrades : null;
   const grades = currentSemesterData?.grades ?? [];
 
-  const average = grades?.length
+  const average = grades.length
     ? (grades.reduce((sum, g) => sum + (g?.point ?? 0), 0) / grades.length).toFixed(2)
     : 'N/A';
 
@@ -31,14 +36,19 @@ const Grade = () => {
     <div className="p-6 max-w-11/12 mx-auto">
       <div className="bg-white rounded-2xl shadow p-6">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold ">Student Grade Report</h1>
+          <h1 className="text-2xl font-bold">Student Grade Report</h1>
           <select
             className="select select-bordered"
             value={selectedSemester}
-            onChange={(e) => setSelectedSemester(e.target.value)}
+            onChange={(e) => {
+              setSelectedSemester(e.target.value);
+              setTimeout(() => refetch(), 0);
+            }}
           >
-            {semesterOptions?.map((semester, idx) => (
-              <option key={idx} value={semester}>{semester}</option>
+            {semesterOptions.map((semester, idx) => (
+              <option key={idx} value={semester}>
+                {semester}
+              </option>
             ))}
           </select>
         </div>
@@ -64,16 +74,17 @@ const Grade = () => {
               </tr>
             </thead>
             <tbody>
-              {grades?.map((item, index) => (
-                <tr key={index}>
-                  <td>{item?.courseId}</td>
-                  <td>{(item?.point ?? 0).toFixed(2)}</td>
-                  <td className="flex items-center gap-2">
-                    <FaStar className="text-yellow-500" /> {getGradeLetter(item?.point ?? 0)}
-                  </td>
-                </tr>
-              ))}
-              {grades?.length === 0 && (
+              {grades.length > 0 ? (
+                grades.map((item, index) => (
+                  <tr key={index}>
+                    <td>{item?.courseId}</td>
+                    <td>{(item?.point ?? 0).toFixed(2)}</td>
+                    <td className="flex items-center gap-2">
+                      <FaStar className="text-yellow-500" /> {getGradeLetter(item?.point ?? 0)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
                   <td colSpan="3" className="text-center text-gray-500 py-4">
                     No grades available for this semester.
@@ -85,7 +96,9 @@ const Grade = () => {
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-sm text-gray-500">Keep pushing forward! Your progress is tracked and valued.</p>
+          <p className="text-sm text-gray-500">
+            Keep pushing forward! Your progress is tracked and valued.
+          </p>
         </div>
       </div>
     </div>
