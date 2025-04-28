@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import AxiosSecure from '../Hooks/AxiosSecure';
 import { FaArrowLeft } from 'react-icons/fa';
+import dayjs from 'dayjs'; // for date formatting
 
 const ViewUserDetails = () => {
   const { email } = useParams();
@@ -10,19 +11,21 @@ const ViewUserDetails = () => {
 
   const [user, setUser] = useState(null);
   const [extraDetails, setExtraDetails] = useState(null);
+  const [assignedCourses, setAssignedCourses] = useState([]); // 🆕 Now saving full courses array
 
   useEffect(() => {
     const fetchUserAndDetails = async () => {
       try {
-        // Step 1: Fetch user basic info
         const userRes = await axiosInstance.get(`/user-details/${email}`);
         const userData = userRes.data;
         setUser(userData);
 
-        // Step 2: Now depending on role, fetch extra details
         if (userData.role === 'faculty') {
           const facultyRes = await axiosInstance.get(`/faculty-email/${email}`);
-          setExtraDetails(facultyRes.data); // ✅ This was missing!
+          setExtraDetails(facultyRes.data);
+
+          const courseRes = await axiosInstance.get(`/faculty-assign/courses/${email}`);
+          setAssignedCourses(courseRes.data); // Save all assigned courses
         } else if (userData.role === 'student') {
           const studentRes = await axiosInstance.get(`/student/${email}`);
           setExtraDetails(studentRes.data);
@@ -33,14 +36,12 @@ const ViewUserDetails = () => {
     };
 
     fetchUserAndDetails();
-  }, [email]);
+  }, [email, axiosInstance]);
 
-  // Wait for both user and extraDetails
   if (!user || !extraDetails) return <div className="text-center mt-10">Loading...</div>;
 
-
   return (
-    <div className="max-w-5xl mx-auto p-8 bg-base-100 shadow-xl rounded-3xl border border-gray-300 mt-10">
+    <div className="max-w-6xl mx-auto p-8 bg-base-100 shadow-xl rounded-3xl border border-gray-300 mt-10">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold">{user.role === 'faculty' ? 'Faculty' : 'Student'} Details</h2>
         <button onClick={() => navigate(-1)} className="btn btn-outline flex items-center gap-2">
@@ -79,13 +80,15 @@ const ViewUserDetails = () => {
               <p><strong>Mother's Name:</strong> {extraDetails?.motherName}</p>
               <p><strong>Current Address:</strong> {extraDetails?.currentAddress}</p>
               <p><strong>Permanent Address:</strong> {extraDetails?.permanentAddress}</p>
+              {/* Assigned courses */}
+              <p><strong>Assigned Courses:</strong> {assignedCourses.length}</p>
             </>
           )}
 
           {user?.role === 'student' && (
             <>
               <p><strong>Department:</strong> {extraDetails?.department}</p>
-              <p><strong>Gender:</strong> {user?.gender}</p>
+              <p><strong>Gender:</strong> {extraDetails?.gender}</p>
               <p><strong>City:</strong> {extraDetails?.city}</p>
               <p><strong>Country:</strong> {extraDetails?.country}</p>
               <p><strong>Current Address:</strong> {extraDetails?.currentAddress}</p>
@@ -97,6 +100,41 @@ const ViewUserDetails = () => {
           )}
         </div>
       </div>
+
+      {/* 🆕 Show Courses Table if Faculty */}
+      {user?.role === 'faculty' && assignedCourses.length > 0 && (
+        <div className="mt-10">
+          <h3 className="text-2xl font-semibold mb-4">Assigned Course Details</h3>
+          <div className="overflow-x-auto">
+            <table className="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Course ID</th>
+                  <th>Course Name</th>
+                  <th>Credit</th>
+                  <th>Semester</th>
+                  <th>Department</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignedCourses.map((course, index) => (
+                  <tr key={course._id}>
+                    <td>{index + 1}</td>
+                    <td>{course.courseId}</td>
+                    <td>{course.name}</td>
+                    <td>{course.credit}</td>
+                    <td>{course.semester}</td>
+                    <td>{course.department}</td>
+                    <td>{dayjs(course.date).format('DD MMM YYYY')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

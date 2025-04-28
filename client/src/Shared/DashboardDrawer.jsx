@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router";
 import {
   FaBars,
@@ -79,6 +79,7 @@ const DashboardDrawer = () => {
       ? useAdminNotifications()
       : { data: [] };
 
+  const sidebarRef = useRef(null);
   const markSeen = useMarkNotificationsSeen();
 
   useEffect(() => {
@@ -89,6 +90,21 @@ const DashboardDrawer = () => {
       setNotifications(sorted);
     }
   }, [fetchedNotifications]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+        setIsOpen(false); // ✅ Close the sidebar if clicked outside
+      }
+    };
+  
+    document.addEventListener("mousedown", handleClickOutside);
+  
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+  
 
   const logoutHandler = async () => {
     try {
@@ -126,7 +142,7 @@ const DashboardDrawer = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
-      <div className="navbar bg-base-300 flex items-center justify-between px-4">
+      <div className="navbar bg-base-300 flex items-center justify-between px-4 fixed top-0 left-0 w-full z-50 ">
         <div className="space-x-2 flex items-center">
           <button onClick={toggleDrawer}>
             {isOpen ? <FaBars size={25} /> : <FaChartBar size={25} />}
@@ -282,11 +298,12 @@ const DashboardDrawer = () => {
       </div>
 
       {/* Sidebar and Page Content */}
-      <div className="flex flex-col sm:flex-row flex-1">
+      <div className="flex flex-col sm:flex-row flex-1 mt-14">
         <div
+         ref={sidebarRef}
           className={`transition-all duration-300 ${
-            isOpen ? "h-auto sm:w-64" : "h-0 sm:w-0"
-          } overflow-hidden bg-base-200 sm:h-auto sm:block`}
+            isOpen ? "w-64" : "w-0"
+          } bg-base-200 fixed top-16 sm:top-16 left-0 h-[calc(100vh-4rem)] z-40 overflow-y-auto`}
         >
           <div className="p-4">
             <ul className="menu w-full text-lg font-semibold space-y-2">

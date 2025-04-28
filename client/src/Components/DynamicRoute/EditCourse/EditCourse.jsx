@@ -14,42 +14,51 @@ const EditCourse = () => {
     description: "",
     date: "",
   });
-  const axiosInstance = AxiosSecure()
-  const navigate = useNavigate()
+  const axiosInstance = AxiosSecure();
+  const navigate = useNavigate();
 
-//   useEffect to set the previous data in the table
   useEffect(() => {
     if (data) {
       setFormData({
-    course:data.course || "",
-    name: data.name || "",
-    credit:data.credit ||  "",
-    description:data.description ||  "",
-    date : data.date || ""
+        course: data.courseId || "",
+        name: data.name || "",
+        credit: data.credit || "",
+        description: data.description || "",
+        date: data.date || "",
       });
     }
   }, [data]);
 
-//   handle change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-//   handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-        const res = await axiosInstance.patch(`/update-course/${id}`,formData)
-        if(res?.data?.matchedCount > 0 && res?.data?.modifiedCount> 0 || res?.data?.matchedCount > 0 && res?.data?.modifiedCount === 0 ){
-            Swal.fire({
-                position: "center",
-                icon: "success",
-                title: "Course Updated Successfully",
-                showConfirmButton: false,
-                timer: 1500
-              });
-            navigate('/dashboard/courses')
-        }
+      const payload = {
+        courseId: formData.course, // correctly mapped here
+        name: formData.name,
+        credit: formData.credit,
+        description: formData.description,
+        date: formData.date,
+      };
+      console.log(payload)
+      const res = await axiosInstance.patch(`/update-course/${id}`, payload);
+
+      if (
+        res?.data?.matchedCount > 0 &&
+        (res?.data?.modifiedCount > 0 || res?.data?.modifiedCount === 0)
+      ) {
+        Swal.fire({
+          position: "center",
+          icon: "success",
+          title: "Course Updated Successfully",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+        navigate("/dashboard/courses");
+      }
     } catch (err) {
       Swal.fire({
         title: "Error occurs",
@@ -60,19 +69,17 @@ const EditCourse = () => {
     }
   };
 
-  
   return (
     <div>
       <h3 className="text-3xl font-black text-center mt-6">Edit Course</h3>
-      {/* form-container */}
-      <div className="w-fit md:w-2/3 mx-auto rounded-3xl  mt-12">
+      <div className="w-fit md:w-2/3 mx-auto rounded-3xl mt-12">
         <form
           onSubmit={handleSubmit}
           className="bg-white p-6 rounded-lg shadow-lg w-full"
         >
           <div className="form-control w-full mb-4">
             <label className="label">
-              <span className="label-text">Course</span>
+              <span className="label-text">Course Id</span>
             </label>
             <input
               type="text"

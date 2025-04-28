@@ -184,7 +184,7 @@ const Message = () => {
                           setExpandedSendId(expandedSendId === msg._id ? null : msg._id)
                         }
                       >
-                        <td>{msg.recipients.join(", ")}</td>
+                        <td>{Array.isArray(msg.recipients) ? msg.recipients.join(", ") : "No recipients"}</td>
                         <td>{msg.subject}</td>
                         <td>{new Date(msg.createdAt).toLocaleDateString()}</td>
                       </tr>

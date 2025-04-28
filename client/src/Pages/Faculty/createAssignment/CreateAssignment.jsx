@@ -7,14 +7,16 @@ import useFetchData from "../../../Components/Hooks/useFetchData";
 
 const CreateAssignment = () => {
   const { id } = useParams();
-  const { data } = id ? useFetchData(`${id}`, `/assignment/${id}`) : { data: null };
-  const {user:faculty} = useAuth()
+  const { data } = id
+    ? useFetchData(`${id}`, `/assignment/${id}`)
+    : { data: null };
+  const { user: faculty } = useAuth();
   const email = faculty?.email;
 
-  const {
-    data: courses,
-    loading,
-  } = useFetchData(`${email}`, `/faculty-assign/courses/${email}`)
+  const { data: courses, loading } = useFetchData(
+    `${email}`,
+    `/faculty-assign/courses/${email}`
+  );
 
   const [formData, setFormData] = useState({
     courseId: "",
@@ -61,8 +63,16 @@ const CreateAssignment = () => {
     e.preventDefault();
     setError("");
 
-    const { courseId, title, instructions, file, deadline, semester } = formData;
-    if (!courseId || !title || !instructions || (!file && !id) || !deadline || !semester) {
+    const { courseId, title, instructions, file, deadline, semester } =
+      formData;
+    if (
+      !courseId ||
+      !title ||
+      !instructions ||
+      (!file && !id) ||
+      !deadline ||
+      !semester
+    ) {
       setError("All fields are required including the deadline and semester.");
       return;
     }
@@ -85,9 +95,13 @@ const CreateAssignment = () => {
 
     try {
       if (id) {
-        const res = await axiosInstance.patch(`/update-assignment/${id}`, data, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        const res = await axiosInstance.patch(
+          `/update-assignment/${id}`,
+          data,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          }
+        );
         if (res?.data?.modifiedCount > 0) {
           Swal.fire({
             position: "center",
@@ -99,7 +113,6 @@ const CreateAssignment = () => {
           return navigate("/dashboard/assignment");
         }
       }
-
       const res = await axiosInstance.post("/upload-assignment", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -133,6 +146,7 @@ const CreateAssignment = () => {
     }
   };
 
+  console.log(courses);
 
   return (
     <div className="p-6">
@@ -151,12 +165,14 @@ const CreateAssignment = () => {
             onChange={handleChange}
             required
           >
-            <option disabled value="">Select Course</option>
-            {
-              courses?.map((c,i)=>(
-                <option  value={`${c?._id}`}>{c?.name}</option>
-              ))
-            }
+            <option disabled value="">
+              Select Course
+            </option>
+            {courses?.map((c, i) => (
+              <option key={c?._id} value={`${c?._id}`}>
+                {c?.name}
+              </option>
+            ))}
           </select>
 
           <label className="label">
@@ -169,7 +185,9 @@ const CreateAssignment = () => {
             onChange={handleChange}
             required
           >
-            <option disabled value="">Select Semester</option>
+            <option disabled value="">
+              Select Semester
+            </option>
             <option value="Spring 2025">Spring 2025</option>
             <option value="Summer 2025">Summer 2025</option>
             <option value="Fall 2025">Fall 2025</option>
@@ -219,9 +237,12 @@ const CreateAssignment = () => {
           </label>
           {formData?.file === null && data?.filename && (
             <div className="mb-2 text-sm text-gray-600">
-              Current File: {" "}
+              Current File:{" "}
               <a
-                href={`http://localhost:3000/${data?.path?.replace(/\\/g, "/")}`}
+                href={`http://localhost:3000/${data?.path?.replace(
+                  /\\/g,
+                  "/"
+                )}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 underline"

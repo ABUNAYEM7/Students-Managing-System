@@ -41,6 +41,7 @@ import StudentRoutine from "../Pages/Student/StudentRoutine/StudentRoutine";
 import SendMessage from "../Components/SendMessage/SendMessage";
 import Message from "../Pages/Message/Message";
 import Academic from "../Pages/Academic/Academic";
+import CourseDetails from "../Pages/CourseDetails/CourseDetails";
 
 
 const AppRouter = () => {
@@ -95,6 +96,7 @@ const AppRouter = () => {
           <Route>
             <Route path="faculty/home" element={<FacultyDashboard/>}/>
             <Route path="faculty-courses" element={<FacultyCourses/>}/>
+            <Route path="faculty-courses/details/:id" element={<CourseDetails/>}/>
             <Route path="faculty-routine" element={<FacultyRoutine/>}/>
             <Route path="faculty-grades" element={<FacultyGrades/>}/>
             <Route path="faculty-attendance" element={<FacultyAttendance/>}/>

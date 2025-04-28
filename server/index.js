@@ -188,7 +188,7 @@ async function run() {
       const data = req.body;
       const updatedCourse = {
         $set: {
-          course: data.course,
+          courseId: data.courseId,
           name: data.name,
           credit: data.credit,
           description: data.description,
@@ -226,18 +226,28 @@ async function run() {
 
     // create new students from user
     app.post("/create-student", async (req, res) => {
-      const { email, name, photo, department, city, country, currentAddress, permanentAddress, gender } = req.body;
-    
+      const {
+        email,
+        name,
+        photo,
+        department,
+        city,
+        country,
+        currentAddress,
+        permanentAddress,
+        gender,
+      } = req.body;
+
       if (!email || !name) {
         return res.status(400).send({ message: "Missing required fields" });
       }
-    
+
       const existingStudent = await studentsCollection.findOne({ email });
-    
+
       if (existingStudent) {
         return res.status(409).send({ message: "Student already exists" });
       }
-    
+
       const newStudent = {
         email,
         name,
@@ -250,11 +260,10 @@ async function run() {
         gender,
         createdAt: new Date(),
       };
-    
+
       const result = await studentsCollection.insertOne(newStudent);
       res.send({ success: true, insertedId: result.insertedId });
     });
-    
 
     // post weekly routine
     app.post("/add/weekly-routine", async (req, res) => {
@@ -443,13 +452,16 @@ async function run() {
     });
 
     // PATCH: Update routine day status
+    // PATCH: Update routine day status
     app.patch(
       "/update-routine-day-status/:routineId/:dayIndex",
       async (req, res) => {
         const { routineId, dayIndex } = req.params;
         const { status } = req.body;
 
-        if (!["pending", "completed"].includes(status)) {
+        if (
+          !["pending", "completed", "in-progress", "canceled"].includes(status)
+        ) {
           return res.status(400).send({ message: "Invalid status" });
         }
 
@@ -459,7 +471,7 @@ async function run() {
             { _id: new ObjectId(routineId) },
             {
               $set: {
-                [`routines.${index}.status`]: status,
+                [`routines.${index}.status`]: status, // fixed small mistake here
               },
             }
           );
@@ -673,30 +685,71 @@ async function run() {
       res.send(result);
     });
 
-    // get all students and for courses based student for attendance
-    app.get("/all-students", async (req, res) => {
-      const courseIds = req.query.courseId;
-      let query = {};
-      if (courseIds) {
-        const idsArray = Array.isArray(courseIds) ? courseIds : [courseIds];
-        query = {
-          courses: {
-            $elemMatch: {
-              courseId: { $in: idsArray },
-            },
-          },
-        };
-      }
+    app.get('/all-students',async(req,res)=>{
+      const result = await studentsCollection.find({}).toArray()
+      res.send(result)
+    })
 
+    // get all students and for courses based student for attendance
+    app.get("/students-by-course/:id", async (req, res) => {
+      const { id } = req.params;
+    
+      console.log("👉 Incoming request to fetch students for courseId:", id);
+    
+      if (!id) {
+        console.error("❌ No course ID provided in the request.");
+        return res.status(400).send({ message: "Course ID is required" });
+      }
+    
       try {
-        const result = await studentsCollection
-          .find(query)
-          .project({ name: 1, email: 1, photo: 1, courses: 1 })
+        const students = await studentsCollection
+          .find({
+            "courses.courseId": id,
+          })
+          .project({ name: 1, email: 1, photo: 1, department: 1, country: 1 })
+          .sort({ name: 1 }) // ✅ nice to keep it sorted too
           .toArray();
-        res.send(result);
-      } catch (err) {
-        console.error("Error fetching students by course enrollment", err);
-        res.status(500).send({ error: "Failed to fetch students" });
+    
+        console.log(`✅ Students fetched for courseId ${id}:`, students.length);
+    
+        if (students.length === 0) {
+          console.warn(`⚠️ No students enrolled for courseId: ${id}`);
+          return res.status(404).send({ message: "No students enrolled in this course." });
+        }
+    
+        res.send(students);
+      } catch (error) {
+        console.error("❌ Error fetching students by course:", error.message);
+        res.status(500).send({ error: "Internal server error" });
+      }
+    });
+    
+    // ✅ NEW ROUTE: Get students enrolled in a specific course by course _id
+    app.get("/students-by-course/:id", async (req, res) => {
+      const { id } = req.params;
+      console.log(id)
+    
+      if (!id) {
+        return res.status(400).send({ message: "Course ID is required" });
+      }
+    
+      try {
+        // const students = await studentsCollection
+        //   .find({
+        //     "courses.courseId": id, // ✅ direct match inside array
+        //   })
+        //   .project({ name: 1, email: 1, photo: 1, department: 1, country: 1 })
+        //   .toArray();
+    
+        // if (students.length === 0) {
+        //   return res.status(404).send({ message: "No students enrolled in this course." });
+        // }
+    
+        // res.send(students);
+
+      } catch (error) {
+        console.error("❌ Error fetching students by course:", error);
+        res.status(500).send({ error: "Internal server error" });
       }
     });
 
@@ -804,11 +857,76 @@ async function run() {
     });
 
     // get all assignment
+    // app.get("/assignments/:email", async (req, res) => {
+    //   const { email } = req.params;
+    //   const filter = { email };
+    //   const result = await assignmentsCollection.find(filter).toArray();
+    //   res.send(result);
+    // });
+
+    // ✅ Final version: get real courseId but still named as 'courseId'
     app.get("/assignments/:email", async (req, res) => {
       const { email } = req.params;
-      const filter = { email };
-      const result = await assignmentsCollection.find(filter).toArray();
-      res.send(result);
+
+      try {
+        const assignments = await assignmentsCollection
+          .aggregate([
+            {
+              $match: { email: email },
+            },
+            {
+              $lookup: {
+                from: "courses",
+                let: { assignmentCourseId: { $toObjectId: "$courseId" } },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $eq: ["$_id", "$$assignmentCourseId"],
+                      },
+                    },
+                  },
+                  {
+                    $project: {
+                      _id: 0,
+                      courseId: 1, // 🎯 Bring real courseId (like "212", "456", etc.)
+                      name: 1, // 🎯 Bring course name
+                      department: 1, // (optional) course department
+                    },
+                  },
+                ],
+                as: "courseInfo",
+              },
+            },
+            {
+              $unwind: {
+                path: "$courseInfo",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $project: {
+                assignmentId: "$_id", // keep assignment's own id
+                courseId: "$courseInfo.courseId", // 🎯 real courseId (renamed properly)
+                courseName: "$courseInfo.name", // 🎯 course name
+                courseDepartment: "$courseInfo.department", // (optional) course department
+                title: 1,
+                email: 1,
+                deadline: 1,
+                semester: 1,
+                uploadedAt: 1,
+                filename: 1,
+                instructions: 1,
+              },
+            },
+          ])
+          .toArray();
+
+        res.send(assignments);
+      } catch (error) {
+        console.error("❌ Error fetching assignments:", error);
+        res.status(500).send({ error: "Failed to fetch assignments" });
+      }
     });
 
     // get all assignment with the status

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
+import { useNavigate } from "react-router"; // ✅ from react-router (not react-router-dom)
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import useAuth from "../../../Components/Hooks/useAuth";
 import { FaBookOpen, FaCalendarAlt, FaUserGraduate } from "react-icons/fa";
@@ -6,6 +7,7 @@ import { FaBookOpen, FaCalendarAlt, FaUserGraduate } from "react-icons/fa";
 const FacultyCourses = () => {
   const { user } = useAuth();
   const email = user?.email;
+  const navigate = useNavigate(); // ✅ using from react-router
 
   const {
     data: courses,
@@ -13,7 +15,9 @@ const FacultyCourses = () => {
     error,
   } = useFetchData(`${email}`, `/faculty-assign/courses/${email}`);
 
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const handleViewDetails = (id) => {
+    navigate(`/dashboard/faculty-courses/details/${id}`); 
+  };
 
   return (
     <div className="p-6 bg-base-200 min-h-screen">
@@ -41,7 +45,7 @@ const FacultyCourses = () => {
 
       {!loading && courses?.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses?.map((course, idx) => (
+          {courses.map((course, idx) => (
             <div
               key={idx}
               className="card bg-white shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-300"
@@ -77,7 +81,7 @@ const FacultyCourses = () => {
                 <div className="card-actions justify-end mt-4">
                   <button
                     className="btn btn-sm btn-outline bg-prime"
-                    onClick={() => setSelectedCourse(course)}
+                    onClick={() => handleViewDetails(course._id)}
                   >
                     View Details
                   </button>
@@ -86,55 +90,6 @@ const FacultyCourses = () => {
             </div>
           ))}
         </div>
-      )}
-
-      {/* MODAL */}
-      {selectedCourse && (
-        <dialog id="course_modal" className="modal modal-open">
-          <div className="modal-box max-w-2xl relative">
-            {/* Top-right Close (X) Button */}
-            <button
-              onClick={() => setSelectedCourse(null)}
-              className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-            >
-              ✕
-            </button>
-
-            <h3 className="font-bold text-xl mb-3 text-primary">
-              {selectedCourse.name}
-            </h3>
-            <div className="space-y-2 text-sm">
-              <p>
-                <strong>Course Code:</strong> {selectedCourse.course}
-              </p>
-              <p>
-                <strong>Description:</strong> {selectedCourse.description}
-              </p>
-              <p>
-                <strong>Credit:</strong> {selectedCourse.credit}
-              </p>
-              <p>
-                <strong>Faculty Email:</strong> {selectedCourse.facultyEmail}
-              </p>
-              <p>
-                <strong>Assigned On:</strong>{" "}
-                {new Date(selectedCourse.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Course ID:</strong> {selectedCourse._id}
-              </p>
-            </div>
-
-            <div className="modal-action">
-              <button
-                className="btn btn-sm bg-highlight text-white"
-                onClick={() => setSelectedCourse(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </dialog>
       )}
     </div>
   );
