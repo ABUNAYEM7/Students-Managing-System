@@ -14,13 +14,15 @@ const ViewUserDetails = () => {
   useEffect(() => {
     const fetchUserAndDetails = async () => {
       try {
+        // Step 1: Fetch user basic info
         const userRes = await axiosInstance.get(`/user-details/${email}`);
         const userData = userRes.data;
         setUser(userData);
 
+        // Step 2: Now depending on role, fetch extra details
         if (userData.role === 'faculty') {
           const facultyRes = await axiosInstance.get(`/faculty-email/${email}`);
-          console.log( 'faculty result',facultyRes)
+          setExtraDetails(facultyRes.data); // ✅ This was missing!
         } else if (userData.role === 'student') {
           const studentRes = await axiosInstance.get(`/student/${email}`);
           setExtraDetails(studentRes.data);
@@ -32,8 +34,10 @@ const ViewUserDetails = () => {
 
     fetchUserAndDetails();
   }, [email]);
-  console.log(user)
+
+  // Wait for both user and extraDetails
   if (!user || !extraDetails) return <div className="text-center mt-10">Loading...</div>;
+
 
   return (
     <div className="max-w-5xl mx-auto p-8 bg-base-100 shadow-xl rounded-3xl border border-gray-300 mt-10">
@@ -52,7 +56,9 @@ const ViewUserDetails = () => {
             </div>
           </div>
           <div>
-            <h2 className="text-2xl font-semibold">{user?.name || `${extraDetails?.firstName} ${extraDetails?.lastName}`}</h2>
+            <h2 className="text-2xl font-semibold">
+              {user?.name || `${extraDetails?.firstName} ${extraDetails?.lastName}`}
+            </h2>
             <p className="text-lg text-gray-500">{user?.email}</p>
             {extraDetails?.designation && (
               <div className="mt-2 badge badge-info text-white">{extraDetails.designation}</div>
@@ -78,12 +84,12 @@ const ViewUserDetails = () => {
 
           {user?.role === 'student' && (
             <>
-              <p><strong>Department:</strong> {user?.department}</p>
+              <p><strong>Department:</strong> {extraDetails?.department}</p>
               <p><strong>Gender:</strong> {user?.gender}</p>
-              <p><strong>City:</strong> {user?.city}</p>
-              <p><strong>Country:</strong> {user?.country}</p>
-              <p><strong>Current Address:</strong> {user?.currentAddress}</p>
-              <p><strong>Permanent Address:</strong> {user?.permanentAddress}</p>
+              <p><strong>City:</strong> {extraDetails?.city}</p>
+              <p><strong>Country:</strong> {extraDetails?.country}</p>
+              <p><strong>Current Address:</strong> {extraDetails?.currentAddress}</p>
+              <p><strong>Permanent Address:</strong> {extraDetails?.permanentAddress}</p>
               {extraDetails?.courses && (
                 <p><strong>Enrolled Courses:</strong> {extraDetails.courses.length}</p>
               )}

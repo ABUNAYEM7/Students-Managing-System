@@ -68,14 +68,21 @@ const Materials = () => {
                   <td>{material.courseId}</td>
                   <td>{material.title}</td>
                   <td>
-                    <a
-                      href={`http://localhost:3000/${material.path.replace(/\\/g, "/")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      View
-                    </a>
+                    {material?.path ? (
+                      <a
+                        href={`http://localhost:3000/${material.path.replace(
+                          /\\/g,
+                          "/"
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">No File</span>
+                    )}
                   </td>
                   <td>
                     <Link

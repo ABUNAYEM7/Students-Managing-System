@@ -91,6 +91,8 @@ const AddMaterials = () => {
     }
   };
 
+  // console.log("Courses data:", courses);
+
   return (
     <div className="p-6">
       <div className="max-w-2xl mx-auto p-6 bg-white rounded shadow-md">
@@ -140,7 +142,7 @@ const AddMaterials = () => {
             <div className="mb-2 text-sm text-gray-600">
               Current File:{" "}
               <a
-                href={`http://localhost:3000/${data?.path?.replace(/\\/g, "/")}`}
+                  href={`http://localhost:3000/${(data?.path || "").replace(/\\/g, "/")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 underline"

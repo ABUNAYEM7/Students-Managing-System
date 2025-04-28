@@ -34,7 +34,7 @@ const ManageStudents = () => {
   };
 
   const viewDetails = (email) => {
-    console.log(email)
+    console.log('from view details',email)
     navigate(`/dashboard/view-details/${email}`);
   };
 

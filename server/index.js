@@ -13,6 +13,7 @@ const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
+const { resolve4 } = require("dns");
 
 // middleware
 app.use(express.json());
@@ -225,10 +226,35 @@ async function run() {
 
     // create new students from user
     app.post("/create-student", async (req, res) => {
-      const studentInfo = req.body;
-      const result = await studentsCollection.insertOne(studentInfo);
-      res.send(result);
+      const { email, name, photo, department, city, country, currentAddress, permanentAddress, gender } = req.body;
+    
+      if (!email || !name) {
+        return res.status(400).send({ message: "Missing required fields" });
+      }
+    
+      const existingStudent = await studentsCollection.findOne({ email });
+    
+      if (existingStudent) {
+        return res.status(409).send({ message: "Student already exists" });
+      }
+    
+      const newStudent = {
+        email,
+        name,
+        photo,
+        department,
+        city,
+        country,
+        currentAddress,
+        permanentAddress,
+        gender,
+        createdAt: new Date(),
+      };
+    
+      const result = await studentsCollection.insertOne(newStudent);
+      res.send({ success: true, insertedId: result.insertedId });
     });
+    
 
     // post weekly routine
     app.post("/add/weekly-routine", async (req, res) => {
