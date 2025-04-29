@@ -8,13 +8,17 @@ const socket = io("http://localhost:3000", {
   reconnectionDelay: 1000,
 });
 
-// 👇 Optional: Add connection logs for debugging
+// 👇 Optional: Add connection logs only in DEV mode
 socket.on("connect", () => {
-  console.log("✅ Socket connected:", socket.id);
+  if (import.meta.env.DEV) {
+    console.log("✅ Socket connected:", socket.id);
+  }
 });
 
 socket.on("disconnect", () => {
-  console.log("❌ Socket disconnected");
+  if (import.meta.env.DEV) {
+    console.log("❌ Socket disconnected");
+  }
 });
 
 export default socket;

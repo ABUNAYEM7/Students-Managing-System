@@ -43,7 +43,6 @@ const Assignment = () => {
   const detailsHandler = (id)=>{
     navigate(`/dashboard/assignment-details/${id}`)
   }
-  console.log(data)
   return (
     <div>
       <div className="mt-3 p-2 md:p-4 flex items-center justify-between">

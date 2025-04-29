@@ -10,7 +10,7 @@ const ManageUsers = () => {
   const { data: user, refetch } = useFetchData("users", "/all-users");
   const { user: admin } = useAuth();
   const axiosInstance = AxiosSecure();
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -39,7 +39,7 @@ const ManageUsers = () => {
   };
 
   const studentHandler = async (id) => {
-    navigate(`/dashboard/add-student/${id}`)
+    navigate(`/dashboard/add-student/${id}`);
   };
 
   const deleteHandler = (id) => {
@@ -119,12 +119,32 @@ const ManageUsers = () => {
                         className="dropdown-content menu bg-base-100 rounded-box z-1 w-32 p-2 shadow-sm"
                       >
                         <li>
-                          <button onClick={() => adminHandler(user?._id)}>
+                          <button
+                            onClick={() => adminHandler(user?._id)}
+                            disabled={user?.role === "admin"} // disable if already admin
+                            className={
+                              user?.role === "admin"
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                            }
+                          >
                             Admin
                           </button>
                         </li>
                         <li>
-                          <button onClick={() => studentHandler(user?._id)}>
+                          <button
+                            onClick={() => studentHandler(user?._id)}
+                            disabled={
+                              user?.role === "student" ||
+                              user?.role === "faculty"
+                            } // disable if student or faculty
+                            className={
+                              user?.role === "student" ||
+                              user?.role === "faculty"
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                            }
+                          >
                             Student
                           </button>
                         </li>

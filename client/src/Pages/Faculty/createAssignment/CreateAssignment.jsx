@@ -146,7 +146,6 @@ const CreateAssignment = () => {
     }
   };
 
-  console.log(courses);
 
   return (
     <div className="p-6">

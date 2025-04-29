@@ -40,7 +40,6 @@ const SignIn = () => {
         }
         catch(err){
           setSubmitting(false)
-            console.log(err)
             setError(err.message.split('/')[1].split(')')[0] || err.code || 'Invalid Credentials')
         }
   };

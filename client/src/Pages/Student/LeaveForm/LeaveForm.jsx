@@ -71,7 +71,6 @@ const LeaveForm = () => {
     }
     }
     catch(err){
-      console.log(err)
       setError(err.message || err.code || 'Error Occur Please Try Again Later')
     }
   };

@@ -55,8 +55,6 @@ const FacultyLeaveRequests = ({ facultyEmail, courseId }) => {
       return;
     }
   
-    console.log("🎯 LeaveRequestsLive mounted");
-    console.log("📡 Socket connected:", socket.connected);
   
     // Load existing leave applications from backend
     axiosInstance
@@ -72,14 +70,12 @@ const FacultyLeaveRequests = ({ facultyEmail, courseId }) => {
   
     // Listen for new leave applications in real-time
     const handleNewLeave = (newLeave) => {
-      console.log("📩 New leave received:", newLeave);
       setLeaves((prev) => [newLeave, ...prev]);
     };
   
     socket.on("new-leave-request", handleNewLeave);
   
     return () => {
-      console.log("👋 LeaveRequestsLive unmounted");
       socket.off("new-leave-request", handleNewLeave);
     };
   }, [facultyEmail, courseId]);

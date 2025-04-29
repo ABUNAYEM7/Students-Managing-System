@@ -48,7 +48,9 @@ const StudentAssignment = () => {
         refetch();
       }
     } catch (err) {
-      console.log(err);
+      if (import.meta.env.DEV) {
+        console.log(err);
+      }
     }
   };
 
@@ -60,7 +62,6 @@ const StudentAssignment = () => {
     </span>
   );  
 
-  console.log(assignments)
 
   return (
     <div className="max-w-4xl mx-auto p-6">

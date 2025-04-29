@@ -1,29 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
-import useAuth from '../Hooks/useAuth';
-import AxiosSecure from '../Hooks/AxiosSecure';
+import React, { useState, useEffect } from "react";
+import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import useAuth from "../Hooks/useAuth";
+import AxiosSecure from "../Hooks/AxiosSecure";
 
-const CheckoutForm = ({refetch}) => {
+const CheckoutForm = ({
+  refetch,
+  amount: initialAmount,
+  studentEmail,
+  courseId,
+  courseName,
+}) => {
   const stripe = useStripe();
   const elements = useElements();
-
   const [billingDetails, setBillingDetails] = useState({
-    name: '',
-    email: '',
-    phone: '',
+    name: "",
+    email: "",
+    phone: "",
+    courseId: courseId,
+    amount: initialAmount,
+    courseName: courseName,
   });
-  const [amount, setAmount] = useState('');
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState(null);
   const { user } = useAuth();
   const axiosInstance = AxiosSecure();
 
+
   useEffect(() => {
     if (user) {
       setBillingDetails((prev) => ({
         ...prev,
-        name: user.displayName || '',
-        email: user.email || '',
+        name: user.displayName || "",
+        email: user.email || "",
       }));
     }
   }, [user]);
@@ -38,16 +47,16 @@ const CheckoutForm = ({refetch}) => {
     const cardElement = elements.getElement(CardElement);
 
     try {
-      // 1️⃣ Create Payment Method first
-      const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardElement,
-        billing_details: {
-          name: billingDetails.name,
-          email: billingDetails.email,
-          phone: billingDetails.phone,
-        },
-      });
+      const { error: paymentMethodError, paymentMethod } =
+        await stripe.createPaymentMethod({
+          type: "card",
+          card: cardElement,
+          billing_details: {
+            name: billingDetails.name,
+            email: billingDetails.email,
+            phone: billingDetails.phone,
+          },
+        });
 
       if (paymentMethodError) {
         setMessage(paymentMethodError.message);
@@ -55,53 +64,63 @@ const CheckoutForm = ({refetch}) => {
         return;
       }
 
-      console.log('✅ PaymentMethod created:', paymentMethod.id);
+      if (import.meta.env.DEV) {
+        console.log("✅ PaymentMethod created:", paymentMethod.id);
+      }
 
-      // 2️⃣ Request Backend to create PaymentIntent
-      const response = await axiosInstance.post('/create-payment-intent', {
-        amount, // you already have amount from input
+      const response = await axiosInstance.post("/create-payment-intent", {
+        amount: billingDetails.amount,
       });
 
       const clientSecret = response.data.clientSecret;
 
       if (!clientSecret) {
-        throw new Error('Failed to get client secret from server');
+        throw new Error("Failed to get client secret from server");
       }
 
-      console.log('✅ Client Secret received:', clientSecret);
+      if (import.meta.env.DEV) {
+        console.log("✅ Client Secret received:", clientSecret);
+      }
 
-      // 3️⃣ Confirm payment now using clientSecret
       const confirmResult = await stripe.confirmCardPayment(clientSecret, {
         payment_method: paymentMethod.id,
       });
 
       if (confirmResult.error) {
-        console.error('❌ Payment failed:', confirmResult.error.message);
+        if (import.meta.env.DEV) {
+          console.error("❌ Payment failed:", confirmResult.error.message);
+        }
         setMessage(confirmResult.error.message);
-      } else if (confirmResult.paymentIntent.status === 'succeeded') {
-        if (confirmResult.paymentIntent.status === 'succeeded') {
-            console.log('🎉 Payment succeeded:', confirmResult.paymentIntent.id);
-          
-            // 👉 Save payment record to database
-            await axiosInstance.post('/payments', {
-              transactionId: confirmResult.paymentIntent.id,
-              userName: billingDetails.name,
-              userEmail: billingDetails.email,
-              phone: billingDetails.phone,
-              amount,
-              status: "paid",
-              date: new Date().toISOString(),
-            });
-            refetch()
-            setMessage('🎉 Payment Successful! Thank you!');
-            setBillingDetails({ name: user.displayName, email: user.email, phone: '' });
-            setAmount('');
-            cardElement.clear(); // clear card input
-          }
+      } else if (confirmResult.paymentIntent.status === "succeeded") {
+        if (import.meta.env.DEV) {
+          console.log("🎉 Payment succeeded:", confirmResult.paymentIntent.id);
+        }
+
+        await axiosInstance.post("/payments", {
+          transactionId: confirmResult.paymentIntent.id,
+          userName: billingDetails.name,
+          userEmail: billingDetails.email,
+          phone: billingDetails.phone,
+          courseId:billingDetails.courseId,
+          courseName:billingDetails.courseName,
+          amount :  billingDetails?.amount,
+          status: "paid",
+          date: new Date().toISOString(),
+        });
+
+        await axiosInstance.patch(`/update-student-course-payment-status/${studentEmail}`, {
+          courseId: billingDetails.courseId
+        });
+
+        refetch();
+        setMessage("🎉 Payment Successful! Thank you!");
+        cardElement.clear();
       }
     } catch (error) {
-      console.error('❌ Payment error:', error.message);
-      setMessage(error.message || 'Payment failed, please try again.');
+      if (import.meta.env.DEV) {
+        console.error("❌ Payment error:", error.message);
+      }
+      setMessage(error.message || "Payment failed, please try again.");
     }
 
     setIsProcessing(false);
@@ -110,7 +129,9 @@ const CheckoutForm = ({refetch}) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Full Name</label>
+        <label className="block text-sm font-medium text-gray-700">
+          Full Name
+        </label>
         <input
           type="text"
           className="input input-bordered w-full mt-1 bg-gray-100"
@@ -132,40 +153,45 @@ const CheckoutForm = ({refetch}) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+        <label className="block text-sm font-medium text-gray-700">
+          Phone Number
+        </label>
         <input
           type="tel"
           className="input input-bordered w-full mt-1"
           value={billingDetails.phone}
-          onChange={(e) => setBillingDetails({ ...billingDetails, phone: e.target.value })}
+          onChange={(e) =>
+            setBillingDetails({ ...billingDetails, phone: e.target.value })
+          }
           required
           placeholder="+1 234 567 8901"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Amount (USD)</label>
+        <label className="block text-sm font-medium text-gray-700">
+          Amount (USD)
+        </label>
         <input
           type="number"
-          className="input input-bordered w-full mt-1"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-          placeholder="Enter Amount"
+          className="input input-bordered w-full mt-1 bg-gray-100"
+          value={billingDetails.amount}
+          readOnly
+          placeholder="Assigned Fee"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Card Details</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Card Details
+        </label>
         <div className="p-4 border rounded-lg">
           <CardElement />
         </div>
       </div>
 
       {message && (
-        <div className="text-center text-red-500 font-medium">
-          {message}
-        </div>
+        <div className="text-center text-red-500 font-medium">{message}</div>
       )}
 
       <button
@@ -173,7 +199,7 @@ const CheckoutForm = ({refetch}) => {
         disabled={!stripe || isProcessing}
         className="btn bg-prime w-full"
       >
-        {isProcessing ? 'Processing...' : 'Pay Now'}
+        {isProcessing ? "Processing..." : "Pay Now"}
       </button>
     </form>
   );

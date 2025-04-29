@@ -87,7 +87,7 @@ const Grade = () => {
               ) : (
                 <tr>
                   <td colSpan="3" className="text-center text-gray-500 py-4">
-                    No grades available for this semester.
+                    No grades available for this Quarter.
                   </td>
                 </tr>
               )}

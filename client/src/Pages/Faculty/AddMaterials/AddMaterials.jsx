@@ -14,7 +14,6 @@ const AddMaterials = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef();
 
-  // ✅ Get assigned courses dynamically
   const {
     data: courses,
     loading: coursesLoading,
@@ -87,11 +86,11 @@ const AddMaterials = () => {
         if (fileInputRef.current) fileInputRef.current.value = null;
       }
     } catch (err) {
-      console.log(err);
+      if (import.meta.env.DEV) {
+        console.log(err);
+      }
     }
   };
-
-  // console.log("Courses data:", courses);
 
   return (
     <div className="p-6">
@@ -142,7 +141,7 @@ const AddMaterials = () => {
             <div className="mb-2 text-sm text-gray-600">
               Current File:{" "}
               <a
-                  href={`http://localhost:3000/${(data?.path || "").replace(/\\/g, "/")}`}
+                href={`http://localhost:3000/${(data?.path || "").replace(/\\/g, "/")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 underline"

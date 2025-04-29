@@ -37,13 +37,17 @@ const EditCourse = () => {
     e.preventDefault();
     try {
       const payload = {
-        courseId: formData.course, // correctly mapped here
+        courseId: formData.course,
         name: formData.name,
         credit: formData.credit,
         description: formData.description,
         date: formData.date,
       };
-      console.log(payload)
+
+      if (import.meta.env.DEV) {
+        console.log(payload);
+      }
+
       const res = await axiosInstance.patch(`/update-course/${id}`, payload);
 
       if (

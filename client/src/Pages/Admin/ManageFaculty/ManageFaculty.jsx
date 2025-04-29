@@ -24,7 +24,6 @@ const ManageFaculty = () => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         const res = await axiosInstance.delete(`/delete-faculty/${id}`);
-        console.log(res);
         if (res?.data?.deletedCount > 0) {
           refetch();
           Swal.fire({

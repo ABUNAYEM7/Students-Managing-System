@@ -75,29 +75,42 @@ const io = new Server(server, {
 
 // Socket.IO event listeners
 io.on("connection", (socket) => {
-  console.log("✅ A user connected:", socket.id);
+  if (process.env.NODE_ENV === "development") {
+    console.log("✅ A user connected:", socket.id);
+  }
 
   // Join role-based room (emitted from frontend)
   socket.on("join-role", (role, email) => {
     const room = `${role}-room`;
 
     socket.join(room);
-    console.log(`🔐 Socket ${socket.id} joined room: ${room}`);
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(`🔐 Socket ${socket.id} joined room: ${room}`);
+    }
 
     // Optionally, join email-based private room (for direct notifications)
     if (email) {
       socket.join(email);
-      console.log(`📩 Socket ${socket.id} also joined personal room: ${email}`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `📩 Socket ${socket.id} also joined personal room: ${email}`
+        );
+      }
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ User disconnected:", socket.id);
+    if (process.env.NODE_ENV === "development") {
+      console.log("❌ User disconnected:", socket.id);
+    }
   });
 
   // Example chat event still optional
   socket.on("chat-message", (msg) => {
-    console.log("💬 Message received:", msg);
+    if (process.env.NODE_ENV === "development") {
+      console.log("💬 Message received:", msg);
+    }
     io.emit("chat-message", msg); // Broadcast to all
   });
 });
@@ -452,7 +465,6 @@ async function run() {
     });
 
     // PATCH: Update routine day status
-    // PATCH: Update routine day status
     app.patch(
       "/update-routine-day-status/:routineId/:dayIndex",
       async (req, res) => {
@@ -480,6 +492,85 @@ async function run() {
         } catch (error) {
           console.error("Error updating status:", error);
           res.status(500).send({ message: "Failed to update status" });
+        }
+      }
+    );
+
+    //✅✅✅✅ payment update fee amount patch route
+    
+    // ✅ PATCH: Update student course fee
+    app.patch("/update-student-course-fee/:studentId", async (req, res) => {
+      const { studentId } = req.params;
+      const { courseId, newFee } = req.body;
+      console.log(courseId, newFee);
+      if (!ObjectId.isValid(studentId)) {
+        return res.status(400).send({ message: "Invalid student ID" });
+      }
+
+      if (!courseId || typeof newFee !== "number") {
+        return res.status(400).send({ message: "Missing courseId or newFee" });
+      }
+
+      try {
+        const result = await studentsCollection.updateOne(
+          {
+            _id: new ObjectId(studentId),
+            "courses.courseId": courseId,
+          },
+          {
+            $set: { "courses.$.fee": newFee },
+          }
+        );
+        console.log(result);
+        if (result.modifiedCount === 0) {
+          return res
+            .status(404)
+            .send({ message: "Student or course not found" });
+        }
+
+        res.send({ success: true, message: "Fee updated successfully" });
+      } catch (error) {
+        console.error("❌ Error updating student course fee:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
+    // ✅ PATCH: Update paymentStatus to 'paid' for student's enrolled course
+    app.patch(
+      "/update-student-course-payment-status/:studentEmail",
+      async (req, res) => {
+        const { studentEmail } = req.params;
+        const { courseId } = req.body;
+
+        if (!studentEmail || !courseId) {
+          return res
+            .status(400)
+            .send({ error: "Missing studentEmail or courseId" });
+        }
+
+        try {
+          const result = await studentsCollection.updateOne(
+            { email: studentEmail, "courses.courseId": courseId },
+            {
+              $set: {
+                "courses.$.paymentStatus": "paid",
+              },
+            }
+          );
+
+          if (result.modifiedCount === 0) {
+            return res
+              .status(404)
+              .send({ error: "Student course not found or already paid" });
+          }
+
+          res.send({
+            success: true,
+            message: "Payment status updated to paid",
+          });
+        } catch (error) {
+          console.error("❌ Error updating payment status:", error);
+          res.status(500).send({ error: "Internal Server Error" });
         }
       }
     );
@@ -685,68 +776,102 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/all-students',async(req,res)=>{
-      const result = await studentsCollection.find({}).toArray()
-      res.send(result)
-    })
+    // get all students
+    app.get("/all-students", async (req, res) => {
+      const result = await studentsCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    // ✅ Get student full details with enrolled courses (including courseId)
+    app.get("/student-full-details/:email", async (req, res) => {
+      const { email } = req.params;
+
+      if (!email) {
+        return res.status(400).send({ message: "Email is required" });
+      }
+
+      try {
+        const student = await studentsCollection.findOne({ email });
+
+        if (!student) {
+          return res.status(404).send({ message: "Student not found" });
+        }
+
+        let enrolledCourses = [];
+
+        if (student.courses && Array.isArray(student.courses)) {
+          const courseObjectIds = student.courses.map(
+            (c) => new ObjectId(c.courseId)
+          );
+
+          enrolledCourses = await courseCollection
+            .find({ _id: { $in: courseObjectIds } })
+            .project({ name: 1, credit: 1, semester: 1, courseId: 1 }) // ✅ now include courseId field
+            .toArray();
+        }
+        res.send({
+          student,
+          enrolledCourses,
+        });
+      } catch (err) {
+        console.error("❌ Error fetching student full details:", err);
+        res.status(500).send({ error: "Server error" });
+      }
+    });
 
     // get all students and for courses based student for attendance
+    // app.get("/students-by-course/:id", async (req, res) => {
+    //   const { id } = req.params;
+
+    //   if (!id) {
+    //     console.error("❌ No course ID provided in the request.");
+    //     return res.status(400).send({ message: "Course ID is required" });
+    //   }
+
+    //   try {
+    //     const students = await studentsCollection
+    //       .find({
+    //         "courses.courseId": id,
+    //       })
+    //       .project({ name: 1, email: 1, photo: 1, department: 1, country: 1 })
+    //       .sort({ name: 1 }) // ✅ nice to keep it sorted too
+    //       .toArray();
+
+    //     if (students.length === 0) {
+    //       console.warn(`⚠️ No students enrolled for courseId: ${id}`);
+    //       return res
+    //         .status(404)
+    //         .send({ message: "No students enrolled in this course." });
+    //     }
+    //     console.log('hello')
+    //     res.send(students);
+    //   } catch (error) {
+    //     console.error("❌ Error fetching students by course:", error.message);
+    //     res.status(500).send({ error: "Internal server error" });
+    //   }
+    // });
+
+    //  Get students enrolled in a specific course by course _id for courseDetails
     app.get("/students-by-course/:id", async (req, res) => {
       const { id } = req.params;
-    
-      console.log("👉 Incoming request to fetch students for courseId:", id);
-    
+
       if (!id) {
-        console.error("❌ No course ID provided in the request.");
         return res.status(400).send({ message: "Course ID is required" });
       }
-    
+
       try {
         const students = await studentsCollection
           .find({
-            "courses.courseId": id,
+            "courses.courseId": id, // ✅ direct match inside array
           })
           .project({ name: 1, email: 1, photo: 1, department: 1, country: 1 })
-          .sort({ name: 1 }) // ✅ nice to keep it sorted too
           .toArray();
-    
-        console.log(`✅ Students fetched for courseId ${id}:`, students.length);
-    
         if (students.length === 0) {
-          console.warn(`⚠️ No students enrolled for courseId: ${id}`);
-          return res.status(404).send({ message: "No students enrolled in this course." });
+          return res
+            .status(404)
+            .send({ message: "No students enrolled in this course." });
         }
-    
         res.send(students);
-      } catch (error) {
-        console.error("❌ Error fetching students by course:", error.message);
-        res.status(500).send({ error: "Internal server error" });
-      }
-    });
-    
-    // ✅ NEW ROUTE: Get students enrolled in a specific course by course _id
-    app.get("/students-by-course/:id", async (req, res) => {
-      const { id } = req.params;
-      console.log(id)
-    
-      if (!id) {
-        return res.status(400).send({ message: "Course ID is required" });
-      }
-    
-      try {
-        // const students = await studentsCollection
-        //   .find({
-        //     "courses.courseId": id, // ✅ direct match inside array
-        //   })
-        //   .project({ name: 1, email: 1, photo: 1, department: 1, country: 1 })
-        //   .toArray();
-    
-        // if (students.length === 0) {
-        //   return res.status(404).send({ message: "No students enrolled in this course." });
-        // }
-    
-        // res.send(students);
-
       } catch (error) {
         console.error("❌ Error fetching students by course:", error);
         res.status(500).send({ error: "Internal server error" });
@@ -1275,7 +1400,6 @@ async function run() {
     // get specific message by id
     app.get("/messages/:email", async (req, res) => {
       const { email } = req.params;
-      console.log(email);
       if (!email) {
         return res.status(400).send({ message: "Email is required" });
       }
@@ -1287,7 +1411,6 @@ async function run() {
           })
           .sort({ createdAt: -1 })
           .toArray();
-        console.log(messages);
         res.send(messages);
       } catch (err) {
         console.error("❌ Error fetching messages:", err);
@@ -1449,6 +1572,8 @@ async function run() {
               courseName: course.courseName,
               credit: course.credit,
               semester: course.semester,
+              fee: course.fee || 0, // ✅ safe fallback to 0 if not provided
+              paymentStatus: course.paymentStatus || "unpaid", // ✅ safe fallback
               enrolledAt: new Date(course.enrolledAt || Date.now()),
             },
           },
@@ -1467,7 +1592,9 @@ async function run() {
             _id: new ObjectId(course.courseId),
           });
         } else {
-          console.log("❌ Invalid ObjectId:", course.courseId);
+          if (process.env.NODE_ENV === "development") {
+            console.log("❌ Invalid ObjectId:", course.courseId);
+          }
         }
 
         if (actualCourse?.facultyEmail) {
@@ -1483,14 +1610,20 @@ async function run() {
             seen: false,
           };
 
-          console.log("🔔 Creating notification:", notification);
+          if (process.env.NODE_ENV === "development") {
+            console.log("🔔 Creating notification:", notification);
+          }
 
           await notificationCollection.insertOne(notification);
           io.to("faculty-room").emit("faculty-notification", notification);
 
-          console.log("📢 Notification emitted to faculty room.");
+          if (process.env.NODE_ENV === "development") {
+            ("📢 Notification emitted to faculty room.");
+          }
         } else {
-          console.log("⚠️ No faculty email found for course:", actualCourse);
+          if (process.env.NODE_ENV === "development") {
+            console.log("⚠️ No faculty email found for course:", actualCourse);
+          }
         }
 
         res.send({ success: true, result });
@@ -1962,7 +2095,6 @@ async function run() {
           transactionId: payment.transactionId,
           seen: false,
         };
-        console.log(notification);
         // Save the notification in the notifications collection
         await notificationCollection.insertOne(notification);
         res.send({ success: true, insertedId: result.insertedId });
@@ -2046,9 +2178,11 @@ async function run() {
 
     await client.db("admin").command({ ping: 1 });
 
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "Pinged your deployment. You successfully connected to MongoDB!"
+      );
+    }
   } finally {
     // await client.close();
   }
@@ -2060,5 +2194,7 @@ app.get("/", (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`🚀 Server running on http://localhost:${port}`);
+  if (process.env.NODE_ENV === "development") {
+    console.log(`🚀 Server running on http://localhost:${port}`);
+  }
 });

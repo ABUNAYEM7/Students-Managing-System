@@ -49,6 +49,8 @@ const StudentsCourses = () => {
           courseName: course.name,
           credit: course.credit,
           semester: course.semester,
+          fee :0,
+          paymentStatus :'unpaid',
           enrolledAt: new Date().toISOString(),
         },
       });
