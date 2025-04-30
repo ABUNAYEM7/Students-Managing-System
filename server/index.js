@@ -497,12 +497,12 @@ async function run() {
     );
 
     //✅✅✅✅ payment update fee amount patch route
-    
+
     // ✅ PATCH: Update student course fee
     app.patch("/update-student-course-fee/:studentId", async (req, res) => {
       const { studentId } = req.params;
       const { courseId, newFee } = req.body;
-      console.log(courseId, newFee);
+
       if (!ObjectId.isValid(studentId)) {
         return res.status(400).send({ message: "Invalid student ID" });
       }
@@ -512,6 +512,21 @@ async function run() {
       }
 
       try {
+        // ✅ Fetch student to get email and course name
+        const student = await studentsCollection.findOne({
+          _id: new ObjectId(studentId),
+        });
+        if (!student) {
+          return res.status(404).send({ message: "Student not found" });
+        }
+
+        const course = student.courses?.find((c) => c.courseId === courseId);
+        if (!course) {
+          return res
+            .status(404)
+            .send({ message: "Course not found for this student" });
+        }
+
         const result = await studentsCollection.updateOne(
           {
             _id: new ObjectId(studentId),
@@ -521,12 +536,26 @@ async function run() {
             $set: { "courses.$.fee": newFee },
           }
         );
-        console.log(result);
+
         if (result.modifiedCount === 0) {
-          return res
-            .status(404)
-            .send({ message: "Student or course not found" });
+          return res.status(404).send({ message: "Fee update failed" });
         }
+
+        // ✅ Create notification
+        const notification = {
+          type: "fee-updated",
+          email: student.email,
+          courseId,
+          courseName: course.courseName || "N/A",
+          message: `💰 Your course fee for "${course.courseName}" has been updated to $${newFee}.`,
+          applicationDate: new Date(),
+          seen: false,
+        };
+
+        await notificationCollection.insertOne(notification);
+
+        // ✅ Emit real-time notification to student
+        io.to(student.email).emit("student-notification", notification);
 
         res.send({ success: true, message: "Fee updated successfully" });
       } catch (error) {
@@ -1791,7 +1820,7 @@ async function run() {
 
       try {
         const notifications = await notificationCollection
-          .find({ email, type: { $in: ["grade", "assignment"] } })
+          .find({ email, type: { $in: ["grade", "assignment","fee-updated"] } })
           .sort({ applicationDate: -1 })
           .toArray();
         res.send(notifications);

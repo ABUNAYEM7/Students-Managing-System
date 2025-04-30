@@ -117,7 +117,8 @@ const ViewUserDetails = () => {
       });
     }
   };
-  
+
+  // console.log(extraDetails?.courses)
 
   return (
     <div className="max-w-6xl mx-auto p-8 bg-base-100 shadow-xl rounded-3xl border border-gray-300 mt-10">
@@ -292,7 +293,6 @@ const ViewUserDetails = () => {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Course ID</th>
                   <th>Course Name</th>
                   <th>Credit</th>
                   <th>Semester</th>
@@ -306,7 +306,6 @@ const ViewUserDetails = () => {
                 {extraDetails?.courses?.map((course, index) => (
                   <tr key={course?.courseId || index}>
                     <td>{index + 1}</td>
-                    <td>{course?.courseId || "N/A"}</td>
                     <td>{course?.courseName || "N/A"}</td>
                     <td>{course?.credit || "N/A"}</td>
                     <td>{course?.semester || "N/A"}</td>
@@ -349,6 +348,7 @@ const ViewUserDetails = () => {
                         <button
                           className="btn btn-sm btn-accent"
                           onClick={() => setEditingIndex(index)}
+                          disabled= {course?.paymentStatus === "paid"}
                         >
                           Edit
                         </button>

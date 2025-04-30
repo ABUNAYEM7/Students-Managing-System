@@ -93,18 +93,21 @@ const DashboardDrawer = () => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (isOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+      if (
+        isOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target)
+      ) {
         setIsOpen(false); // ✅ Close the sidebar if clicked outside
       }
     };
-  
+
     document.addEventListener("mousedown", handleClickOutside);
-  
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
-  
 
   const logoutHandler = async () => {
     try {
@@ -137,7 +140,7 @@ const DashboardDrawer = () => {
     }
   };
 
-
+  console.log(notifications);
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
@@ -228,6 +231,17 @@ const DashboardDrawer = () => {
                                   </div>
                                 </>
                               )}
+                              {n.type === "fee-updated" && (
+                                <>
+                                  <strong>💰 Fee Updated</strong>
+                                  <div className="text-xs">
+                                    Course: {n.courseName}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {n.message}
+                                  </div>
+                                </>
+                              )}
                             </>
                           )}
 
@@ -239,7 +253,8 @@ const DashboardDrawer = () => {
                                   <strong>💳 Payment Received</strong>
                                   <div className="text-xs">From: {n.email}</div>
                                   <div className="text-xs">
-                                    Amount: ${n.amount}
+                                    Amount:{" "}
+                                    {n.message.split("$")[1].split("f")[0]} $
                                   </div>
                                   <div className="text-[10px] text-gray-500">
                                     Txn: {n.transactionId}
@@ -299,7 +314,7 @@ const DashboardDrawer = () => {
       {/* Sidebar and Page Content */}
       <div className="flex flex-col sm:flex-row flex-1 mt-14">
         <div
-         ref={sidebarRef}
+          ref={sidebarRef}
           className={`transition-all duration-300 ${
             isOpen ? "w-64" : "w-0"
           } bg-base-200 fixed top-16 sm:top-16 left-0 h-[calc(100vh-4rem)] z-40 overflow-y-auto`}
