@@ -80,7 +80,7 @@ const StudentAssignment = () => {
             <div className="card-body">
               <h2 className="card-title text-xl">{item.title}</h2>
               <p><strong>Instructions:</strong> {item.instructions}</p>
-              <p><strong>Semester:</strong> {item.semester || 'General'}</p>
+              <p><strong>Quarter:</strong> {item.semester || 'General'}</p>
               <p><strong>Course ID:</strong> {item.courseId}</p>
               <p><strong>Uploaded By:</strong> {item.email}</p>
               <p><strong>Uploaded At:</strong> {new Date(item.uploadedAt).toLocaleString()}</p>

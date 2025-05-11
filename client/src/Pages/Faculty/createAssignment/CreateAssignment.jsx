@@ -175,7 +175,7 @@ const CreateAssignment = () => {
           </select>
 
           <label className="label">
-            <span className="label-text">Semester *</span>
+            <span className="label-text">Quarter *</span>
           </label>
           <select
             className="select select-bordered w-full"
@@ -185,11 +185,12 @@ const CreateAssignment = () => {
             required
           >
             <option disabled value="">
-              Select Semester
+              Select Quarter
             </option>
-            <option value="Spring 2025">Spring 2025</option>
-            <option value="Summer 2025">Summer 2025</option>
-            <option value="Fall 2025">Fall 2025</option>
+            <option value="Quarter-1">Quarter-1</option>
+                <option value="Quarter-2">Quarter-2</option>
+                <option value="Quarter-3">Quarter-3</option>
+                <option value="Quarter-4">Quarter-4</option>
           </select>
 
           <label className="label">

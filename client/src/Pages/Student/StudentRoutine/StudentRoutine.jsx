@@ -68,7 +68,7 @@ const StudentRoutine = () => {
           <div key={i} className="border rounded-lg p-4 mb-6 shadow bg-white">
             <div className="mb-4">
               <h3 className="font-bold text-lg">{routine.department} - {routine.semester}</h3>
-              <p className="text-sm text-gray-500">Week Start: {dayjs(routine.weekStartDate).format("MMMM D, YYYY")}</p>
+              <p className="text-sm text-green-500">Week Start: {dayjs(routine.weekStartDate).format("MMMM D, YYYY")}</p>
             </div>
 
             <table className="min-w-full table-auto border">

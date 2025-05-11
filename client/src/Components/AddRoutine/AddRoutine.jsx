@@ -34,9 +34,9 @@ const AddRoutine = () => {
 
   const Masters = [
     "Master of Public Health",
-    "Master of Science in Civil Engineering (M.Sc.)",
-    "Master of Science in Business Administration (MSBA)",
-    "Master of Science in Computer Science Engineering (MSCSE)",
+    "Master of Science in Civil Engineering",
+    "Master of Science in Business Administration",
+    "Master of Science in Computer Science Engineering",
   ];
 
   const Doctorate = [
@@ -47,7 +47,7 @@ const AddRoutine = () => {
   ];
 
   const Associate = ["English as a Second Language"];
-  const semesters = ["Spring 2025", "Summer 2025", "Fall 2025", "Winter 2025"];
+  const semesters = ["Quarter-1", "Quarter-2", "Quarter-3", "Quarter-4"];
 
   const daysOfWeek = [
     "Sunday",
@@ -247,7 +247,7 @@ const AddRoutine = () => {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="form-control">
-            <label className="label font-semibold">Semester</label>
+            <label className="label font-semibold">Quarter</label>
             <select
               name="semester"
               className="select w-full border-2 border-prime focus:outline-none"
@@ -255,7 +255,7 @@ const AddRoutine = () => {
               value={formData.semester}
               disabled={!!routineId}
             >
-              <option value="">Select Semester</option>
+              <option value="">Select Quarter</option>
               {semesters.map((sem, idx) => (
                 <option key={idx} value={sem}>
                   {sem}

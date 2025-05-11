@@ -92,9 +92,9 @@ const AddCourses = () => {
 
   const Masters = [
     "Master of Public Health",
-    "Master of Science in Civil Engineering (M.Sc.)",
-    "Master of Science in Business Administration (MSBA)",
-    "Master of Science in Computer Science Engineering (MSCSE)",
+    "Master of Science in Civil Engineering",
+    "Master of Science in Business Administration",
+    "Master of Science in Computer Science Engineering",
   ];
 
   const Doctorate = [
@@ -125,7 +125,7 @@ const AddCourses = () => {
             {/* Semester Dropdown */}
             <div className="form-control w-full mb-4">
               <label className="label">
-                <span className="label-text">Semester</span>
+                <span className="label-text">Quarter</span>
               </label>
               <select
                 name="semester"
@@ -134,10 +134,11 @@ const AddCourses = () => {
                 className="select select-bordered w-full"
                 required
               >
-                <option value="">Select Semester</option>
-                <option value="Spring 2025">Spring 2025</option>
-                <option value="Summer 2025">Summer 2025</option>
-                <option value="Fall 2025">Fall 2025</option>
+                <option value="">Select Quarter</option>
+                <option value="Quarter-1">Quarter-1</option>
+                <option value="Quarter-2">Quarter-2</option>
+                <option value="Quarter-3">Quarter-3</option>
+                <option value="Quarter-4">Quarter-4</option>
               </select>
             </div>
 

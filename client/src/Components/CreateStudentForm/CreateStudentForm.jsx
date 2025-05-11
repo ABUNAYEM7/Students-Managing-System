@@ -22,9 +22,9 @@ const CreateStudentForm = () => {
 
   const Masters = [
     "Master of Public Health",
-    "Master of Science in Civil Engineering (M.Sc.)",
-    "Master of Science in Business Administration (MSBA)",
-    "Master of Science in Computer Science Engineering (MSCSE)",
+    "Master of Science in Civil Engineering",
+    "Master of Science in Business Administration",
+    "Master of Science in Computer Science Engineering",
   ];
 
   const Doctorate = [

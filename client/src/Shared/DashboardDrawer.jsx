@@ -140,7 +140,7 @@ const DashboardDrawer = () => {
     }
   };
 
-  console.log(notifications);
+  // console.log(notifications);
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}

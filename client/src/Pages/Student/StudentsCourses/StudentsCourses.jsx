@@ -95,7 +95,7 @@ const StudentsCourses = () => {
           <FaClock /> Credit Hours: {course.credit}
         </p>
         <p className="text-sm text-gray-700 flex items-center gap-2">
-          🎓 Semester: {course.semester || "Not specified"}
+          🎓 Quarter: {course.semester || "Not specified"}
         </p>
         <p className="text-sm text-gray-700 flex items-center gap-2">
           <MdOutlineCalendarToday /> Start Date: {course.date || "N/A"}

@@ -136,17 +136,19 @@ const FacultyGrades = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center sm:gap-5">
         <div className="form-control w-full sm:max-w-xs mb-4">
           <label className="label">
-            <span className="label-text font-medium">Select Semester</span>
+            <span className="label-text font-medium">Select Quarter</span>
           </label>
           <select
             className="select select-bordered"
             value={semester}
             onChange={(e) => setSemester(e.target.value)}
           >
-            <option value="">-- Choose a semester --</option>
-            <option value="Spring 2025">Spring 2025</option>
-            <option value="Fall 2025">Fall 2025</option>
-            <option value="Summer 2025">Summer 2025</option>
+            <option value="">-- Choose a Quarter --</option>
+            <option value="Quarter-1">Quarter-1</option>
+            <option value="Quarter-2">Quarter-2</option>
+            <option value="Quarter-3">Quarter-3</option>
+            <option value="Quarter-3">Quarter-3</option>
+            <option value="Quarter-4">Quarter-4</option>
           </select>
         </div>
 

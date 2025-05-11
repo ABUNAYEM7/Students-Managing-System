@@ -4,7 +4,7 @@ import useFetchData from '../../../Components/Hooks/useFetchData';
 import useAuth from '../../../Components/Hooks/useAuth';
 
 const Grade = () => {
-  const semesterOptions = ['Fall 2024', 'Spring 2025', 'Summer 2025'];
+  const semesterOptions = ['Quarter-1', 'Quarter-2', 'Quarter-3','Quarter-4'];
   const [selectedSemester, setSelectedSemester] = useState(semesterOptions[1]);
   const { user } = useAuth();
 
