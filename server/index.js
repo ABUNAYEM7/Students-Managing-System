@@ -141,6 +141,10 @@ async function run() {
       .db("academi_core")
       .collection("attendance");
 
+    const courseDistributionCollection = client
+      .db("academi_core")
+      .collection("course_distribution");
+
     const studentsCollection = client.db("academi_core").collection("students");
 
     const gradesCollection = client.db("academi_core").collection("grades");
@@ -1496,6 +1500,33 @@ async function run() {
       res.send(result);
     });
 
+    // get student course outline
+    // GET course distribution by department
+    app.get("/course-distribution/:department", async (req, res) => {
+      const { department } = req.params;
+
+      if (!department) {
+        return res.status(400).send({ message: "Department is required" });
+      }
+
+      try {
+        const courseData = await courseDistributionCollection.findOne({
+          program: department,
+        });
+
+        if (!courseData) {
+          return res.status(404).send({ message: "Program not found" });
+        }
+
+        res.send(courseData);
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Error fetching course distribution:", error);
+        }
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
     //✅ ✅ ✅  notifications routes
 
     // ✅ Save new course and notify assigned faculty
@@ -1820,7 +1851,10 @@ async function run() {
 
       try {
         const notifications = await notificationCollection
-          .find({ email, type: { $in: ["grade", "assignment","fee-updated"] } })
+          .find({
+            email,
+            type: { $in: ["grade", "assignment", "fee-updated"] },
+          })
           .sort({ applicationDate: -1 })
           .toArray();
         res.send(notifications);
