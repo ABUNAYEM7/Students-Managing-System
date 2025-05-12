@@ -209,6 +209,7 @@ async function run() {
           name: data.name,
           credit: data.credit,
           description: data.description,
+           facultyEmail:data. facultyEmail,
           date: data.date,
         },
       };

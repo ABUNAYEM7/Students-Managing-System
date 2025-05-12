@@ -1,25 +1,18 @@
-import React, { useState } from "react";
-import { Elements } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import CheckoutForm from "../../../Components/CheckoutForm/CheckoutForm";
+import { useNavigate } from "react-router";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import useAuth from "../../../Components/Hooks/useAuth";
-
-const stripePromise = loadStripe(`${import.meta.env.VITE_PAYMENT_PK}`);
 
 const Fee = () => {
   const { user } = useAuth();
   const email = user?.email;
-  const { data: studentDetails = {}, refetch } = useFetchData(
+  const navigate = useNavigate();
+  const { data: studentDetails = {} } = useFetchData(
     email,
     `/student-full-details/${email}`
   );
 
-  const [selectedCourse, setSelectedCourse] = useState(null);
-
   const handlePayClick = (course) => {
-    setSelectedCourse(course);
-    document.getElementById("payment_modal").showModal();
+    navigate("/dashboard/payment-page", { state: { course } });
   };
 
   return (
@@ -61,7 +54,11 @@ const Fee = () => {
                     <td>
                       <button
                         className="btn btn-sm btn-primary"
-                        disabled={!course?.fee || course?.fee === 0 || course.paymentStatus === 'paid'}
+                        disabled={
+                          !course?.fee ||
+                          course?.fee === 0 ||
+                          course.paymentStatus === "paid"
+                        }
                         onClick={() => handlePayClick(course)}
                       >
                         Pay
@@ -78,31 +75,6 @@ const Fee = () => {
           </p>
         )}
       </div>
-
-      {/* Payment Modal */}
-      <dialog id="payment_modal" className="modal">
-        <div className="modal-box">
-          <h3 className="font-bold text-lg mb-4 text-highlight">
-            Complete Your Payment
-          </h3>
-          {selectedCourse && (
-            <Elements stripe={stripePromise}>
-              <CheckoutForm
-                refetch={refetch}
-                amount={selectedCourse?.fee}
-                studentEmail={email}
-                courseId={selectedCourse?.courseId}
-                courseName={selectedCourse?.courseName}
-              />
-            </Elements>
-          )}
-          <div className="modal-action">
-            <form method="dialog">
-              <button className="btn">Close</button>
-            </form>
-          </div>
-        </div>
-      </dialog>
     </div>
   );
 };

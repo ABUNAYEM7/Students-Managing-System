@@ -12,20 +12,20 @@ const CheckoutForm = ({
 }) => {
   const stripe = useStripe();
   const elements = useElements();
+  const axiosInstance = AxiosSecure();
+  const { user } = useAuth();
+
   const [billingDetails, setBillingDetails] = useState({
     name: "",
     email: "",
     phone: "",
-    courseId: courseId,
+    courseId,
     amount: initialAmount,
-    courseName: courseName,
+    courseName,
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState(null);
-  const { user } = useAuth();
-  const axiosInstance = AxiosSecure();
-
 
   useEffect(() => {
     if (user) {
@@ -86,41 +86,49 @@ const CheckoutForm = ({
         payment_method: paymentMethod.id,
       });
 
-      if (confirmResult.error) {
-        if (import.meta.env.DEV) {
-          console.error("❌ Payment failed:", confirmResult.error.message);
+      if (import.meta.env.DEV) {
+        console.log("🧾 Stripe PaymentIntent Status:", confirmResult.paymentIntent?.status);
+      }
+
+      if (
+        confirmResult?.paymentIntent?.status === "succeeded" ||
+        confirmResult?.paymentIntent?.status === "processing"
+      ) {
+        try {
+          await axiosInstance.post("/payments", {
+            transactionId: confirmResult.paymentIntent.id,
+            userName: billingDetails.name,
+            userEmail: billingDetails.email,
+            phone: billingDetails.phone,
+            courseId: billingDetails.courseId,
+            courseName: billingDetails.courseName,
+            amount: billingDetails.amount,
+            status: "paid",
+            date: new Date().toISOString(),
+          });
+
+          await axiosInstance.patch(
+            `/update-student-course-payment-status/${studentEmail}`,
+            {
+              courseId: billingDetails.courseId,
+            }
+          );
+
+          refetch();
+          setMessage("🎉 Payment Successful! Thank you!");
+          cardElement.clear();
+        } catch (err) {
+          console.error("❌ Error saving payment to DB:", err);
+          setMessage("Payment processed, but saving failed. Contact admin.");
         }
+      } else if (confirmResult.error) {
         setMessage(confirmResult.error.message);
-      } else if (confirmResult.paymentIntent.status === "succeeded") {
-        if (import.meta.env.DEV) {
-          console.log("🎉 Payment succeeded:", confirmResult.paymentIntent.id);
-        }
-
-        await axiosInstance.post("/payments", {
-          transactionId: confirmResult.paymentIntent.id,
-          userName: billingDetails.name,
-          userEmail: billingDetails.email,
-          phone: billingDetails.phone,
-          courseId:billingDetails.courseId,
-          courseName:billingDetails.courseName,
-          amount :  billingDetails?.amount,
-          status: "paid",
-          date: new Date().toISOString(),
-        });
-
-        await axiosInstance.patch(`/update-student-course-payment-status/${studentEmail}`, {
-          courseId: billingDetails.courseId
-        });
-
-        refetch();
-        setMessage("🎉 Payment Successful! Thank you!");
-        cardElement.clear();
       }
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error("❌ Payment error:", error.message);
       }
-      setMessage(error.message || "Payment failed, please try again.");
+      setMessage(error.message || "Payment failed. Please try again.");
     }
 
     setIsProcessing(false);
@@ -137,7 +145,6 @@ const CheckoutForm = ({
           className="input input-bordered w-full mt-1 bg-gray-100"
           value={billingDetails.name}
           readOnly
-          placeholder="John Doe"
         />
       </div>
 
@@ -148,7 +155,6 @@ const CheckoutForm = ({
           className="input input-bordered w-full mt-1 bg-gray-100"
           value={billingDetails.email}
           readOnly
-          placeholder="john@example.com"
         />
       </div>
 
@@ -177,7 +183,6 @@ const CheckoutForm = ({
           className="input input-bordered w-full mt-1 bg-gray-100"
           value={billingDetails.amount}
           readOnly
-          placeholder="Assigned Fee"
         />
       </div>
 

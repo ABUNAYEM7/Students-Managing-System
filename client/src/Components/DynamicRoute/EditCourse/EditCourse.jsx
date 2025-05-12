@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import useFetchData from "../../Hooks/useFetchData";
 import Swal from "sweetalert2";
@@ -7,13 +7,18 @@ import AxiosSecure from "../../Hooks/AxiosSecure";
 const EditCourse = () => {
   const { id } = useParams();
   const { data } = useFetchData(`${id}`, `/courses/${id}`);
+  const { data:facultyData} = useFetchData("faculties", "/all-faculties");
+  const faculties = facultyData?.result;
+
   const [formData, setFormData] = useState({
     course: "",
     name: "",
     credit: "",
     description: "",
     date: "",
+    facultyEmail: "",
   });
+
   const axiosInstance = AxiosSecure();
   const navigate = useNavigate();
 
@@ -25,6 +30,7 @@ const EditCourse = () => {
         credit: data.credit || "",
         description: data.description || "",
         date: data.date || "",
+        facultyEmail: data.facultyEmail || "",
       });
     }
   }, [data]);
@@ -41,19 +47,13 @@ const EditCourse = () => {
         name: formData.name,
         credit: formData.credit,
         description: formData.description,
+        facultyEmail: formData.facultyEmail,
         date: formData.date,
       };
 
-      if (import.meta.env.DEV) {
-        console.log(payload);
-      }
-
       const res = await axiosInstance.patch(`/update-course/${id}`, payload);
 
-      if (
-        res?.data?.matchedCount > 0 &&
-        (res?.data?.modifiedCount > 0 || res?.data?.modifiedCount === 0)
-      ) {
+      if (res?.data?.matchedCount > 0) {
         Swal.fire({
           position: "center",
           icon: "success",
@@ -65,10 +65,9 @@ const EditCourse = () => {
       }
     } catch (err) {
       Swal.fire({
-        title: "Error occurs",
+        title: "Error occurred",
         icon: "error",
         text: "Please try again",
-        draggable: true,
       });
     }
   };
@@ -81,6 +80,7 @@ const EditCourse = () => {
           onSubmit={handleSubmit}
           className="bg-white p-6 rounded-lg shadow-lg w-full"
         >
+          {/* Course ID */}
           <div className="form-control w-full mb-4">
             <label className="label">
               <span className="label-text">Course Id</span>
@@ -95,6 +95,7 @@ const EditCourse = () => {
             />
           </div>
 
+          {/* Name */}
           <div className="form-control w-full mb-4">
             <label className="label">
               <span className="label-text">Course Name</span>
@@ -109,6 +110,7 @@ const EditCourse = () => {
             />
           </div>
 
+          {/* Credit */}
           <div className="form-control w-full mb-4">
             <label className="label">
               <span className="label-text">Credit</span>
@@ -123,6 +125,7 @@ const EditCourse = () => {
             />
           </div>
 
+          {/* Description */}
           <div className="form-control w-full mb-4">
             <label className="label">
               <span className="label-text">Description</span>
@@ -135,6 +138,59 @@ const EditCourse = () => {
               required
             ></textarea>
           </div>
+
+          {/* Faculty Dropdown */}
+          <div className="form-control w-full mb-4">
+            <label className="label">
+              <span className="label-text">Assigned Faculty</span>
+            </label>
+            <select
+              name="facultyEmail"
+              value={formData.facultyEmail}
+              onChange={handleChange}
+              className="select select-bordered w-full"
+              required
+            >
+              <option value="" disabled>
+                Select Faculty
+              </option>
+              {faculties?.map((faculty) => (
+                <option key={faculty._id} value={faculty.email}>
+                  {faculty.firstName} {faculty.lastName} - {faculty.department}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Faculty Preview */}
+          {formData.facultyEmail && (() => {
+            const selectedFaculty = faculties?.find(
+              (faculty) => faculty.email === formData.facultyEmail
+            );
+            return selectedFaculty ? (
+              <div className="card shadow-md mt-4 border p-4 flex flex-col md:flex-row items-center gap-4 bg-gray-50">
+                <img
+                  src={selectedFaculty.staffPhoto}
+                  alt="faculty"
+                  className="w-24 h-24 rounded-full object-cover border"
+                />
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    {selectedFaculty.firstName} {selectedFaculty.lastName}
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    <strong>Department:</strong> {selectedFaculty.department}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>Designation:</strong> {selectedFaculty.designation}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>Email:</strong> {selectedFaculty.email}
+                  </p>
+                </div>
+              </div>
+            ) : null;
+          })()}
 
           <button type="submit" className="btn btn-primary w-full">
             Update Course

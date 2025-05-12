@@ -82,7 +82,7 @@ const StudentDashboardHome = () => {
 
               {/* Show course table if courses exist */}
               {quarter.courses?.length > 0 ? (
-                <div className="overflow-x-auto bg-base-100 shadow rounded-lg">
+                <div className="overflow-x-auto bg-base-100 shadow rounded-lg max-w-[80%] mx-auto">
                   <table className="table table-zebra w-full">
                     <thead>
                       <tr className="text-base text-base-content">

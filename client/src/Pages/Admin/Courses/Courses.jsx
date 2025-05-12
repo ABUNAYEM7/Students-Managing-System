@@ -1,18 +1,53 @@
-import React from "react";
-import useFetchData from "../../../Components/Hooks/useFetchData";
+import React, { useEffect, useState } from "react";
+import useAuth from "../../../Components/Hooks/useAuth";
 import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import { Link, useNavigate } from "react-router";
 
+const BachelorProgram = [
+  "Bachelor of Science in Business Administration",
+  "Bachelor of Science in Civil Engineering",
+  "Bachelor of Science in Computer Science",
+  "Bachelor of Science in Information System Management",
+];
+
+const Masters = [
+  "Master of Public Health",
+  "Master of Science in Civil Engineering",
+  "Master of Science in Business Administration",
+  "Master of Science in Computer Science Engineering",
+];
+
+const Doctorate = [
+  "Doctor of Business Management",
+  "Doctor of Public Health",
+  "Doctor of Science in Computer Science",
+  "Doctor of Management",
+];
+
 const Courses = () => {
-  const { data: courses, refetch } = useFetchData(
-    "Courses",
-    "/all-courses-by-department"
-  );
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [courses, setCourses] = useState([]);
   const axiosInstance = AxiosSecure();
   const navigate = useNavigate();
 
-  // deleteHandler
+  useEffect(() => {
+    if (selectedDepartment) {
+      fetchCoursesByDepartment(selectedDepartment);
+    }
+  }, [selectedDepartment]);
+
+  const fetchCoursesByDepartment = async (department) => {
+    try {
+      const res = await axiosInstance.get(
+        `/all-courses-by-department?department=${encodeURIComponent(department)}`
+      );
+      setCourses(res.data || []);
+    } catch (error) {
+      console.error("Failed to fetch courses", error);
+    }
+  };
+
   const deleteHandler = (id) => {
     Swal.fire({
       title: "Are you sure?",
@@ -26,18 +61,13 @@ const Courses = () => {
       if (result.isConfirmed) {
         const res = await axiosInstance.delete(`/delete-course/${id}`);
         if (res?.data?.deletedCount > 0) {
-          refetch();
-          Swal.fire({
-            title: "Deleted!",
-            text: "Course has been deleted.",
-            icon: "success",
-          });
+          fetchCoursesByDepartment(selectedDepartment);
+          Swal.fire("Deleted!", "Course has been deleted.", "success");
         }
       }
     });
   };
 
-  // updateHandler
   const updateHandler = (id) => {
     navigate(`/edit-course/${id}`);
   };
@@ -47,8 +77,40 @@ const Courses = () => {
       <h3 className="text-3xl font-black text-center mt-6">
         Course Management
       </h3>
-            {/* button-container */}
-            <div className="mt-3 p-4 flex items-center justify-end">
+
+      {/* Department Filter Dropdown */}
+      <div className="mt-6 p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+        <select
+          className="select select-bordered w-full max-w-sm"
+          value={selectedDepartment}
+          onChange={(e) => setSelectedDepartment(e.target.value)}
+        >
+          <option value="" disabled>
+            Select Department
+          </option>
+          <optgroup label="Bachelor Programs">
+            {BachelorProgram.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Masters Programs">
+            {Masters.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Doctorate Programs">
+            {Doctorate.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+
         <Link
           to={"/dashboard/add-courses"}
           className="btn uppercase hover:bg-green-400 hover:text-white"
@@ -56,57 +118,66 @@ const Courses = () => {
           Add Courses ➕
         </Link>
       </div>
+
+      {/* Course Table */}
       <div className="mt-6 p-2 max-w-full md:max-w-[90%] lg:max-w-full  mx-auto">
-        <div className="overflow-x-auto">
-          <table className="table">
-            {/* head */}
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>Course ID</th>
-                <th>Name </th>
-                <th>Credit</th>
-                <th>Description</th>
-                <th>Create At</th>
-                <th>Edit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {courses?.map((c, i) => (
-                <tr key={c?._id} className="bg-base-200">
-                  <th>{i + 1}</th>
-                  <td>{c?.courseId}</td>
-                  <td>{c?.name}</td>
-                  <td>{c?.credit}</td>
-                  <td>{c?.description}</td>
-                  <td>{c?.date?.split("T")[0]}</td>
-                  <td>
-                    <div className="dropdown dropdown-start">
-                      <div tabIndex={0} role="button" className="btn m-1">
-                        Click ⬇️
-                      </div>
-                      <ul
-                        tabIndex={0}
-                        className="dropdown-content menu bg-base-100 rounded-box z-1 w-30 p-2 shadow-sm"
-                      >
-                        <li>
-                          <button onClick={() => updateHandler(c?._id)}>
-                            Update
-                          </button>
-                        </li>
-                        <li>
-                          <button onClick={() => deleteHandler(c?._id)}>
-                            Delete
-                          </button>
-                        </li>
-                      </ul>
-                    </div>
-                  </td>
+        {courses.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Course ID</th>
+                  <th>Name </th>
+                  <th>Credit</th>
+                  <th>Description</th>
+                  <th>Create At</th>
+                  <th>Edit</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {courses.map((c, i) => (
+                  <tr key={c?._id} className="bg-base-200">
+                    <th>{i + 1}</th>
+                    <td>{c?.courseId}</td>
+                    <td>{c?.name}</td>
+                    <td>{c?.credit}</td>
+                    <td>{c?.description}</td>
+                    <td>{c?.date?.split("T")[0]}</td>
+                    <td>
+                      <div className="dropdown dropdown-start">
+                        <div tabIndex={0} role="button" className="btn m-1">
+                          Click ⬇️
+                        </div>
+                        <ul
+                          tabIndex={0}
+                          className="dropdown-content menu bg-base-100 rounded-box z-1 w-30 p-2 shadow-sm"
+                        >
+                          <li>
+                            <button onClick={() => updateHandler(c?._id)}>
+                              Update
+                            </button>
+                          </li>
+                          <li>
+                            <button onClick={() => deleteHandler(c?._id)}>
+                              Delete
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          selectedDepartment && (
+            <p className="text-center mt-6 text-red-500 font-semibold">
+              No courses found for selected department.
+            </p>
+          )
+        )}
       </div>
     </div>
   );

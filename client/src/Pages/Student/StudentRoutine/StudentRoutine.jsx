@@ -36,8 +36,6 @@ const StudentRoutine = () => {
     fetchStudentRoutine();
   }, [user?.email, filteredMonth]);
 
-
-
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold text-center mb-6">📘 My Weekly Class Routine</h1>
@@ -67,8 +65,12 @@ const StudentRoutine = () => {
         routines.map((routine, i) => (
           <div key={i} className="border rounded-lg p-4 mb-6 shadow bg-white">
             <div className="mb-4">
-              <h3 className="font-bold text-lg">{routine.department} - {routine.semester}</h3>
-              <p className="text-sm text-green-500">Week Start: {dayjs(routine.weekStartDate).format("MMMM D, YYYY")}</p>
+              <h3 className="font-bold text-lg">
+                {routine.department} - {routine.semester}
+              </h3>
+              <p className="text-sm text-green-500">
+                Week Start: {dayjs(routine.weekStartDate).format("MMMM D, YYYY")}
+              </p>
             </div>
 
             <table className="min-w-full table-auto border">
@@ -84,17 +86,21 @@ const StudentRoutine = () => {
                 {routine.routines.map((day, idx) => (
                   <tr key={idx}>
                     <td className="border p-2">{day.day}</td>
-                    <td className="border p-2">{day.course || 'N/A'}</td>
+                    <td className="border p-2">{day.course || "N/A"}</td>
                     <td className="border p-2">{day.time}</td>
                     <td className="border p-2">
-                      <a
-                        href={day.onlineLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        Join Class
-                      </a>
+                      {day.status === "completed" ? (
+                        <span className="text-green-600 font-semibold">Completed</span>
+                      ) : (
+                        <a
+                          href={day.onlineLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline"
+                        >
+                          Join Class
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}

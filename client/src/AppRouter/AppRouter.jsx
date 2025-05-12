@@ -42,6 +42,7 @@ import SendMessage from "../Components/SendMessage/SendMessage";
 import Message from "../Pages/Message/Message";
 import Academic from "../Pages/Academic/Academic";
 import CourseDetails from "../Pages/CourseDetails/CourseDetails";
+import PaymentPage from "../Pages/PaymentPage/PaymentPage";
 
 
 const AppRouter = () => {
@@ -111,6 +112,7 @@ const AppRouter = () => {
           {/* message-route */}
           <Route path="message" element={<Message/>}/>
           {/* dynamic route */}
+          <Route path="payment-page" element={<PaymentPage/>}/>
           <Route path="send-message" element={<SendMessage/>}/>
           <Route path="send-message/:id" element={<SendMessage/>}/>
         </Route>

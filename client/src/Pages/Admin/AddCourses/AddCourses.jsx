@@ -196,11 +196,8 @@ const AddCourses = () => {
                 <span className="label-text">Course ID</span>
               </label>
               <input
-                type="number"
+                type="input"
                 name="courseId"
-                inputMode="numeric"
-                pattern="\d*"
-                min="0"
                 onWheel={(e) => e.target.blur()}
                 value={formData.courseId}
                 onChange={handleChange}
