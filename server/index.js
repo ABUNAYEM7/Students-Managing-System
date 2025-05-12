@@ -8,12 +8,15 @@ const multer = require("multer");
 const http = require("http");
 const { Server } = require("socket.io");
 const server = http.createServer(app);
-const dayjs = require("dayjs");
+// const dayjs = require("dayjs");
 const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
-const { resolve4 } = require("dns");
+// const { resolve4 } = require("dns");
+const nodemailer = require("nodemailer");
+
+
 
 // middleware
 app.use(express.json());
@@ -209,7 +212,7 @@ async function run() {
           name: data.name,
           credit: data.credit,
           description: data.description,
-           facultyEmail:data. facultyEmail,
+          facultyEmail: data.facultyEmail,
           date: data.date,
         },
       };
@@ -1411,25 +1414,25 @@ async function run() {
       }
     });
 
-    // get message based on email
-    app.get("/messages/:email", async (req, res) => {
-      const { email } = req.params;
+    // // get message based on email
+    // app.get("/messages/:email", async (req, res) => {
+    //   const { email } = req.params;
 
-      if (!email) {
-        return res.status(400).send({ message: "Email is required" });
-      }
+    //   if (!email) {
+    //     return res.status(400).send({ message: "Email is required" });
+    //   }
 
-      try {
-        const messages = await messageCollection
-          .find({ recipients: email })
-          .sort({ createdAt: -1 }) // optional: latest first
-          .toArray();
-        res.send(messages);
-      } catch (err) {
-        console.error("❌ Error fetching messages:", err);
-        res.status(500).send({ message: "Failed to retrieve messages" });
-      }
-    });
+    //   try {
+    //     const messages = await messageCollection
+    //       .find({ recipients: email })
+    //       .sort({ createdAt: -1 }) // optional: latest first
+    //       .toArray();
+    //     res.send(messages);
+    //   } catch (err) {
+    //     console.error("❌ Error fetching messages:", err);
+    //     res.status(500).send({ message: "Failed to retrieve messages" });
+    //   }
+    // });
 
     // get specific message by id
     app.get("/messages/:email", async (req, res) => {
@@ -2238,6 +2241,64 @@ async function run() {
           sameSite: "strict",
         })
         .send({ success: true, message: "Logged out successfully!" });
+    });
+
+    //✅ ✅ ✅  nodemailer routes
+    // email post route
+    app.post("/send-email", async (req, res) => {
+      const { name, phone, message, email } = req.body;
+
+      // Basic validation
+      if (!name?.trim() || !phone?.trim() || !message?.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: "All fields (name, phone, message) are required.",
+        });
+      }
+
+      // Optional: Validate email format (if needed in future)
+      // const isEmailValid = /\S+@\S+\.\S+/.test(email);
+
+      try {
+        // Create transport using Gmail SMTP
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+        });
+
+        // Construct the email content
+        const mailOptions = {
+          from: `"Contact Form" <${process.env.EMAIL_USER}>`,
+          to: process.env.EMAIL_RECEIVER || process.env.EMAIL_USER,
+          subject: "📬 New Contact Form Submission",
+          html: `
+        <h2>New Contact Message Received</h2>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Phone:</strong> ${phone}</p>
+        <p><strong>Message:</strong></p>
+        <p style="background:#f4f4f4;padding:10px;border-radius:5px;">${message}</p>
+        <br />
+        <small style="color:gray;">Sent from your website contact form</small>
+      `,
+        };
+        // Send email
+        await transporter.sendMail(mailOptions);
+
+        return res.status(200).json({
+          success: true,
+          message: "✅ Message sent successfully. We’ll contact you soon.",
+        });
+      } catch (error) {
+        console.error("❌ Email sending failed:", error);
+        return res.status(500).json({
+          success: false,
+          error: "Internal server error. Please try again later.",
+        });
+      }
     });
 
     await client.db("admin").command({ ping: 1 });
