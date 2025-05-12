@@ -59,11 +59,6 @@ const CourseWorkflow = () => {
           </div>
         ))}
       </div>
-      <div className="flex justify-center mt-12">
-        <button className="btn btn-outline border-black hover:bg-orange-400 hover:border-orange-400 hover:text-black">
-          View Workflow
-        </button>
-      </div>
     </div>
   );
 };

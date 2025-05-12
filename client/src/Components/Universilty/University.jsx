@@ -38,9 +38,6 @@ const University = () => {
                   World's largest books and library center is here where you can
                   study the latest trends in education.
                 </p>
-                <div className="card-actions justify-center my-2">
-                  <button className="text-lg">View More</button>
-                </div>
                 <div className="relative">
                   <img
                     src={universityImage}
@@ -70,9 +67,6 @@ const University = () => {
                 <p>
                 Join our Learn Courses to gain new skills, advance your knowledge, and achieve your goals with expert guidance!
                 </p>
-                <div className="card-actions justify-center my-2">
-                  <button className="text-lg">View More</button>
-                </div>
                 <div className="relative">
                   <img
                     src={universityImage}
@@ -102,9 +96,6 @@ const University = () => {
                 <p>
                 Become an instructor and share your expertise. Join our Learn Course to master teaching strategies and inspire learners!
                 </p>
-                <div className="card-actions justify-center my-2">
-                  <button className="text-lg">View More</button>
-                </div>
                 <div className="relative">
                   <img
                     src={universityImage}

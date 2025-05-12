@@ -14,8 +14,10 @@ import SmartCampus from "../../Components/SmartCampus/SmartCampus";
 import University from "../../Components/Universilty/University";
 import OurGallery from "../../Components/OurGallery/OurGallery";
 import OurCourses from "../../Components/OurCourses/OurCourses";
+import { useNavigate } from "react-router";
 
 const Home = () => {
+  const navigate = useNavigate()
   const slides = [
     {
       image: image1,
@@ -36,6 +38,10 @@ const Home = () => {
         "Keep students, teachers, and parents connected effortlessly with our seamless communication platform, ensuring collaboration, real-time updates, and improved academic engagement.",
     },
   ];
+
+  const enrolledHandler=()=>{
+    navigate(`/academic`)
+  }
 
   return (
     <div className="mt-[75px]">
@@ -66,7 +72,9 @@ const Home = () => {
                 </p>
 
                 <div className="flex items-center gap-5">
-                  <button className="btn w-fit mt-4 text-white bg-orange-600 border-none hover:bg-white hover:border-2 hover:text-orange-600">
+                  <button 
+                  onClick={enrolledHandler}
+                  className="btn w-fit mt-4 text-white bg-orange-600 border-none hover:bg-white hover:border-2 hover:text-orange-600">
                     Enroll Now
                   </button>
                   <button className="btn w-fit mt-4 text-white  border-2 border-prime bg-transparent">
