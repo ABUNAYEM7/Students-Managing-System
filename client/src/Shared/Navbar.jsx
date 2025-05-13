@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, NavLink } from "react-router"; 
+import { Link, NavLink } from "react-router";
 import logo from "../assets/logo.jfif";
 import useAuth from "../Components/Hooks/useAuth";
 import Swal from "sweetalert2";
@@ -21,15 +21,23 @@ const Navbar = () => {
       });
       localStorage.removeItem("hasSeen");
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) {
+        console.error("❌ Logout error:", err);
+      }
     }
   };
 
   const Links = (
     <>
-      <li><NavLink to={"/"}>Home</NavLink></li>
-      <li><NavLink to={"/about"}>About</NavLink></li>
-      <li><NavLink to={"/academic"}>Academic</NavLink></li>
+      <li>
+        <NavLink to={"/"}>Home</NavLink>
+      </li>
+      <li>
+        <NavLink to={"/about"}>About</NavLink>
+      </li>
+      <li>
+        <NavLink to={"/academic"}>Academic</NavLink>
+      </li>
     </>
   );
 
@@ -39,8 +47,19 @@ const Navbar = () => {
       <div className="navbar-start">
         <div className="dropdown">
           <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 6h16M4 12h8m-8 6h16"
+              />
             </svg>
           </div>
           <ul className="menu menu-sm dropdown-content bg-base-100 rounded-box z-10 mt-3 w-52 p-2 text-highlight">
@@ -63,9 +82,17 @@ const Navbar = () => {
       <div className="navbar-end gap-3">
         {user ? (
           <div className="dropdown dropdown-bottom">
-            <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
+            <div
+              tabIndex={0}
+              role="button"
+              className="btn btn-ghost btn-circle avatar"
+            >
               <div className="w-10 rounded-full">
-                <img referrerPolicy="no-referrer" alt="User" src={user?.photoURL || "/default-avatar.png"} />
+                <img
+                  referrerPolicy="no-referrer"
+                  alt="User"
+                  src={user?.photoURL || "/default-avatar.png"}
+                />
               </div>
             </div>
             <ul

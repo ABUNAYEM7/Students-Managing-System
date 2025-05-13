@@ -104,53 +104,67 @@ const ManageUsers = () => {
                       </div>
                     </div>
                   </td>
+
                   <td>{user?.email}</td>
+
                   <td>
-                    <div className="dropdown dropdown-start">
-                      <div
-                        tabIndex={0}
-                        role="button"
-                        className="btn btn-sm m-1"
+                    {user?.enrollRequest ? (
+                      <button
+                        onClick={() =>
+                          navigate(`/dashboard/review-enrollReq/${user._id}`)
+                        }
+                        className="btn btn-sm bg-prime text-black"
                       >
-                        Click ⬇️
+                        Review
+                      </button>
+                    ) : (
+                      <div className="dropdown dropdown-start">
+                        <div
+                          tabIndex={0}
+                          role="button"
+                          className="btn btn-sm m-1"
+                        >
+                          Click ⬇️
+                        </div>
+                        <ul
+                          tabIndex={0}
+                          className="dropdown-content menu bg-base-100 rounded-box z-1 w-32 p-2 shadow-sm"
+                        >
+                          <li>
+                            <button
+                              onClick={() => adminHandler(user?._id)}
+                              disabled={user?.role === "admin"}
+                              className={
+                                user?.role === "admin"
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }
+                            >
+                              Admin
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              onClick={() => studentHandler(user?._id)}
+                              disabled={
+                                user?.role === "student" ||
+                                user?.role === "faculty"
+                              }
+                              className={
+                                user?.role === "student" ||
+                                user?.role === "faculty"
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }
+                            >
+                              Student
+                            </button>
+                          </li>
+                        </ul>
                       </div>
-                      <ul
-                        tabIndex={0}
-                        className="dropdown-content menu bg-base-100 rounded-box z-1 w-32 p-2 shadow-sm"
-                      >
-                        <li>
-                          <button
-                            onClick={() => adminHandler(user?._id)}
-                            disabled={user?.role === "admin"} // disable if already admin
-                            className={
-                              user?.role === "admin"
-                                ? "opacity-50 cursor-not-allowed"
-                                : ""
-                            }
-                          >
-                            Admin
-                          </button>
-                        </li>
-                        <li>
-                          <button
-                            onClick={() => studentHandler(user?._id)}
-                            disabled={
-                              user?.role === "student" ||
-                              user?.role === "faculty"
-                            } // disable if student or faculty
-                            className={
-                              user?.role === "student" ||
-                              user?.role === "faculty"
-                                ? "opacity-50 cursor-not-allowed"
-                                : ""
-                            }
-                          >
-                            Student
-                          </button>
-                        </li>
-                      </ul>
-                    </div>
+                    )}
                   </td>
+
                   <td>
                     <button
                       onClick={() => deleteHandler(user?._id)}

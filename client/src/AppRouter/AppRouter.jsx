@@ -19,12 +19,12 @@ import Attendance from "../Pages/Student/Attendance/Attendance";
 import Grade from "../Pages/Student/Grade/Grade";
 import Fee from "../Pages/Student/Fee/Fee";
 import FacultyDashboard from "../Pages/Faculty/FacultyDashboard/FacultyDashboard";
-import StudentsDashboardHome from "../Pages/Student/StudentDashboardHome/StudentDashboardHome"
-import FacultyCourses from "../Pages/Faculty/FacultyCourses/FacultyCourses"
-import FacultyGrades from "../Pages/Faculty/FacultyGrades/FacultyGrades"
-import FacultyAttendance from "../Pages/Faculty/FacultyAttendance/FacultyAttendance"
-import CreateAssignment from "../Pages/Faculty/createAssignment/CreateAssignment"
-import Materials from "../Pages/Faculty/Materials/Materials"
+import StudentsDashboardHome from "../Pages/Student/StudentDashboardHome/StudentDashboardHome";
+import FacultyCourses from "../Pages/Faculty/FacultyCourses/FacultyCourses";
+import FacultyGrades from "../Pages/Faculty/FacultyGrades/FacultyGrades";
+import FacultyAttendance from "../Pages/Faculty/FacultyAttendance/FacultyAttendance";
+import CreateAssignment from "../Pages/Faculty/createAssignment/CreateAssignment";
+import Materials from "../Pages/Faculty/Materials/Materials";
 import AddFaculty from "../Pages/Admin/ManageFaculty/AddFaculty";
 import AddMaterials from "../Pages/Faculty/AddMaterials/AddMaterials";
 import Assignment from "../Pages/Faculty/Assignment/Assignment";
@@ -43,7 +43,8 @@ import Message from "../Pages/Message/Message";
 import Academic from "../Pages/Academic/Academic";
 import CourseDetails from "../Pages/CourseDetails/CourseDetails";
 import PaymentPage from "../Pages/PaymentPage/PaymentPage";
-
+import ReviewEnrollReq from "../Pages/ReviewEnrollReq/ReviewEnrollReq";
+import Enroll from "../Pages/Enroll";
 
 const AppRouter = () => {
   return (
@@ -55,6 +56,7 @@ const AppRouter = () => {
         <Route path="signIn" element={<SignIn />} />
         <Route path="signUp" element={<SignUp />} />
         <Route path="edit-course/:id" element={<EditCourse />} />
+        <Route path="enroll" element={<Enroll />} />
 
         {/* Protected Dashboard Route for Admin & Student */}
         <Route
@@ -77,44 +79,63 @@ const AppRouter = () => {
           <Route path="manage-users" element={<ManageUsers />} />
           <Route path="routine" element={<Routine />} />
           <Route path="add-routine" element={<AddRoutine />} />
-          <Route path="edit-routine/:routineId/:dayIndex" element={<AddRoutine />} />
+          <Route
+            path="edit-routine/:routineId/:dayIndex"
+            element={<AddRoutine />}
+          />
           <Route path="/dashboard/add-faculty" element={<AddFaculty />} />
-          <Route path="/dashboard/add-student/:id" element={<CreateStudentForm />} />
-          <Route path="/dashboard/view-details/:email" element={<ViewUserDetails />} />
+          <Route
+            path="/dashboard/add-student/:id"
+            element={<CreateStudentForm />}
+          />
+          <Route
+            path="/dashboard/view-details/:email"
+            element={<ViewUserDetails />}
+          />
+          <Route
+            path="/dashboard/review-enrollReq/:id"
+            element={<ReviewEnrollReq />}
+          />
 
           {/* Student Routes */}
           <Route path="profile" element={<Profile />} />
-          <Route path="student/home" element={<StudentsDashboardHome/>} />
-          <Route path="student-courses" element={<StudentsCourses/>}/>
-          <Route path="student-assignment" element={<StudentAssignment/>}/>
-          <Route path="student-routine" element={<StudentRoutine/>}/>
-          <Route path="attendance" element={<Attendance/>}/>
-          <Route path="grade" element={<Grade/>}/>
-          <Route path="Fee" element={<Fee/>}/>
-          <Route path="leave-form/:email" element={<LeaveForm/>}/>
+          <Route path="student/home" element={<StudentsDashboardHome />} />
+          <Route path="student-courses" element={<StudentsCourses />} />
+          <Route path="student-assignment" element={<StudentAssignment />} />
+          <Route path="student-routine" element={<StudentRoutine />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route path="grade" element={<Grade />} />
+          <Route path="Fee" element={<Fee />} />
+          <Route path="leave-form/:email" element={<LeaveForm />} />
 
           {/* Faculty Routes */}
           <Route>
-            <Route path="faculty/home" element={<FacultyDashboard/>}/>
-            <Route path="faculty-courses" element={<FacultyCourses/>}/>
-            <Route path="faculty-courses/details/:id" element={<CourseDetails/>}/>
-            <Route path="faculty-routine" element={<FacultyRoutine/>}/>
-            <Route path="faculty-grades" element={<FacultyGrades/>}/>
-            <Route path="faculty-attendance" element={<FacultyAttendance/>}/>
-            <Route path="assignment" element={<Assignment/>}/>
-            <Route path="add-assignment" element={<CreateAssignment/>}/>
-            <Route path="add-assignment/:id" element={<CreateAssignment/>}/>
-            <Route path="assignment-details/:id" element={<AssignmentDetails/>}/>
-            <Route path="materials" element={<Materials/>}/>
-            <Route path="add-materials" element={<AddMaterials/>}/>
-            <Route path="add-materials/:id" element={<AddMaterials/>}/>
+            <Route path="faculty/home" element={<FacultyDashboard />} />
+            <Route path="faculty-courses" element={<FacultyCourses />} />
+            <Route
+              path="faculty-courses/details/:id"
+              element={<CourseDetails />}
+            />
+            <Route path="faculty-routine" element={<FacultyRoutine />} />
+            <Route path="faculty-grades" element={<FacultyGrades />} />
+            <Route path="faculty-attendance" element={<FacultyAttendance />} />
+            <Route path="assignment" element={<Assignment />} />
+            <Route path="add-assignment" element={<CreateAssignment />} />
+            <Route path="add-assignment/:id" element={<CreateAssignment />} />
+            <Route
+              path="assignment-details/:id"
+              element={<AssignmentDetails />}
+            />
+            <Route path="materials" element={<Materials />} />
+            <Route path="add-materials" element={<AddMaterials />} />
+            <Route path="add-materials/:id" element={<AddMaterials />} />
           </Route>
           {/* message-route */}
-          <Route path="message" element={<Message/>}/>
+          <Route path="message" element={<Message />} />
           {/* dynamic route */}
-          <Route path="payment-page" element={<PaymentPage/>}/>
-          <Route path="send-message" element={<SendMessage/>}/>
-          <Route path="send-message/:id" element={<SendMessage/>}/>
+          <Route path="payment-page" element={<PaymentPage />} />
+          <Route path="send-message" element={<SendMessage />} />
+          <Route path="send-message/:id" element={<SendMessage />} />
         </Route>
       </Route>
     </Routes>

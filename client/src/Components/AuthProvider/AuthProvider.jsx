@@ -60,8 +60,10 @@ const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(Auth, async (currentUser) => {
       try {
         if (currentUser?.email) {
+          if (import.meta.env.DEV) {
+            console.log("current user from auth -->", currentUser);
+          }
           setUser(currentUser);
-
           await axios.post(
             `${import.meta.env.VITE_API_URL}/jwt`,
             { email: currentUser.email },
@@ -108,9 +110,7 @@ const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={authInfo}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={authInfo}>{children}</AuthContext.Provider>
   );
 };
 

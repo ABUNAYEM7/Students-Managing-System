@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { Link, useNavigate } from "react-router";
+import { Link, useLoaderData, useLocation, useNavigate } from "react-router";
 import registrationAnimation from "../../../public/registrationAnimation.json";
 import Lottie from "lottie-react";
 import useAuth from "../../Components/Hooks/useAuth";
 import Swal from "sweetalert2";
 import { getImageUrl } from "../../utility/getImageUrl";
 import axios from "axios";
+import Auth from "../../Firebase/firebase";
 
 const SignUp = () => {
   const [show, setShow] = useState(false);
@@ -78,6 +79,7 @@ const SignUp = () => {
               // username and photo updated
               await updateUserProfile(updatedData)
               .then(async()=>{
+                   await Auth.currentUser.reload();
                 const userData = {
                   name,
                   photo,

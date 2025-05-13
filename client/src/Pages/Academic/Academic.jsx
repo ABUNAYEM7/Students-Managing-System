@@ -98,13 +98,18 @@ const departmentData = [
 
 const Academic = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleEnroll = (departmentName) => {
-    navigate("/signUp", {
-      state: {
-        enrolledRequested: departmentName,
-      },
-    });
+    if (user?.email) {
+      navigate("/enroll", {
+        state: { program: departmentName },
+      });
+    } else {
+      navigate("/signUp", {
+        state: { enrolledRequested: departmentName, redirectTo: "/enroll" },
+      });
+    }
   };
 
   return (
@@ -123,7 +128,9 @@ const Academic = () => {
               <h2 className="card-title text-lg text-accent">{dept.title}</h2>
               <p className="text-sm text-gray-600">{dept.description}</p>
               <div className="mt-2">
-                <span className="badge badge-outline text-highlight">{dept.level}</span>
+                <span className="badge badge-outline text-highlight">
+                  {dept.level}
+                </span>
               </div>
               <div className="mt-4 text-right">
                 <button

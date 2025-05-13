@@ -16,8 +16,6 @@ const jwt = require("jsonwebtoken");
 // const { resolve4 } = require("dns");
 const nodemailer = require("nodemailer");
 
-
-
 // middleware
 app.use(express.json());
 app.use(cookieParser());
@@ -371,13 +369,17 @@ async function run() {
     app.patch("/update/user-role/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
-      const { role } = req.body;
-      const updatedRole = {
-        $set: {
-          role: role,
-        },
+      const updateFields = req.body;
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔧 Patch update for user:", updateFields);
+      }
+
+      const updateQuery = {
+        $set: { ...updateFields },
       };
-      const result = await usersCollection.updateOne(filter, updatedRole);
+
+      const result = await usersCollection.updateOne(filter, updateQuery);
       res.send(result);
     });
 
@@ -857,6 +859,7 @@ async function run() {
     });
 
     // get all students and for courses based student for attendance
+
     // app.get("/students-by-course/:id", async (req, res) => {
     //   const { id } = req.params;
 
@@ -880,7 +883,6 @@ async function run() {
     //         .status(404)
     //         .send({ message: "No students enrolled in this course." });
     //     }
-    //     console.log('hello')
     //     res.send(students);
     //   } catch (error) {
     //     console.error("❌ Error fetching students by course:", error.message);
@@ -1289,7 +1291,7 @@ async function run() {
     // GET: All weekly routines sorted by months
     app.get("/all/weekly-routines", async (req, res) => {
       try {
-        const { monthYear } = req.query; // e.g., "April 2025"
+        const { monthYear } = req.query;
         let filter = {};
 
         if (monthYear) {
@@ -2231,6 +2233,34 @@ async function run() {
         res.status(500).send({ message: "Server error generating token" });
       }
     });
+
+    // new jwt
+    // app.post("/jwt", async (req, res) => {
+    //   const { email } = req.body;
+
+    //   if (!email) {
+    //     return res.status(400).send({ message: "Email is required" });
+    //   }
+
+    //   try {
+    //     // 🔁 No DB check here — trust Firebase Auth
+    //     const token = jwt.sign({ email }, process.env.JWT_SECRET, {
+    //       expiresIn: "1d",
+    //     });
+
+    //     res
+    //       .cookie("token", token, {
+    //         httpOnly: true,
+    //         secure: process.env.NODE_ENV === "production",
+    //         sameSite: "strict",
+    //         maxAge: 1 * 24 * 60 * 60 * 1000,
+    //       })
+    //       .send({ success: true });
+    //   } catch (error) {
+    //     console.error(error);
+    //     res.status(500).send({ message: "Server error generating token" });
+    //   }
+    // });
 
     // clean token
     app.post("/logout", (req, res) => {
