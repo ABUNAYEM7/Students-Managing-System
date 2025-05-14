@@ -2,10 +2,13 @@ import React, { useState, useEffect } from "react";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import useAuth from "../../../Components/Hooks/useAuth";
 import Swal from "sweetalert2";
+import { useParams, useNavigate } from "react-router";
 
 const AddMaterials = () => {
   const axiosInstance = AxiosSecure();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { id } = useParams();
 
   const [departments] = useState([
     "Bachelor of Science in Business Administration",
@@ -29,7 +32,8 @@ const AddMaterials = () => {
     title: "",
     courseId: "",
     email: "",
-    file: null
+    file: null,
+    existingFileUrl: ""
   });
 
   useEffect(() => {
@@ -39,8 +43,8 @@ const AddMaterials = () => {
   }, [user]);
 
   useEffect(() => {
+    if (!selectedDepartment) return;
     const fetchCourses = async () => {
-      if (!selectedDepartment) return;
       try {
         const res = await axiosInstance.get(
           `/all-courses-by-department?department=${encodeURIComponent(selectedDepartment)}`
@@ -51,7 +55,28 @@ const AddMaterials = () => {
       }
     };
     fetchCourses();
-  }, [selectedDepartment, axiosInstance]);
+  }, [selectedDepartment]);
+
+  useEffect(() => {
+    if (!id) return;
+    const fetchMaterial = async () => {
+      try {
+        const res = await axiosInstance.get(`/material/${id}`);
+        const data = res.data;
+        setSelectedDepartment(data.department || "");
+        setFormData({
+          title: data.title,
+          courseId: data.courseId,
+          email: data.email,
+          file: null,
+          existingFileUrl: `/files/${data.filename}`
+        });
+      } catch (err) {
+        console.error("Failed to fetch material for edit:", err);
+      }
+    };
+    fetchMaterial();
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -68,36 +93,31 @@ const AddMaterials = () => {
     form.append("title", formData.title);
     form.append("courseId", formData.courseId);
     form.append("email", formData.email);
-    form.append("file", formData.file);
+    form.append("department", selectedDepartment); // ✅ Added department here
+    if (formData.file) {
+      form.append("file", formData.file);
+    }
 
     try {
-      await axiosInstance.post("/upload-file", form);
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Material uploaded successfully!",
-        confirmButtonColor: "#2563eb"
-      });
-      setFormData((prev) => ({
-        ...prev,
-        title: "",
-        courseId: "",
-        file: null
-      }));
+      if (id) {
+        await axiosInstance.patch(`/update-material/${id}`, form);
+        Swal.fire("Updated!", "Material updated successfully.", "success");
+      } else {
+        await axiosInstance.post("/upload-file", form);
+        Swal.fire("Uploaded!", "Material uploaded successfully.", "success");
+      }
+      navigate("/dashboard/materials");
     } catch (err) {
-      console.error("Upload failed:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Upload Failed",
-        text: "Something went wrong while uploading.",
-        confirmButtonColor: "#dc2626"
-      });
+      console.error("Submit failed:", err);
+      Swal.fire("Error!", "Something went wrong.", "error");
     }
   };
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <h2 className="text-xl font-bold mb-4">Upload Course Material</h2>
+      <h2 className="text-xl font-bold mb-4">
+        {id ? "Update Course Material" : "Upload Course Material"}
+      </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block mb-1">Select Department</label>
@@ -157,11 +177,25 @@ const AddMaterials = () => {
           <input
             type="email"
             name="email"
-            value={user?.email || ""}
+            value={formData.email}
             readOnly
             className="input input-bordered w-full bg-gray-100 cursor-not-allowed"
           />
         </div>
+
+        {id && formData.existingFileUrl && (
+          <div>
+            <label className="block mb-1">Existing File</label>
+            <a
+              href={formData.existingFileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              View Current PDF
+            </a>
+          </div>
+        )}
 
         <div>
           <label className="block mb-1">Upload File (PDF only)</label>
@@ -171,12 +205,12 @@ const AddMaterials = () => {
             accept="application/pdf"
             onChange={handleChange}
             className="file-input file-input-bordered w-full"
-            required
+            required={!id}
           />
         </div>
 
         <button type="submit" className="btn btn-primary w-full">
-          Upload Material
+          {id ? "Update Material" : "Upload Material"}
         </button>
       </form>
     </div>

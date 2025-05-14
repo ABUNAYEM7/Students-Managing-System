@@ -166,8 +166,8 @@ async function run() {
       res.send(result);
     });
 
-    // save new faculty
-    app.post("/add-faculty", async (req, res) => {
+    // save new faculty secured
+    app.post("/add-faculty", verifyToken, verifyAdmin, async (req, res) => {
       const info = req.body;
 
       try {
@@ -199,28 +199,48 @@ async function run() {
       }
     });
 
-    // update specific course
-    app.patch("/update-course/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const data = req.body;
-      const updatedCourse = {
-        $set: {
-          courseId: data.courseId,
-          name: data.name,
-          credit: data.credit,
-          description: data.description,
-          facultyEmail: data.facultyEmail,
-          date: data.date,
-        },
-      };
-      const result = await courseCollection.updateOne(filter, updatedCourse);
-      res.send(result);
-    });
+    // update specific course secured
+    app.patch(
+      "/update-course/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const data = req.body;
+        const updatedCourse = {
+          $set: {
+            courseId: data.courseId,
+            name: data.name,
+            credit: data.credit,
+            description: data.description,
+            facultyEmail: data.facultyEmail,
+            date: data.date,
+          },
+        };
+        const result = await courseCollection.updateOne(filter, updatedCourse);
+        res.send(result);
+      }
+    );
 
-    // POST: Mark attendance
-    app.post("/mark-attendance", async (req, res) => {
+    // POST: Mark attendance secured
+    app.post("/mark-attendance", verifyToken, async (req, res) => {
       const { courseId, date, students, takenBy } = req.body;
+
+      const course = await courseCollection.findOne({
+        _id: new ObjectId(courseId),
+      });
+      if (!course) {
+        return res.status(404).send({ message: "Course not found" });
+      }
+
+      // ✅ Allow only the assigned faculty (NOT admin)
+      const isAssignedFaculty = course.facultyEmail === req.user.email;
+      if (!isAssignedFaculty) {
+        return res.status(403).send({
+          message: "Forbidden: Only assigned faculty can mark attendance",
+        });
+      }
 
       const alreadyTaken = await attendanceCollection.findOne({
         courseId,
@@ -243,8 +263,8 @@ async function run() {
       res.send(result);
     });
 
-    // create new students from user
-    app.post("/create-student", async (req, res) => {
+    // create new students from user secured
+    app.post("/create-student", verifyToken, verifyAdmin, async (req, res) => {
       const {
         email,
         name,
@@ -284,42 +304,49 @@ async function run() {
       res.send({ success: true, insertedId: result.insertedId });
     });
 
-    // post weekly routine
-    app.post("/add/weekly-routine", async (req, res) => {
-      try {
-        const data = req.body;
+    // post weekly routine secured
+    app.post(
+      "/add/weekly-routine",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const data = req.body;
 
-        // Validate required fields
-        if (
-          !data.semester ||
-          !data.department ||
-          !Array.isArray(data.routines)
-        ) {
-          return res.status(400).send({ message: "Missing required fields." });
+          // Validate required fields
+          if (
+            !data.semester ||
+            !data.department ||
+            !Array.isArray(data.routines)
+          ) {
+            return res
+              .status(400)
+              .send({ message: "Missing required fields." });
+          }
+
+          const allHaveCourse = data.routines.every((r) => r.course);
+          if (!allHaveCourse) {
+            return res
+              .status(400)
+              .send({ message: "Each routine must include a course." });
+          }
+
+          const result = await routinesCollection.insertOne({
+            semester: data.semester,
+            department: data.department,
+            weekStartDate: data.weekStartDate,
+            routines: data.routines,
+            createdBy: data.createdBy,
+            createdAt: new Date(),
+          });
+
+          res.send({ success: true, insertedId: result.insertedId });
+        } catch (err) {
+          console.error("❌ Error storing weekly routine:", err);
+          res.status(500).send({ message: "Internal server error" });
         }
-
-        const allHaveCourse = data.routines.every((r) => r.course);
-        if (!allHaveCourse) {
-          return res
-            .status(400)
-            .send({ message: "Each routine must include a course." });
-        }
-
-        const result = await routinesCollection.insertOne({
-          semester: data.semester,
-          department: data.department,
-          weekStartDate: data.weekStartDate,
-          routines: data.routines,
-          createdBy: data.createdBy,
-          createdAt: new Date(),
-        });
-
-        res.send({ success: true, insertedId: result.insertedId });
-      } catch (err) {
-        console.error("❌ Error storing weekly routine:", err);
-        res.status(500).send({ message: "Internal server error" });
       }
-    });
+    );
 
     // ✅ POST: Send & store message
     app.post("/send-message", async (req, res) => {
@@ -365,47 +392,84 @@ async function run() {
       }
     });
 
-    // update user role
-    app.patch("/update/user-role/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateFields = req.body;
+    // update user role secured
+    app.patch(
+      "/update/user-role/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateFields = req.body;
 
-      if (process.env.NODE_ENV === "development") {
-        console.log("🔧 Patch update for user:", updateFields);
+        if (process.env.NODE_ENV === "development") {
+          console.log("🔧 Patch update for user:", updateFields);
+        }
+
+        const updateQuery = {
+          $set: { ...updateFields },
+        };
+
+        const result = await usersCollection.updateOne(filter, updateQuery);
+        res.send(result);
       }
+    );
 
-      const updateQuery = {
-        $set: { ...updateFields },
-      };
+    // update user information secured
+    app.patch(
+      "/update/user-info/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        const filter = { email };
+        const data = req.body;
+        const updatedInfo = {
+          $set: { ...data },
+        };
+        const result = await usersCollection.updateOne(filter, updatedInfo);
+        res.send(result);
+      }
+    );
 
-      const result = await usersCollection.updateOne(filter, updateQuery);
-      res.send(result);
-    });
-
-    // update user information
-    app.patch("/update/user-info/:email", async (req, res) => {
-      const email = req.params.email;
-      const filter = { email };
-      const data = req.body;
-      const updatedInfo = {
-        $set: { ...data },
-      };
-      const result = await usersCollection.updateOne(filter, updatedInfo);
-      res.send(result);
-    });
-
-    // ✅ PATCH: Update leave status (approve/decline)
-    app.patch("/update-leave-status/:id", async (req, res) => {
+    // ✅ PATCH: Update leave status (approve/decline) secured
+    app.patch("/update-leave-status/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const { status } = req.body;
 
-      // Ensure status is either "approved" or "declined"
       if (!["approved", "declined"].includes(status)) {
         return res.status(400).send({ message: "Invalid status value" });
       }
 
       try {
+        const leave = await leavesCollection.findOne({ _id: new ObjectId(id) });
+        if (!leave) {
+          return res.status(404).send({ message: "Leave not found" });
+        }
+
+        const student = await studentsCollection.findOne({
+          email: leave.email,
+        });
+        if (!student || !student.courses) {
+          return res
+            .status(404)
+            .send({ message: "Student or courses not found" });
+        }
+
+        const facultyEmail = req.user.email;
+        const facultyCourses = await courseCollection
+          .find({
+            _id: { $in: student.courses.map((c) => new ObjectId(c.courseId)) },
+            facultyEmail,
+          })
+          .toArray();
+
+        if (facultyCourses.length === 0) {
+          return res.status(403).send({
+            message: "Forbidden: You are not assigned to this student's course",
+          });
+        }
+
         const result = await leavesCollection.updateOne(
           { _id: new ObjectId(id) },
           {
@@ -430,53 +494,60 @@ async function run() {
       }
     });
 
-    // PATCH: Update a single day in the weekly routine
-    app.patch("/update-routine-day/:routineId/:dayIndex", async (req, res) => {
-      const { routineId, dayIndex } = req.params;
-      const updatedDay = req.body;
+    // PATCH: Update a single day in the weekly routine secured
+    app.patch(
+      "/update-routine-day/:routineId/:dayIndex",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { routineId, dayIndex } = req.params;
+        const updatedDay = req.body;
 
-      if (!ObjectId.isValid(routineId)) {
-        return res.status(400).send({ message: "Invalid routine ID" });
-      }
-
-      try {
-        const routine = await routinesCollection.findOne({
-          _id: new ObjectId(routineId),
-        });
-
-        if (!routine) {
-          return res.status(404).send({ message: "Routine not found" });
+        if (!ObjectId.isValid(routineId)) {
+          return res.status(400).send({ message: "Invalid routine ID" });
         }
 
-        // Ensure dayIndex is valid
-        const index = parseInt(dayIndex, 10);
-        if (isNaN(index) || index < 0 || index >= routine.routines.length) {
-          return res.status(400).send({ message: "Invalid day index" });
+        try {
+          const routine = await routinesCollection.findOne({
+            _id: new ObjectId(routineId),
+          });
+
+          if (!routine) {
+            return res.status(404).send({ message: "Routine not found" });
+          }
+
+          // Ensure dayIndex is valid
+          const index = parseInt(dayIndex, 10);
+          if (isNaN(index) || index < 0 || index >= routine.routines.length) {
+            return res.status(400).send({ message: "Invalid day index" });
+          }
+
+          // Update specific day's routine
+          const updateQuery = {
+            $set: {
+              [`routines.${index}`]: updatedDay,
+              updatedAt: new Date(),
+            },
+          };
+
+          const result = await routinesCollection.updateOne(
+            { _id: new ObjectId(routineId) },
+            updateQuery
+          );
+
+          res.send({ success: true, modifiedCount: result.modifiedCount });
+        } catch (error) {
+          console.error("Error updating routine day:", error);
+          res.status(500).send({ message: "Internal server error" });
         }
-
-        // Update specific day's routine
-        const updateQuery = {
-          $set: {
-            [`routines.${index}`]: updatedDay,
-            updatedAt: new Date(),
-          },
-        };
-
-        const result = await routinesCollection.updateOne(
-          { _id: new ObjectId(routineId) },
-          updateQuery
-        );
-
-        res.send({ success: true, modifiedCount: result.modifiedCount });
-      } catch (error) {
-        console.error("Error updating routine day:", error);
-        res.status(500).send({ message: "Internal server error" });
       }
-    });
+    );
 
     // PATCH: Update routine day status
     app.patch(
       "/update-routine-day-status/:routineId/:dayIndex",
+      verifyToken,
+      verifyAdmin,
       async (req, res) => {
         const { routineId, dayIndex } = req.params;
         const { status } = req.body;
@@ -508,75 +579,83 @@ async function run() {
 
     //✅✅✅✅ payment update fee amount patch route
 
-    // ✅ PATCH: Update student course fee
-    app.patch("/update-student-course-fee/:studentId", async (req, res) => {
-      const { studentId } = req.params;
-      const { courseId, newFee } = req.body;
+    // ✅ PATCH: Update student course fee secured
+    app.patch(
+      "/update-student-course-fee/:studentId",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { studentId } = req.params;
+        const { courseId, newFee } = req.body;
 
-      if (!ObjectId.isValid(studentId)) {
-        return res.status(400).send({ message: "Invalid student ID" });
-      }
-
-      if (!courseId || typeof newFee !== "number") {
-        return res.status(400).send({ message: "Missing courseId or newFee" });
-      }
-
-      try {
-        // ✅ Fetch student to get email and course name
-        const student = await studentsCollection.findOne({
-          _id: new ObjectId(studentId),
-        });
-        if (!student) {
-          return res.status(404).send({ message: "Student not found" });
+        if (!ObjectId.isValid(studentId)) {
+          return res.status(400).send({ message: "Invalid student ID" });
         }
 
-        const course = student.courses?.find((c) => c.courseId === courseId);
-        if (!course) {
+        if (!courseId || typeof newFee !== "number") {
           return res
-            .status(404)
-            .send({ message: "Course not found for this student" });
+            .status(400)
+            .send({ message: "Missing courseId or newFee" });
         }
 
-        const result = await studentsCollection.updateOne(
-          {
+        try {
+          // ✅ Fetch student to get email and course name
+          const student = await studentsCollection.findOne({
             _id: new ObjectId(studentId),
-            "courses.courseId": courseId,
-          },
-          {
-            $set: { "courses.$.fee": newFee },
+          });
+          if (!student) {
+            return res.status(404).send({ message: "Student not found" });
           }
-        );
 
-        if (result.modifiedCount === 0) {
-          return res.status(404).send({ message: "Fee update failed" });
+          const course = student.courses?.find((c) => c.courseId === courseId);
+          if (!course) {
+            return res
+              .status(404)
+              .send({ message: "Course not found for this student" });
+          }
+
+          const result = await studentsCollection.updateOne(
+            {
+              _id: new ObjectId(studentId),
+              "courses.courseId": courseId,
+            },
+            {
+              $set: { "courses.$.fee": newFee },
+            }
+          );
+
+          if (result.modifiedCount === 0) {
+            return res.status(404).send({ message: "Fee update failed" });
+          }
+
+          // ✅ Create notification
+          const notification = {
+            type: "fee-updated",
+            email: student.email,
+            courseId,
+            courseName: course.courseName || "N/A",
+            message: `💰 Your course fee for "${course.courseName}" has been updated to $${newFee}.`,
+            applicationDate: new Date(),
+            seen: false,
+          };
+
+          await notificationCollection.insertOne(notification);
+
+          // ✅ Emit real-time notification to student
+          io.to(student.email).emit("student-notification", notification);
+
+          res.send({ success: true, message: "Fee updated successfully" });
+        } catch (error) {
+          console.error("❌ Error updating student course fee:", error);
+          res.status(500).send({ message: "Internal server error" });
         }
-
-        // ✅ Create notification
-        const notification = {
-          type: "fee-updated",
-          email: student.email,
-          courseId,
-          courseName: course.courseName || "N/A",
-          message: `💰 Your course fee for "${course.courseName}" has been updated to $${newFee}.`,
-          applicationDate: new Date(),
-          seen: false,
-        };
-
-        await notificationCollection.insertOne(notification);
-
-        // ✅ Emit real-time notification to student
-        io.to(student.email).emit("student-notification", notification);
-
-        res.send({ success: true, message: "Fee updated successfully" });
-      } catch (error) {
-        console.error("❌ Error updating student course fee:", error);
-        res.status(500).send({ message: "Internal server error" });
       }
-    });
+    );
 
-    // ✅ PATCH: Update paymentStatus to 'paid' for student's enrolled course
+    // ✅ PATCH: Update paymentStatus to 'paid' for student's enrolled course secured
     app.patch(
       "/update-student-course-payment-status/:studentEmail",
+      verifyToken,
       async (req, res) => {
         const { studentEmail } = req.params;
         const { courseId } = req.body;
@@ -585,6 +664,11 @@ async function run() {
           return res
             .status(400)
             .send({ error: "Missing studentEmail or courseId" });
+        }
+
+        // Only the student themselves can update their payment status
+        if (req.user.email !== studentEmail) {
+          return res.status(403).send({ error: "Forbidden: Access denied" });
         }
 
         try {
@@ -614,72 +698,209 @@ async function run() {
       }
     );
 
-    // delete-course
-    app.delete("/delete-course/:id", async (req, res) => {
+    // delete-course secured
+    app.delete(
+      "/delete-course/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const result = await courseCollection.deleteOne(filter);
+        res.send(result);
+      }
+    );
+
+    // delete-user secured
+    app.delete(
+      "/delete-user/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const result = await usersCollection.deleteOne(filter);
+        res.send(result);
+      }
+    );
+
+    // delete-faculty secured
+    app.delete(
+      "/delete-faculty/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const result = await facultiesCollection.deleteOne(filter);
+        res.send(result);
+      }
+    );
+
+    // delete-student secured
+    app.delete(
+      "/delete-student/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const result = await studentsCollection.deleteOne(filter);
+        res.send(result);
+      }
+    );
+
+    // delete-material secured
+    app.delete("/delete-material/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const result = await courseCollection.deleteOne(filter);
-      res.send(result);
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid material ID" });
+      }
+
+      try {
+        const material = await materialsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!material) {
+          return res.status(404).send({ message: "Material not found" });
+        }
+
+        // ✅ Allow only the uploader (faculty) to delete
+        if (req.user.email !== material.email) {
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              `🚫 Unauthorized delete attempt by ${req.user.email} for material ${id}`
+            );
+          }
+          return res.status(403).send({
+            message: "Forbidden: Only the uploader can delete this material",
+          });
+        }
+
+        const result = await materialsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (process.env.NODE_ENV === "development") {
+          console.log(`✅ Material deleted by ${req.user.email}: ${id}`);
+        }
+
+        res.send({ success: true, deletedCount: result.deletedCount });
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Error deleting material:", error);
+        }
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
-    // delete-user
-    app.delete("/delete-user/:id", async (req, res) => {
+    // delete-assignment secured
+    app.delete("/delete-assignment/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const result = await usersCollection.deleteOne(filter);
-      res.send(result);
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid assignment ID" });
+      }
+
+      try {
+        const assignment = await assignmentsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!assignment) {
+          return res.status(404).send({ message: "Assignment not found" });
+        }
+
+        // ✅ Only the faculty who uploaded it can delete
+        if (req.user.email !== assignment.email) {
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              `🚫 Unauthorized delete attempt by ${req.user.email} for assignment ${id}`
+            );
+          }
+          return res.status(403).send({
+            message: "Forbidden: You can only delete your own assignments",
+          });
+        }
+
+        const result = await assignmentsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (process.env.NODE_ENV === "development") {
+          console.log(`✅ Assignment deleted by ${req.user.email}: ${id}`);
+        }
+
+        res.send({ success: true, deletedCount: result.deletedCount });
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Error deleting assignment:", error);
+        }
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
-    // delete-faculty
-    app.delete("/delete-faculty/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const result = await facultiesCollection.deleteOne(filter);
-      res.send(result);
-    });
-
-    // delete-student
-    app.delete("/delete-student/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const result = await studentsCollection.deleteOne(filter);
-      res.send(result);
-    });
-
-    // delete-material
-    app.delete("/delete-material/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const result = await materialsCollection.deleteOne(filter);
-      res.send(result);
-    });
-
-    // delete-assignment
-    app.delete("/delete-assignment/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const result = await assignmentsCollection.deleteOne(filter);
-      res.send(result);
-    });
-
-    // delete leave request
-    app.delete("/delete-leaveReq/:id", async (req, res) => {
+    // delete leave request secured
+    app.delete("/delete-leaveReq/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
-      const filter = { _id: new ObjectId(id) };
-      const result = await leavesCollection.deleteOne(filter);
-      res.send(result);
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid leave request ID" });
+      }
+
+      try {
+        const leave = await leavesCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!leave) {
+          return res.status(404).send({ message: "Leave request not found" });
+        }
+
+        // ✅ Only the student who submitted it can delete
+        if (req.user.email !== leave.email) {
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              `🚫 Unauthorized leave delete attempt by ${req.user.email}`
+            );
+          }
+          return res.status(403).send({
+            message: "Forbidden: You can only delete your own leave requests",
+          });
+        }
+
+        const result = await leavesCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (process.env.NODE_ENV === "development") {
+          console.log(`✅ Leave request deleted by ${req.user.email}: ${id}`);
+        }
+
+        res.send({ success: true, deletedCount: result.deletedCount });
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Error deleting leave request:", error);
+        }
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
-    // delete weekly  routine
-    app.delete("/delete/weekly-routine/:id", async (req, res) => {
-      const { id } = req.params;
-      const filter = { _id: new ObjectId(id) };
-      const result = await routinesCollection.deleteOne(filter);
-      res.send(result);
-    });
+    // delete weekly  routine secured
+    app.delete(
+      "/delete/weekly-routine/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const filter = { _id: new ObjectId(id) };
+        const result = await routinesCollection.deleteOne(filter);
+        res.send(result);
+      }
+    );
 
-    // get user state
-    app.get("/user-state", async (req, res) => {
+    // get user state secured
+    app.get("/user-state", verifyToken, verifyAdmin, async (req, res) => {
       const totalUser = await usersCollection.estimatedDocumentCount({});
       const totalStudents = await usersCollection.countDocuments({
         role: "student",
@@ -709,55 +930,79 @@ async function run() {
       res.send(result);
     });
 
-    // get specific user by id
-    app.get("/specific-user/:id", async (req, res) => {
+    // get specific user by id secured
+    app.get("/specific-user/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
+      // Allow only admin or faculty
+      if (req.user.role !== "admin" && req.user.role !== "faculty") {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
       const filter = { _id: new ObjectId(id) };
       const result = await usersCollection.findOne(filter);
       res.send(result);
     });
 
-    // get specific user by email
-    app.get("/user-details/:email", async (req, res) => {
+    // get specific user by email secured
+    app.get("/user-details/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+      // Allow only admin or faculty
+      if (req.user.role !== "admin" && req.user.role !== "faculty") {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
       const filter = { email };
       const result = await usersCollection.findOne(filter);
       res.send(result);
     });
 
-    // get-courses from db
-    app.get("/all-courses-by-department", async (req, res) => {
+    // get-courses from db secured
+    app.get("/all-courses-by-department", verifyToken, async (req, res) => {
       const department = req.query.department;
+
+      // Allow only admin, faculty, or student
+      const allowedRoles = ["admin", "faculty", "student"];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
       const filter = department ? { department } : {};
       const result = await courseCollection.find(filter).toArray();
       res.send(result);
     });
 
-    // get-faculties
-    app.get("/all-faculties", async (req, res) => {
+    // get-faculties secured
+    app.get("/all-faculties", verifyToken, verifyAdmin, async (req, res) => {
       const filter = { role: "Faculty" };
       const result = await facultiesCollection.find(filter).toArray();
       const totalStaff = await facultiesCollection.estimatedDocumentCount();
       res.send({ result, totalStaff });
     });
 
-    // get-specific-faculty by id
-    app.get("/specific-faculty/:id", async (req, res) => {
-      const { id } = req.params;
-      const filter = { _id: new ObjectId(id) };
-      const result = await facultiesCollection.findOne(filter);
-      res.send(result);
-    });
-
-    // get-specific-faculty by email
-    app.get("/faculty-email/:email", async (req, res) => {
-      const { email } = req.params;
-      const result = await facultiesCollection.findOne({ email });
-      if (!result) {
-        return res.status(404).send({ error: "Faculty not found" });
+    // get-specific-faculty by id secured
+    app.get(
+      "/specific-faculty/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const filter = { _id: new ObjectId(id) };
+        const result = await facultiesCollection.findOne(filter);
+        res.send(result);
       }
-      res.send(result);
-    });
+    );
+
+    // get-specific-faculty by email secured
+    app.get(
+      "/faculty-email/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { email } = req.params;
+        const result = await facultiesCollection.findOne({ email });
+        if (!result) {
+          return res.status(404).send({ error: "Faculty not found" });
+        }
+        res.send(result);
+      }
+    );
 
     // get specific courses from db
     app.get("/courses/:id", async (req, res) => {
@@ -807,23 +1052,28 @@ async function run() {
       res.send(result);
     });
 
-    // get all users from db
-    app.get("/all-users", async (req, res) => {
+    // get all users from db secured
+    app.get("/all-users", verifyToken, verifyAdmin, async (req, res) => {
       const userRole = req.query.role;
       const filter = userRole ? { role: userRole } : {};
       const result = await usersCollection.find(filter).toArray();
       res.send(result);
     });
 
-    // get all students
-    app.get("/all-students", async (req, res) => {
+    // get all students secured
+    app.get("/all-students", verifyToken, verifyAdmin, async (req, res) => {
       const result = await studentsCollection.find({}).toArray();
       res.send(result);
     });
 
-    // ✅ Get student full details with enrolled courses (including courseId)
-    app.get("/student-full-details/:email", async (req, res) => {
+    // ✅ Get student full details with enrolled courses (including courseId) secured
+    app.get("/student-full-details/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+
+      // 🔐 Only allow admin or faculty
+      if (req.user.role !== "admin" && req.user.role !== "faculty") {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
 
       if (!email) {
         return res.status(400).send({ message: "Email is required" });
@@ -890,9 +1140,14 @@ async function run() {
     //   }
     // });
 
-    //  Get students enrolled in a specific course by course _id for courseDetails
-    app.get("/students-by-course/:id", async (req, res) => {
+    //  Get students enrolled in a specific course by course _id for courseDetails secured
+    app.get("/students-by-course/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
+
+      // 🔐 Only allow admin or faculty
+      if (req.user.role !== "admin" && req.user.role !== "faculty") {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
 
       if (!id) {
         return res.status(400).send({ message: "Course ID is required" });
@@ -917,10 +1172,15 @@ async function run() {
       }
     });
 
-    // get course enrolled based student for the grades page
-    app.get("/students-by-course", async (req, res) => {
+    // get course enrolled based student for the grades page secured
+    app.get("/students-by-course", verifyToken, async (req, res) => {
       const courseId = req.query.courseId;
       const semester = req.query.semester;
+
+      // 🔐 Only allow admin or faculty
+      if (req.user.role !== "admin" && req.user.role !== "faculty") {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
 
       if (!courseId || !semester) {
         return res.status(400).send({ error: "Missing courseId or semester" });
@@ -983,17 +1243,29 @@ async function run() {
       }
     });
 
-    // get specific students
-    app.get("/student/:email", async (req, res) => {
+    // get specific students secured route v
+    app.get("/student/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+      if (
+        req.user.email !== email &&
+        req.user.role !== "admin" &&
+        req.user.role !== "faculty"
+      ) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
       const filter = { email };
       const result = await studentsCollection.findOne(filter);
       res.send(result);
     });
 
-    // get specific student attendance
-    app.get("/student-assignment/:email", async (req, res) => {
+    // get specific student attendance secured
+    app.get("/student-assignment/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+
+      // 🔐 Allow only the logged-in student to access their own assignment
+      if (req.user.email !== email) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
 
       const cursor = attendanceCollection.find({ "students.email": email });
 
@@ -1012,9 +1284,13 @@ async function run() {
       res.send({ email, records: studentAttendance });
     });
 
-    // get all materials
-    app.get("/materials/:email", async (req, res) => {
+    // get all materials secured
+    app.get("/materials/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+      // 🔐 Allow only admin or the same faculty
+      if (req.user.role !== "admin" && req.user.email !== email) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
       const filter = { email };
       const result = await materialsCollection.find(filter).toArray();
       res.send(result);
@@ -1028,15 +1304,23 @@ async function run() {
     //   res.send(result);
     // });
 
-    // ✅ Final version: get real courseId but still named as 'courseId'
-    app.get("/assignments/:email", async (req, res) => {
+    // ✅  get real courseId but still named as 'courseId' secured
+    app.get("/assignments/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+
+      const isAdmin = req.user.role === "admin";
+      const isSameFaculty = req.user.email === email;
+      const isStudent = req.user.role === "student";
+
+      if (!isAdmin && !isSameFaculty && !isStudent) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
 
       try {
         const assignments = await assignmentsCollection
           .aggregate([
             {
-              $match: { email: email },
+              $match: { email },
             },
             {
               $lookup: {
@@ -1053,9 +1337,9 @@ async function run() {
                   {
                     $project: {
                       _id: 0,
-                      courseId: 1, // 🎯 Bring real courseId (like "212", "456", etc.)
-                      name: 1, // 🎯 Bring course name
-                      department: 1, // (optional) course department
+                      courseId: 1,
+                      name: 1,
+                      department: 1,
                     },
                   },
                 ],
@@ -1070,10 +1354,10 @@ async function run() {
             },
             {
               $project: {
-                assignmentId: "$_id", // keep assignment's own id
-                courseId: "$courseInfo.courseId", // 🎯 real courseId (renamed properly)
-                courseName: "$courseInfo.name", // 🎯 course name
-                courseDepartment: "$courseInfo.department", // (optional) course department
+                assignmentId: "$_id",
+                courseId: "$courseInfo.courseId",
+                courseName: "$courseInfo.name",
+                courseDepartment: "$courseInfo.department",
                 title: 1,
                 email: 1,
                 deadline: 1,
@@ -1086,6 +1370,22 @@ async function run() {
           ])
           .toArray();
 
+        // 🔐 Filter for students based on their department
+        if (isStudent) {
+          const student = await studentsCollection.findOne({
+            email: req.user.email,
+          });
+          if (!student) {
+            return res.status(404).send({ message: "Student not found" });
+          }
+
+          const filtered = assignments.filter(
+            (a) => a.courseDepartment === student.department
+          );
+
+          return res.send(filtered);
+        }
+
         res.send(assignments);
       } catch (error) {
         console.error("❌ Error fetching assignments:", error);
@@ -1093,9 +1393,13 @@ async function run() {
       }
     });
 
-    // get all assignment with the status
-    app.get("/students-assignment/:email", async (req, res) => {
+    // get all assignment with the status secured
+    app.get("/students-assignment/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+      // 🔐 Allow only the student themselves
+      if (req.user.email !== email) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
 
       try {
         // 1. Get student's enrolled courses
@@ -1159,30 +1463,129 @@ async function run() {
     // get specific materials
     app.get("/material/:id", async (req, res) => {
       const { id } = req.params;
-      const filter = { _id: new ObjectId(id) };
-      const result = await materialsCollection.findOne(filter);
-      res.send(result);
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid material ID" });
+      }
+
+      try {
+        const material = await materialsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!material) {
+          return res.status(404).send({ message: "Material not found" });
+        }
+
+        // 🔍 Lookup department from course collection using courseId
+        const course = await courseCollection.findOne({
+          courseId: material.courseId,
+        });
+        const department = course?.department || "";
+
+        // ✅ Merge and return
+        res.send({ ...material, department });
+      } catch (error) {
+        console.error("❌ Error fetching material:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
-    // get specific assignment
-    app.get("/assignment/:id", async (req, res) => {
+    // get specific assignment secured
+    app.get("/assignment/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
-      const filter = { _id: new ObjectId(id) };
-      const result = await assignmentsCollection.findOne(filter);
-      res.send(result);
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid assignment ID" });
+      }
+
+      try {
+        const assignment = await assignmentsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!assignment) {
+          return res.status(404).send({ message: "Assignment not found" });
+        }
+
+        const assignmentFaculty = assignment.email;
+        const assignmentCourseId = assignment.courseId;
+
+        // Admin or assigned faculty can access directly
+        if (req.user.role === "admin" || req.user.email === assignmentFaculty) {
+          return res.send(assignment);
+        }
+
+        // If student, verify department match via course
+        if (req.user.role === "student") {
+          const student = await studentsCollection.findOne({
+            email: req.user.email,
+          });
+
+          if (!student) {
+            return res
+              .status(403)
+              .send({ message: "Forbidden: Student not found" });
+          }
+
+          const course = await courseCollection.findOne({
+            _id: new ObjectId(assignmentCourseId),
+          });
+
+          if (!course) {
+            return res.status(404).send({ message: "Course not found" });
+          }
+
+          if (student.department !== course.department) {
+            return res
+              .status(403)
+              .send({ message: "Forbidden: Not authorized" });
+          }
+
+          return res.send(assignment);
+        }
+
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Error fetching assignment:", err);
+        }
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
-    // Get all student submissions for a specific assignment
-    app.get("/assignment-submissions/:assignmentId", async (req, res) => {
-      const { assignmentId } = req.params;
+    // Get all student submissions for a specific assignment secured
+    app.get(
+      "/assignment-submissions/:assignmentId",
+      verifyToken,
+      async (req, res) => {
+        const { assignmentId } = req.params;
 
-      const submissions = await subAssignmentsCollection
-        .find({ assignmentId })
-        .project({ _id: 1, email: 1, comments: 1, path: 1, uploadedAt: 1 })
-        .toArray();
+        // Fetch the assignment to validate ownership
+        const assignment = await assignmentsCollection.findOne({
+          _id: new ObjectId(assignmentId),
+        });
 
-      res.send(submissions);
-    });
+        if (!assignment) {
+          return res.status(404).send({ message: "Assignment not found" });
+        }
+
+        // Only the assignment creator (faculty) or admin can access
+        const isOwner = req.user.email === assignment.email;
+        const isAdmin = req.user.role === "admin";
+
+        if (!isOwner && !isAdmin) {
+          return res.status(403).send({ message: "Forbidden: Access denied" });
+        }
+
+        const submissions = await subAssignmentsCollection
+          .find({ assignmentId })
+          .project({ _id: 1, email: 1, comments: 1, path: 1, uploadedAt: 1 })
+          .toArray();
+
+        res.send(submissions);
+      }
+    );
 
     // GET: Fetch submitted attendance data for a specific course and date
     app.get("/submitted-attendance", async (req, res) => {
@@ -1202,27 +1605,27 @@ async function run() {
     });
 
     // GET: Get attendance report by course
-    app.get("/attendance-report/:courseId", async (req, res) => {
+    app.get("/attendance-report/:courseId", verifyToken, async (req, res) => {
       const { courseId } = req.params;
       const records = await attendanceCollection.find({ courseId }).toArray();
       res.send(records);
     });
 
     // get attendance status
-    app.get("/attendance-status", async (req, res) => {
+    app.get("/attendance-status", verifyToken, async (req, res) => {
       const { courseId, date } = req.query;
       const existing = await attendanceCollection.findOne({ courseId, date });
       res.send({ submitted: !!existing });
     });
     // students leave for specific student
-    app.get("/student-leave/request/:email", async (req, res) => {
+    app.get("/student-leave/request/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
       const filter = { email };
       const result = await leavesCollection.find(filter).toArray();
       res.send(result);
     });
     // ✅ Faculty-specific leave requests
-    app.get("/faculty-leaves", async (req, res) => {
+    app.get("/faculty-leaves", verifyToken, async (req, res) => {
       const { facultyEmail, courseId } = req.query;
       if (!facultyEmail || !courseId) {
         return res
@@ -1274,23 +1677,42 @@ async function run() {
     });
 
     // Get specific student grade with optional semester filter
-    app.get("/student-result/:email", async (req, res) => {
+    app.get("/student-result/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
-      const { semester } = req.query; // get semester from query string
+      const { semester } = req.query;
 
-      let filter = { studentEmail: email };
-
-      if (semester) {
-        filter.semester = semester;
+      // 🔐 Only the student themself can access
+      if (req.user.email !== email) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
       }
 
-      const result = await gradesCollection.findOne(filter);
-      res.send(result);
+      try {
+        let filter = { studentEmail: email };
+        if (semester) {
+          filter.semester = semester;
+        }
+
+        const result = await gradesCollection.findOne(filter);
+        res.send(result);
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Error fetching student result:", error);
+        }
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
-    // GET: All weekly routines sorted by months
-    app.get("/all/weekly-routines", async (req, res) => {
+    // GET: All weekly routines sorted by months secured
+    app.get("/all/weekly-routines", verifyToken, async (req, res) => {
       try {
+        // ✅ Restrict access to only admin, faculty, and student
+        if (
+          req.user.role !== "admin" &&
+          req.user.role !== "faculty" &&
+          req.user.role !== "student"
+        ) {
+          return res.status(403).send({ message: "Forbidden: Access denied" });
+        }
         const { monthYear } = req.query;
         let filter = {};
 
@@ -1321,12 +1743,21 @@ async function run() {
       }
     });
 
-    // GET: Fetch single weekly routine by ID
-    app.get("/get-routine/:routineId", async (req, res) => {
+    // GET: Fetch single weekly routine by ID secured
+    app.get("/get-routine/:routineId", verifyToken, async (req, res) => {
       const { routineId } = req.params;
 
       if (!ObjectId.isValid(routineId)) {
         return res.status(400).send({ message: "Invalid routine ID" });
+      }
+
+      // ✅ Restrict access to only admin, faculty, and student
+      if (
+        req.user.role !== "admin" &&
+        req.user.role !== "faculty" &&
+        req.user.role !== "student"
+      ) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
       }
 
       try {
@@ -1346,9 +1777,13 @@ async function run() {
     });
 
     // get routine by faculty email
-    app.get("/get-weekly/routine/:email", async (req, res) => {
+    app.get("/get-weekly/routine/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
       const { monthYear } = req.query;
+      // 🔒 Allow only the matching faculty or admin
+      if (req.user.role !== "admin" && req.user.email !== email) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
 
       try {
         const filter = {
@@ -1377,9 +1812,14 @@ async function run() {
     });
 
     // GET: Routine for a specific student by department (with optional month filter)
-    app.get("/student/routine/:email", async (req, res) => {
+    app.get("/student/routine/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
       const { monthYear } = req.query;
+
+      // 🔐 Ensure the request is made by the same student
+      if (req.user.email !== email || req.user.role !== "student") {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
 
       try {
         // Get the student's department
@@ -1436,9 +1876,15 @@ async function run() {
     //   }
     // });
 
-    // get specific message by id
-    app.get("/messages/:email", async (req, res) => {
+    // get specific message by id secured
+    app.get("/messages/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+
+      // 🔐 Allow only the user themselves
+      if (req.user.email !== email) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
+
       if (!email) {
         return res.status(400).send({ message: "Email is required" });
       }
@@ -1457,8 +1903,8 @@ async function run() {
       }
     });
 
-    // ✅ GET: A single message by its ID
-    app.get("/message/:id", async (req, res) => {
+    // ✅ GET: A single message by its ID secured
+    app.get("/message/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       if (!ObjectId.isValid(id)) {
         return res.status(400).send({ message: "Invalid message ID" });
@@ -1536,7 +1982,7 @@ async function run() {
     //✅ ✅ ✅  notifications routes
 
     // ✅ Save new course and notify assigned faculty
-    app.post("/add-courses", async (req, res) => {
+    app.post("/add-courses", verifyToken, verifyAdmin, async (req, res) => {
       const course = req.body;
       try {
         const result = await courseCollection.insertOne(course);
@@ -1570,8 +2016,14 @@ async function run() {
     });
 
     // ✅ Notify clients when a new leave is submitted
-    app.post("/leave-application", async (req, res) => {
+    app.post("/leave-application", verifyToken, async (req, res) => {
       const application = req.body;
+      // 🔐 Ensure the student is applying for their own account
+      if (req.user.email !== application.email || req.user.role !== "student") {
+        return res
+          .status(403)
+          .send({ message: "Forbidden: Only the student can apply for leave" });
+      }
       const result = await leavesCollection.insertOne(application);
 
       // Derive facultyEmail from student's first course
@@ -1605,9 +2057,17 @@ async function run() {
     });
 
     // ✅ POST: Enroll a student into a course + Notify assigned faculty
-    app.post("/enroll-course", async (req, res) => {
+    app.post("/enroll-course", verifyToken, async (req, res) => {
       try {
         const { email, course } = req.body;
+
+        // 🔐 Allow only the logged-in student to enroll themselves
+        if (req.user.email !== email || req.user.role !== "student") {
+          return res.status(403).send({
+            success: false,
+            message: "Forbidden: Students can only enroll themselves",
+          });
+        }
 
         if (!email || !course?.courseId || !course?.courseName) {
           return res
@@ -1700,9 +2160,17 @@ async function run() {
     });
 
     // POST: Upsert grades by semester
-    app.post("/student-grades/upsert", async (req, res) => {
+    app.post("/student-grades/upsert", verifyToken, async (req, res) => {
       try {
         const { studentGrades, semester } = req.body;
+
+        // ✅ Only faculty allowed
+        if (req.user.role !== "faculty") {
+          return res.status(403).send({
+            success: false,
+            message: "Forbidden: Only faculty can submit grades",
+          });
+        }
 
         if (!Array.isArray(studentGrades) || !semester) {
           return res
@@ -1715,6 +2183,28 @@ async function run() {
 
         for (const record of studentGrades) {
           const { studentEmail, courseId, studentName } = record;
+
+          // ✅ Check that the faculty is actually assigned to this course
+          let assignedCourse = null;
+
+          if (ObjectId.isValid(courseId)) {
+            assignedCourse = await courseCollection.findOne({
+              _id: new ObjectId(courseId),
+              facultyEmail: req.user.email,
+            });
+          } else {
+            assignedCourse = await courseCollection.findOne({
+              courseId,
+              facultyEmail: req.user.email,
+            });
+          }
+
+          if (!assignedCourse) {
+            return res.status(403).send({
+              success: false,
+              message: `Forbidden: You are not assigned to course ${courseId}`,
+            });
+          }
 
           const exists = await gradesCollection.findOne({
             studentEmail,
@@ -1930,80 +2420,101 @@ async function run() {
       }
     });
 
-    app.post("/upload-assignment", upload.single("file"), async (req, res) => {
-      try {
-        const { courseId, title, instructions, email, deadline, semester } =
-          req.body;
-        const fileInfo = req.file;
+    // upload assignment
+    app.post(
+      "/upload-assignment",
+      verifyToken,
+      upload.single("file"),
+      async (req, res) => {
+        try {
+          const { courseId, title, instructions, email, deadline, semester } =
+            req.body;
+          const fileInfo = req.file;
 
-        const assignment = {
-          courseId,
-          semester,
-          title,
-          instructions,
-          email,
-          deadline,
-          filename: fileInfo.filename,
-          originalname: fileInfo.originalname,
-          path: fileInfo.path,
-          size: fileInfo.size,
-          mimetype: fileInfo.mimetype,
-          uploadedAt: new Date().toISOString(),
-        };
+          // ✅ Ensure only faculty can upload
+          if (req.user.role !== "faculty") {
+            return res.status(403).send({
+              message: "Forbidden: Only faculty can upload assignments",
+            });
+          }
 
-        const result = await assignmentsCollection.insertOne(assignment);
+          // ✅ Check course assignment
+          const course = await courseCollection.findOne({
+            _id: new ObjectId(courseId),
+            facultyEmail: req.user.email, // Only assigned faculty allowed
+          });
 
-        // ✅ Get course to find department
-        const course = await courseCollection.findOne({
-          _id: new ObjectId(courseId),
-        });
-        if (!course || !course.department) {
-          return res
-            .status(404)
-            .send({ message: "Course or department not found" });
-        }
+          if (!course) {
+            return res.status(403).send({
+              message: "Forbidden: You are not assigned to this course",
+            });
+          }
 
-        // ✅ Get all students in that department
-        const students = await studentsCollection
-          .find({ department: course.department })
-          .toArray();
-
-        const now = new Date();
-
-        // ✅ Emit & Save notification for each student
-        for (const student of students) {
-          const notification = {
-            type: "assignment",
-            email: student.email,
+          const assignment = {
             courseId,
-            courseName: course.name,
+            semester,
             title,
-            message: `📚 New assignment posted for ${course.name}`,
-            time: now,
-            seen: false,
+            instructions,
+            email: req.user.email,
+            deadline,
+            filename: fileInfo.filename,
+            originalname: fileInfo.originalname,
+            path: fileInfo.path,
+            size: fileInfo.size,
+            mimetype: fileInfo.mimetype,
+            uploadedAt: new Date().toISOString(),
           };
 
-          // Emit real-time notification
-          io.to(student.email).emit("student-notification", notification);
+          const result = await assignmentsCollection.insertOne(assignment);
 
-          // Save to DB
-          await notificationCollection.insertOne(notification);
+          // ✅ Get all students in that department
+          const students = await studentsCollection
+            .find({ department: course.department })
+            .toArray();
+          const now = new Date();
+
+          // ✅ Emit & Save notification for each student
+          for (const student of students) {
+            const notification = {
+              type: "assignment",
+              email: student.email,
+              courseId,
+              courseName: course.name,
+              title,
+              message: `📚 New assignment posted for ${course.name}`,
+              time: now,
+              seen: false,
+            };
+
+            io.to(student.email).emit("student-notification", notification);
+            await notificationCollection.insertOne(notification);
+          }
+
+          res.send(result);
+        } catch (err) {
+          console.error("❌ Upload failed", err);
+          res.status(500).send({ message: "Upload failed" });
         }
-
-        res.send(result);
-      } catch (err) {
-        console.error("Upload failed", err);
-        res.status(500).send({ message: "Upload failed" });
       }
-    });
+    );
 
     // assignment-submission
     app.post(
       "/assignment-submission",
+      verifyToken,
       upload.single("file"),
       async (req, res) => {
         const { assignmentId, email, comments } = req.body;
         const fileInfo = req.file;
+
+        // 🔐 Ensure only the logged-in student can submit
+        if (req.user.role !== "student" || req.user.email !== email) {
+          return res.status(403).send({
+            message:
+              "Forbidden: Only the logged-in student can submit assignments",
+          });
+        }
+
         const subAssignment = {
           assignmentId,
           email,
@@ -2015,6 +2526,7 @@ async function run() {
           mimetype: fileInfo.mimetype,
           uploadedAt: new Date().toISOString(),
         };
+
         const result = await subAssignmentsCollection.insertOne(subAssignment);
         res.send(result);
       }
@@ -2023,10 +2535,12 @@ async function run() {
     // update material
     app.patch(
       "/update-material/:id",
+      verifyToken,
       upload.single("file"),
       async (req, res) => {
         try {
           const { id } = req.params;
+
           if (!ObjectId.isValid(id)) {
             return res.status(400).send({ message: "Invalid ID" });
           }
@@ -2034,8 +2548,20 @@ async function run() {
           const existing = await materialsCollection.findOne({
             _id: new ObjectId(id),
           });
-          if (!existing)
+
+          if (!existing) {
             return res.status(404).send({ message: "Material not found" });
+          }
+
+          // 🔐 Only the original uploader (faculty) or admin can update
+          const isAuthorized =
+            req.user.role === "admin" || req.user.email === existing.email;
+
+          if (!isAuthorized) {
+            return res.status(403).send({
+              message: "Forbidden: Not authorized to update material",
+            });
+          }
 
           const { title, courseId, email } = req.body;
 
@@ -2072,13 +2598,16 @@ async function run() {
         }
       }
     );
+
     // update assignment
     app.patch(
       "/update-assignment/:id",
+      verifyToken,
       upload.single("file"),
       async (req, res) => {
         try {
           const { id } = req.params;
+
           if (!ObjectId.isValid(id)) {
             return res.status(400).send({ message: "Invalid ID" });
           }
@@ -2086,8 +2615,20 @@ async function run() {
           const existing = await assignmentsCollection.findOne({
             _id: new ObjectId(id),
           });
-          if (!existing)
-            return res.status(404).send({ message: "Material not found" });
+
+          if (!existing) {
+            return res.status(404).send({ message: "Assignment not found" });
+          }
+
+          // 🔐 Allow only the assignment creator or admin
+          const isAuthorized =
+            req.user.role === "admin" || req.user.email === existing.email;
+
+          if (!isAuthorized) {
+            return res.status(403).send({
+              message: "Forbidden: Not authorized to update assignment",
+            });
+          }
 
           const { title, courseId, instructions, email } = req.body;
 
@@ -2120,7 +2661,9 @@ async function run() {
 
           res.send(result);
         } catch (err) {
-          console.error(err);
+          if (process.env.NODE_ENV === "development") {
+            console.error("❌ Assignment update failed:", err);
+          }
           res.status(500).send({ message: "Update failed" });
         }
       }
@@ -2129,8 +2672,15 @@ async function run() {
     //✅ ✅ ✅  payment routes
 
     // Create PaymentIntent API
-    app.post("/create-payment-intent", async (req, res) => {
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
       const { amount } = req.body;
+
+      // 🔐 Only allow students to create payment intents
+      if (req.user.role !== "student") {
+        return res
+          .status(403)
+          .send({ error: "Forbidden: Only students can make payments" });
+      }
 
       if (!amount) {
         return res.status(400).send({ error: "Amount is required" });
@@ -2145,14 +2695,23 @@ async function run() {
 
         res.send({ clientSecret: paymentIntent.client_secret });
       } catch (error) {
-        console.error("Stripe Error:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Stripe Error:", error);
+        }
         res.status(500).send({ error: error.message });
       }
     });
 
     // Save payment information and ✅  save notification
-    app.post("/payments", async (req, res) => {
+    app.post("/payments", verifyToken, async (req, res) => {
       const payment = req.body;
+
+      // 🔐 Ensure only the logged-in student can submit their own payment
+      if (req.user.role !== "student" || req.user.email !== payment.userEmail) {
+        return res.status(403).send({
+          error: "Forbidden: Students can only submit their own payment",
+        });
+      }
 
       if (!payment.transactionId || !payment.amount || !payment.userEmail) {
         return res
@@ -2164,27 +2723,37 @@ async function run() {
         payment.date = new Date(); // store server time
         const result = await paymentsCollection.insertOne(payment);
 
-        // ✅ Also create a notification for admin
+        // ✅ Create a notification for admin
         const notification = {
           type: "payment",
           email: payment.userEmail,
           applicationDate: new Date(),
-          message: `💳 Payment received: $${payment.amount} from ${payment.userEmail}`, // notification message
+          message: `💳 Payment received: $${payment.amount} from ${payment.userEmail}`,
           transactionId: payment.transactionId,
           seen: false,
         };
-        // Save the notification in the notifications collection
+
         await notificationCollection.insertOne(notification);
+
         res.send({ success: true, insertedId: result.insertedId });
       } catch (error) {
-        console.error("❌ Failed to save payment:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Failed to save payment:", error);
+        }
         res.status(500).send({ error: "Internal Server Error" });
       }
     });
 
     // ✅ GET: Payment history for specific student by email
-    app.get("/payments/:email", async (req, res) => {
+    app.get("/payments/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+
+      // 🔐 Allow only the student to view their own payment history
+      if (req.user.role !== "student" || req.user.email !== email) {
+        return res
+          .status(403)
+          .send({ error: "Forbidden: Access denied to payment history" });
+      }
 
       if (!email) {
         return res.status(400).send({ error: "Student email is required" });
@@ -2193,12 +2762,14 @@ async function run() {
       try {
         const payments = await paymentsCollection
           .find({ userEmail: email })
-          .sort({ date: -1 }) // Sort by newest payments first
+          .sort({ date: -1 })
           .toArray();
 
         res.send(payments);
       } catch (error) {
-        console.error("❌ Error fetching payment history:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Error fetching payment history:", error);
+        }
         res.status(500).send({ error: "Failed to fetch payments" });
       }
     });

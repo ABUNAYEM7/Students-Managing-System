@@ -11,13 +11,21 @@ const FacultyRoutine = () => {
   const [routines, setRoutines] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filteredMonth, setFilteredMonth] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
 
-  const monthsOfYear = useMemo(() => {
-    const year = new Date().getFullYear();
-    return Array.from({ length: 12 }, (_, i) =>
-      dayjs(`${year}-${i + 1}-01`).format("MMMM YYYY")
-    );
-  }, []);
+  const years = [2024, 2025, 2026];
+  const months = Array.from({ length: 12 }, (_, i) =>
+    dayjs().month(i).format("MMMM")
+  );
+
+  useEffect(() => {
+    if (selectedMonth && selectedYear) {
+      setFilteredMonth(`${selectedMonth} ${selectedYear}`);
+    } else {
+      setFilteredMonth("");
+    }
+  }, [selectedMonth, selectedYear]);
 
   const fetchRoutines = async () => {
     if (!email || !filteredMonth) return;
@@ -60,16 +68,29 @@ const FacultyRoutine = () => {
         Faculty Weekly Routine
       </h2>
 
-      <div className="flex justify-center mb-6">
+      <div className="flex justify-center gap-4 mb-6">
         <select
           className="border px-4 py-2 rounded-md shadow"
-          value={filteredMonth}
-          onChange={(e) => setFilteredMonth(e.target.value)}
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
         >
-          <option value="">Please select a month</option>
-          {monthsOfYear.map((month, i) => (
+          <option value="">Select Month</option>
+          {months.map((month, i) => (
             <option key={i} value={month}>
               {month}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="border px-4 py-2 rounded-md shadow"
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+        >
+          <option value="">Select Year</option>
+          {years.map((year, i) => (
+            <option key={i} value={year}>
+              {year}
             </option>
           ))}
         </select>
@@ -77,7 +98,7 @@ const FacultyRoutine = () => {
 
       {!filteredMonth ? (
         <p className="text-center text-gray-500">
-          Please select a month to get the routine.
+          Please select a month and year to get the routine.
         </p>
       ) : loading ? (
         <p className="text-center">Loading...</p>
@@ -98,7 +119,6 @@ const FacultyRoutine = () => {
                 </p>
               </div>
 
-              {/* Make Table Responsive */}
               <div className="overflow-x-auto">
                 <table className="min-w-[800px] w-full border">
                   <thead>

@@ -151,18 +151,18 @@ const FacultyGrades = () => {
             <option value="Quarter-3">Quarter-3</option>
             <option value="Quarter-3">Quarter-3</option>
             <option value="Quarter-4">Quarter-4</option>
-            <option value="Quarter-4">Quarter-5</option>
-            <option value="Quarter-4">Quarter-6</option>
-            <option value="Quarter-4">Quarter-7</option>
-            <option value="Quarter-4">Quarter-8</option>
-            <option value="Quarter-4">Quarter-9</option>
-            <option value="Quarter-4">Quarter-10</option>
-            <option value="Quarter-4">Quarter-11</option>
-            <option value="Quarter-4">Quarter-12</option>
-            <option value="Quarter-4">Quarter-13</option>
-            <option value="Quarter-4">Quarter-14</option>
-            <option value="Quarter-4">Quarter-15</option>
-            <option value="Quarter-4">Quarter-16</option>
+            <option value="Quarter-5">Quarter-5</option>
+            <option value="Quarter-6">Quarter-6</option>
+            <option value="Quarter-7">Quarter-7</option>
+            <option value="Quarter-8">Quarter-8</option>
+            <option value="Quarter-9">Quarter-9</option>
+            <option value="Quarter-10">Quarter-10</option>
+            <option value="Quarter-11">Quarter-11</option>
+            <option value="Quarter-12">Quarter-12</option>
+            <option value="Quarter-13">Quarter-13</option>
+            <option value="Quarter-14">Quarter-14</option>
+            <option value="Quarter-15">Quarter-15</option>
+            <option value="Quarter-16">Quarter-16</option>
           </select>
         </div>
 
