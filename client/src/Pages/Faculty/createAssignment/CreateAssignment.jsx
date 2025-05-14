@@ -146,7 +146,6 @@ const CreateAssignment = () => {
     }
   };
 
-
   return (
     <div className="p-6">
       <div className="max-w-2xl mx-auto bg-white p-6 rounded shadow">
@@ -188,9 +187,21 @@ const CreateAssignment = () => {
               Select Quarter
             </option>
             <option value="Quarter-1">Quarter-1</option>
-                <option value="Quarter-2">Quarter-2</option>
-                <option value="Quarter-3">Quarter-3</option>
-                <option value="Quarter-4">Quarter-4</option>
+            <option value="Quarter-2">Quarter-2</option>
+            <option value="Quarter-3">Quarter-3</option>
+            <option value="Quarter-4">Quarter-4</option>
+            <option value="Quarter-4">Quarter-5</option>
+            <option value="Quarter-4">Quarter-6</option>
+            <option value="Quarter-4">Quarter-7</option>
+            <option value="Quarter-4">Quarter-8</option>
+            <option value="Quarter-4">Quarter-9</option>
+            <option value="Quarter-4">Quarter-10</option>
+            <option value="Quarter-4">Quarter-11</option>
+            <option value="Quarter-4">Quarter-12</option>
+            <option value="Quarter-4">Quarter-13</option>
+            <option value="Quarter-4">Quarter-14</option>
+            <option value="Quarter-4">Quarter-15</option>
+            <option value="Quarter-4">Quarter-16</option>
           </select>
 
           <label className="label">

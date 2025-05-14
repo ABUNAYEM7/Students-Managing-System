@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
-import { axiosInstance } from "./AxiosSecure"
+import AxiosSecure from "./AxiosSecure"
 
 const useFetchData = (key,endpoint) => {
+  const axiosInstance = AxiosSecure()
   const {data,isLoading,isError,error,refetch} = useQuery({
     queryKey :[key],
     queryFn : async()=>{

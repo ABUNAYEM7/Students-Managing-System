@@ -47,7 +47,7 @@ const AddRoutine = () => {
   ];
 
   const Associate = ["English as a Second Language"];
-  const semesters = ["Quarter-1", "Quarter-2", "Quarter-3", "Quarter-4"];
+  const semesters = ["Quarter-1", "Quarter-2", "Quarter-3", "Quarter-4", "Quarter-5", "Quarter-6", "Quarter-7", "Quarter-8", "Quarter-9", "Quarter-10", "Quarter-11", "Quarter-11", "Quarter-13", "Quarter-14", "Quarter-15", "Quarter-16"];
 
   const daysOfWeek = [
     "Sunday",

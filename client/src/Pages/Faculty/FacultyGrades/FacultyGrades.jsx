@@ -10,10 +10,10 @@ const FacultyGrades = () => {
   const email = user?.email;
   const axiosInstance = AxiosSecure();
 
-  const {
-    data: fetchedCourses,
-    loading: courseLoading,
-  } = useFetchData(`${email}`, `/faculty-assign/courses/${email}`);
+  const { data: fetchedCourses, loading: courseLoading } = useFetchData(
+    `${email}`,
+    `/faculty-assign/courses/${email}`
+  );
 
   const courses = Array.isArray(fetchedCourses)
     ? fetchedCourses
@@ -66,7 +66,9 @@ const FacultyGrades = () => {
     const gradedData = students
       .filter((s) => {
         const point = parseFloat(grades[s.email]);
-        return !s.alreadyGraded?.point && !isNaN(point) && point >= 0 && point <= 5;
+        return (
+          !s.alreadyGraded?.point && !isNaN(point) && point >= 0 && point <= 5
+        );
       })
       .map((student) => ({
         studentEmail: student.email,
@@ -149,6 +151,18 @@ const FacultyGrades = () => {
             <option value="Quarter-3">Quarter-3</option>
             <option value="Quarter-3">Quarter-3</option>
             <option value="Quarter-4">Quarter-4</option>
+            <option value="Quarter-4">Quarter-5</option>
+            <option value="Quarter-4">Quarter-6</option>
+            <option value="Quarter-4">Quarter-7</option>
+            <option value="Quarter-4">Quarter-8</option>
+            <option value="Quarter-4">Quarter-9</option>
+            <option value="Quarter-4">Quarter-10</option>
+            <option value="Quarter-4">Quarter-11</option>
+            <option value="Quarter-4">Quarter-12</option>
+            <option value="Quarter-4">Quarter-13</option>
+            <option value="Quarter-4">Quarter-14</option>
+            <option value="Quarter-4">Quarter-15</option>
+            <option value="Quarter-4">Quarter-16</option>
           </select>
         </div>
 

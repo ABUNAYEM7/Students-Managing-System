@@ -1896,7 +1896,16 @@ async function run() {
       },
     });
 
-    const upload = multer({ storage: storage });
+    const upload = multer({
+      storage,
+      fileFilter: (req, file, cb) => {
+        if (file.mimetype !== "application/pdf") {
+          return cb(new Error("Only PDFs allowed"), false);
+        }
+        cb(null, true);
+      },
+      limits: { fileSize: 10 * 1024 * 1024 },
+    });
 
     // save the file to db
     app.post("/upload-file", upload.single("file"), async (req, res) => {
