@@ -40,6 +40,7 @@ const verifyToken = (req, res, next) => {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
+      console.log("JWT verify failed:", err);
       return res.status(403).send({ message: "Forbidden" });
     }
     req.user = decoded;
@@ -955,17 +956,37 @@ async function run() {
     });
 
     // get-courses from db secured
-    app.get("/all-courses-by-department", verifyToken, async (req, res) => {
-      const department = req.query.department;
+    app.get("/all-courses-by-department", async (req, res) => {
+      try {
+        const department = req.query.department;
+        const page = parseInt(req.query.page);
+        const limit = parseInt(req.query.limit);
 
-      // Allow only admin, faculty, or student
-      const allowedRoles = ["admin", "faculty", "student"];
-      if (!allowedRoles.includes(req.user.role)) {
-        return res.status(403).send({ message: "Forbidden: Access denied" });
+        const query = { department };
+
+        let courses;
+        let total;
+
+        // If page and limit are both provided, apply pagination
+        if (!isNaN(page) && !isNaN(limit)) {
+          const skip = (page - 1) * limit;
+          total = await courseCollection.countDocuments(query);
+          courses = await courseCollection
+            .find(query)
+            .skip(skip)
+            .limit(limit)
+            .toArray();
+        } else {
+          // Default: return all courses (no pagination)
+          courses = await courseCollection.find(query).toArray();
+          total = courses.length;
+        }
+
+        res.send({ total, courses });
+      } catch (error) {
+        console.error("Error in paginated course fetch:", error);
+        res.status(500).send({ message: "Server error" });
       }
-      const filter = department ? { department } : {};
-      const result = await courseCollection.find(filter).toArray();
-      res.send(result);
     });
 
     // get-faculties secured
@@ -990,19 +1011,14 @@ async function run() {
     );
 
     // get-specific-faculty by email secured
-    app.get(
-      "/faculty-email/:email",
-      verifyToken,
-      verifyAdmin,
-      async (req, res) => {
-        const { email } = req.params;
-        const result = await facultiesCollection.findOne({ email });
-        if (!result) {
-          return res.status(404).send({ error: "Faculty not found" });
-        }
-        res.send(result);
+    app.get("/faculty-email/:email", verifyToken, async (req, res) => {
+      const { email } = req.params;
+      const result = await facultiesCollection.findOne({ email });
+      if (!result) {
+        return res.status(404).send({ error: "Faculty not found" });
       }
-    );
+      res.send(result);
+    });
 
     // get specific courses from db
     app.get("/courses/:id", async (req, res) => {
@@ -1013,12 +1029,91 @@ async function run() {
     });
 
     // get faculty assign courses
-    app.get("/faculty-assign/courses/:email", async (req, res) => {
+    app.get("/faculty-assign/courses/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
-      const filter = { facultyEmail: email };
-      const result = await courseCollection.find(filter).toArray();
-      res.send(result);
+      const page = parseInt(req.query.page);
+      const limit = parseInt(req.query.limit);
+
+      if (!email) {
+        return res.status(400).send({ message: "Email is required" });
+      }
+
+      // 🔐 Authorization check: only self or admin can access
+      const isSelf = req.user?.email === email;
+      const isAdmin = req.user?.role === "admin";
+
+      if (!isSelf && !isAdmin) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
+
+      try {
+        const filter = { facultyEmail: email };
+        const total = await courseCollection.countDocuments(filter);
+        let result;
+
+        if (!isNaN(page) && !isNaN(limit)) {
+          const skip = (page - 1) * limit;
+          result = await courseCollection
+            .find(filter)
+            .sort({ date: -1 })
+            .skip(skip)
+            .limit(limit)
+            .toArray();
+        } else {
+          result = await courseCollection
+            .find(filter)
+            .sort({ date: -1 })
+            .toArray();
+        }
+
+        res.send({
+          courses: result,
+          total,
+        });
+      } catch (error) {
+        console.error("❌ Error fetching faculty-assigned courses:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
     });
+
+    // ✅ Filter faculty-assigned courses by quarter (semester)
+    app.get(
+      "/faculty-assign/courses-by-quarter",
+      verifyToken,
+      async (req, res) => {
+        const { email, semester } = req.query;
+
+        if (!email || !semester) {
+          return res
+            .status(400)
+            .send({ message: "Email and semester are required" });
+        }
+
+        const isSelf = req.user?.email === email;
+        const isAdmin = req.user?.role === "admin";
+
+        if (!isSelf && !isAdmin) {
+          return res.status(403).send({ message: "Forbidden: Access denied" });
+        }
+
+        try {
+          const filter = {
+            facultyEmail: email,
+            semester,
+          };
+
+          const courses = await courseCollection
+            .find(filter)
+            .sort({ date: -1 })
+            .toArray();
+
+          res.send(courses);
+        } catch (error) {
+          console.error("❌ Error fetching courses by quarter:", error);
+          res.status(500).send({ message: "Internal Server Error" });
+        }
+      }
+    );
 
     // get faculties dashboard state
     app.get("/faculty-dashboard/state/:email", async (req, res) => {
@@ -1069,14 +1164,27 @@ async function run() {
     // ✅ Get student full details with enrolled courses (including courseId) secured
     app.get("/student-full-details/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+      const page = parseInt(req.query.page);
+      const limit = parseInt(req.query.limit);
 
-      // 🔐 Only allow admin or faculty
-      if (req.user.role !== "admin" && req.user.role !== "faculty") {
-        return res.status(403).send({ message: "Forbidden: Access denied" });
-      }
+      // Get user role from JWT token (assuming it's included there)
+      const requesterEmail = req.user?.email;
+      const requesterRole = req.user?.role;
 
       if (!email) {
         return res.status(400).send({ message: "Email is required" });
+      }
+
+      // 🚫 Secure access: only admin, faculty, or the student themself
+      const isAdminOrFaculty =
+        requesterRole === "admin" || requesterRole === "faculty";
+      const isSameStudent =
+        requesterRole === "student" && requesterEmail === email;
+
+      if (!isAdminOrFaculty && !isSameStudent) {
+        return res.status(403).send({
+          message: "Forbidden: You are not authorized to access this data",
+        });
       }
 
       try {
@@ -1086,29 +1194,48 @@ async function run() {
           return res.status(404).send({ message: "Student not found" });
         }
 
-        let enrolledCourses = [];
+        let courses = Array.isArray(student.courses)
+          ? [...student.courses]
+          : [];
+        const totalCourses = courses.length;
 
-        if (student.courses && Array.isArray(student.courses)) {
-          const courseObjectIds = student.courses.map(
-            (c) => new ObjectId(c.courseId)
-          );
-
-          enrolledCourses = await courseCollection
-            .find({ _id: { $in: courseObjectIds } })
-            .project({ name: 1, credit: 1, semester: 1, courseId: 1 }) // ✅ now include courseId field
-            .toArray();
+        if (!isNaN(page) && !isNaN(limit)) {
+          const start = (page - 1) * limit;
+          const end = start + limit;
+          courses = courses.slice(start, end);
         }
+
+        const courseObjectIds = courses.map((c) => new ObjectId(c.courseId));
+
+        const enrolledCourses = await courseCollection
+          .find({ _id: { $in: courseObjectIds } })
+          .project({ name: 1, credit: 1, semester: 1, courseId: 1 })
+          .toArray();
+
+        const enrichedCourses = courses.map((course) => {
+          const match = enrolledCourses.find(
+            (c) => c.courseId === course.courseId
+          );
+          return {
+            ...course,
+            ...match,
+          };
+        });
+
+        const studentWithPaginatedCourses = {
+          ...student,
+          courses: enrichedCourses,
+        };
+
         res.send({
-          student,
-          enrolledCourses,
+          student: studentWithPaginatedCourses,
+          totalCourses,
         });
       } catch (err) {
         console.error("❌ Error fetching student full details:", err);
         res.status(500).send({ error: "Server error" });
       }
     });
-
-    // get all students and for courses based student for attendance
 
     // app.get("/students-by-course/:id", async (req, res) => {
     //   const { id } = req.params;
@@ -1144,27 +1271,40 @@ async function run() {
     app.get("/students-by-course/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
 
-      // 🔐 Only allow admin or faculty
-      if (req.user.role !== "admin" && req.user.role !== "faculty") {
-        return res.status(403).send({ message: "Forbidden: Access denied" });
-      }
-
       if (!id) {
         return res.status(400).send({ message: "Course ID is required" });
       }
 
       try {
+        const course = await courseCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (!course) {
+          return res.status(404).send({ message: "Course not found" });
+        }
+
+        // 🔐 Only allow admin or the faculty assigned to the course
+        const isAdmin = req.user.role === "admin";
+        const isAssignedFaculty =
+          req.user.role === "faculty" && req.user.email === course.facultyEmail;
+
+        if (!isAdmin && !isAssignedFaculty) {
+          return res.status(403).send({ message: "Forbidden: Access denied" });
+        }
+
         const students = await studentsCollection
           .find({
-            "courses.courseId": id, // ✅ direct match inside array
+            "courses.courseId": id,
           })
           .project({ name: 1, email: 1, photo: 1, department: 1, country: 1 })
           .toArray();
+
         if (students.length === 0) {
           return res
             .status(404)
             .send({ message: "No students enrolled in this course." });
         }
+
         res.send(students);
       } catch (error) {
         console.error("❌ Error fetching students by course:", error);
@@ -1176,21 +1316,26 @@ async function run() {
     app.get("/students-by-course", verifyToken, async (req, res) => {
       const courseId = req.query.courseId;
       const semester = req.query.semester;
-
-      // 🔐 Only allow admin or faculty
-      if (req.user.role !== "admin" && req.user.role !== "faculty") {
-        return res.status(403).send({ message: "Forbidden: Access denied" });
-      }
-
       if (!courseId || !semester) {
         return res.status(400).send({ error: "Missing courseId or semester" });
       }
 
       try {
-        // Get actual course _id from courseId string
-        const course = await courseCollection.findOne({ courseId: courseId });
+        // 🔍 Find the actual course by courseId string (e.g., "CS101")
+        const course = ObjectId.isValid(courseId)
+          ? await courseCollection.findOne({ _id: new ObjectId(courseId) })
+          : await courseCollection.findOne({ courseId: courseId });
         if (!course) {
           return res.status(404).send({ error: "Course not found" });
+        }
+
+        // 🔐 Only allow access if admin or the assigned faculty
+        const isAdmin = req.user.role === "admin";
+        const isAssignedFaculty =
+          req.user.role === "faculty" && req.user.email === course.facultyEmail;
+
+        if (!isAdmin && !isAssignedFaculty) {
+          return res.status(403).send({ message: "Forbidden: Access denied" });
         }
 
         const courseObjectId = course._id.toString();
@@ -1295,14 +1440,6 @@ async function run() {
       const result = await materialsCollection.find(filter).toArray();
       res.send(result);
     });
-
-    // get all assignment
-    // app.get("/assignments/:email", async (req, res) => {
-    //   const { email } = req.params;
-    //   const filter = { email };
-    //   const result = await assignmentsCollection.find(filter).toArray();
-    //   res.send(result);
-    // });
 
     // ✅  get real courseId but still named as 'courseId' secured
     app.get("/assignments/:email", verifyToken, async (req, res) => {
@@ -1856,29 +1993,11 @@ async function run() {
       }
     });
 
-    // // get message based on email
-    // app.get("/messages/:email", async (req, res) => {
-    //   const { email } = req.params;
-
-    //   if (!email) {
-    //     return res.status(400).send({ message: "Email is required" });
-    //   }
-
-    //   try {
-    //     const messages = await messageCollection
-    //       .find({ recipients: email })
-    //       .sort({ createdAt: -1 }) // optional: latest first
-    //       .toArray();
-    //     res.send(messages);
-    //   } catch (err) {
-    //     console.error("❌ Error fetching messages:", err);
-    //     res.status(500).send({ message: "Failed to retrieve messages" });
-    //   }
-    // });
-
     // get specific message by id secured
     app.get("/messages/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+      const page = parseInt(req.query.page);
+      const limit = parseInt(req.query.limit);
 
       // 🔐 Allow only the user themselves
       if (req.user.email !== email) {
@@ -1890,13 +2009,32 @@ async function run() {
       }
 
       try {
-        const messages = await messageCollection
-          .find({
-            $or: [{ recipients: email }, { sender: email }],
-          })
-          .sort({ createdAt: -1 })
-          .toArray();
-        res.send(messages);
+        const query = {
+          $or: [{ recipients: email }, { sender: email }],
+        };
+
+        const total = await messageCollection.countDocuments(query);
+
+        let messages;
+
+        // ✅ If page and limit are valid numbers, apply pagination
+        if (!isNaN(page) && !isNaN(limit)) {
+          const skip = (page - 1) * limit;
+          messages = await messageCollection
+            .find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .toArray();
+        } else {
+          // ✅ Default: return all messages
+          messages = await messageCollection
+            .find(query)
+            .sort({ createdAt: -1 })
+            .toArray();
+        }
+
+        res.send({ total, messages });
       } catch (err) {
         console.error("❌ Error fetching messages:", err);
         res.status(500).send({ message: "Failed to retrieve messages" });
@@ -2400,12 +2538,14 @@ async function run() {
     // save the file to db
     app.post("/upload-file", upload.single("file"), async (req, res) => {
       try {
-        const { courseId, title, email } = req.body;
+        const { courseId, title, email, department } = req.body; // ✅ include department
         const fileInfo = req.file;
+
         const material = {
           courseId,
           title,
           email,
+          department, // ✅ save department
           filename: fileInfo.filename,
           originalname: fileInfo.originalname,
           path: fileInfo.path,
@@ -2413,9 +2553,11 @@ async function run() {
           mimetype: fileInfo.mimetype,
           uploadedAt: new Date().toISOString(),
         };
+
         const result = await materialsCollection.insertOne(material);
         res.send(result);
       } catch (err) {
+        console.error("❌ Upload failed:", err);
         res.status(500).send({ message: "Upload failed" });
       }
     });
@@ -2813,34 +2955,6 @@ async function run() {
         res.status(500).send({ message: "Server error generating token" });
       }
     });
-
-    // new jwt
-    // app.post("/jwt", async (req, res) => {
-    //   const { email } = req.body;
-
-    //   if (!email) {
-    //     return res.status(400).send({ message: "Email is required" });
-    //   }
-
-    //   try {
-    //     // 🔁 No DB check here — trust Firebase Auth
-    //     const token = jwt.sign({ email }, process.env.JWT_SECRET, {
-    //       expiresIn: "1d",
-    //     });
-
-    //     res
-    //       .cookie("token", token, {
-    //         httpOnly: true,
-    //         secure: process.env.NODE_ENV === "production",
-    //         sameSite: "strict",
-    //         maxAge: 1 * 24 * 60 * 60 * 1000,
-    //       })
-    //       .send({ success: true });
-    //   } catch (error) {
-    //     console.error(error);
-    //     res.status(500).send({ message: "Server error generating token" });
-    //   }
-    // });
 
     // clean token
     app.post("/logout", (req, res) => {

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import useFetchData from "../../../Components/Hooks/useFetchData";
 import useAuth from "../../../Components/Hooks/useAuth";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import Swal from "sweetalert2";
@@ -8,19 +7,31 @@ import FacultyLeaveRequests from "../../../Components/FacultyLeaveRequests/Facul
 const FacultyAttendance = () => {
   const { user } = useAuth();
   const axiosInstance = AxiosSecure();
-  const { data: courses } = useFetchData("courses", "/all-courses-by-department");
 
+  const [courses, setCourses] = useState([]);
   const [courseId, setCourseId] = useState("");
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [attendanceStatusMap, setAttendanceStatusMap] = useState({});
 
-  const facultyCourses = courses?.filter(
-    (course) => course.facultyEmail === user?.email
-  );
-
   const today = new Date().toISOString().split("T")[0];
 
+  // ✅ Fetch courses assigned to this faculty
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (!user?.email) return;
+      try {
+        const res = await axiosInstance.get(`/faculty-assign/courses/${user.email}`);
+        setCourses(res.data?.courses || []);
+      } catch (err) {
+        console.error("Failed to fetch assigned courses:", err);
+        setCourses([]);
+      }
+    };
+    fetchCourses();
+  }, [user?.email, axiosInstance]);
+
+  // ✅ Fetch students and attendance
   useEffect(() => {
     const fetchAttendanceData = async () => {
       if (!courseId) {
@@ -121,9 +132,9 @@ const FacultyAttendance = () => {
           onChange={(e) => setCourseId(e.target.value)}
         >
           <option value="">-- Select Course --</option>
-          {facultyCourses?.map((course) => (
+          {courses?.map((course) => (
             <option key={course._id} value={course._id}>
-              {course.name} {course.course ? `(${course.course})` : ""}
+              {course.name} {course.courseId ? `(${course.courseId})` : ""}
             </option>
           ))}
         </select>
@@ -186,7 +197,6 @@ const FacultyAttendance = () => {
             </div>
           </div>
 
-          {/* ✅ Leave request section visible only if students exist */}
           <div className="mt-10">
             <FacultyLeaveRequests facultyEmail={user?.email} courseId={courseId} />
           </div>

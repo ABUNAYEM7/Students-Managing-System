@@ -93,7 +93,7 @@ const AddMaterials = () => {
     form.append("title", formData.title);
     form.append("courseId", formData.courseId);
     form.append("email", formData.email);
-    form.append("department", selectedDepartment); // ✅ Added department here
+    form.append("department", selectedDepartment); 
     if (formData.file) {
       form.append("file", formData.file);
     }

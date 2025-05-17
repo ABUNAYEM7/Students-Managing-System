@@ -210,40 +210,61 @@ const DashboardDrawer = () => {
                           )}
 
                           {/* 🎓 Student View */}
-                          {userRole === "student" && (
-                            <>
-                              {n.type === "assignment" && (
-                                <>
-                                  <strong>📚 New Assignment</strong>
-                                  <div className="text-xs">
-                                    Course: {n.courseName}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    Title: {n.title}
-                                  </div>
-                                </>
-                              )}
-                              {n.type === "grade" && (
-                                <>
-                                  <strong>📊 Grade Released</strong>
-                                  <div className="text-xs">
-                                    {n.courseName} → {n.point} / {n.outOf || 5}
-                                  </div>
-                                </>
-                              )}
-                              {n.type === "fee-updated" && (
-                                <>
-                                  <strong>💰 Fee Updated</strong>
-                                  <div className="text-xs">
-                                    Course: {n.courseName}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {n.message}
-                                  </div>
-                                </>
-                              )}
-                            </>
-                          )}
+                          {[...notifications]
+                            .sort(
+                              (a, b) =>
+                                new Date(b.applicationDate || b.time) -
+                                new Date(a.applicationDate || a.time)
+                            )
+                            .map((n, i) => (
+                              <li
+                                key={n._id || i}
+                                className="py-2 text-sm space-y-1"
+                              >
+                                {userRole === "student" && (
+                                  <>
+                                    {n.type === "assignment" && (
+                                      <>
+                                        <strong>📚 New Assignment</strong>
+                                        <div className="text-xs">
+                                          Course: {n.courseName}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          Title: {n.title}
+                                        </div>
+                                      </>
+                                    )}
+                                    {n.type === "grade" && (
+                                      <>
+                                        <strong>📊 Grade Released</strong>
+                                        <div className="text-xs">
+                                          {n.courseName} → {n.point} /{" "}
+                                          {n.outOf || 5}
+                                        </div>
+                                      </>
+                                    )}
+                                    {n.type === "fee-updated" && (
+                                      <>
+                                        <strong>💰 Fee Updated</strong>
+                                        <div className="text-xs">
+                                          Course: {n.courseName}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          {n.message}
+                                        </div>
+                                      </>
+                                    )}
+                                  </>
+                                )}
+
+                                {/* 🕒 Date for all roles */}
+                                <div className="text-[10px] text-gray-400">
+                                  {new Date(
+                                    n.applicationDate || n.time
+                                  ).toLocaleString()}
+                                </div>
+                              </li>
+                            ))}
 
                           {/* 🧑‍💼 Admin View */}
                           {userRole === "admin" && (

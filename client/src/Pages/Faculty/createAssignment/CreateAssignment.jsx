@@ -7,16 +7,10 @@ import useFetchData from "../../../Components/Hooks/useFetchData";
 
 const CreateAssignment = () => {
   const { id } = useParams();
-  const { data } = id
-    ? useFetchData(`${id}`, `/assignment/${id}`)
-    : { data: null };
+  const { data } = id ? useFetchData(`${id}`, `/assignment/${id}`) : { data: null };
   const { user: faculty } = useAuth();
   const email = faculty?.email;
-
-  const { data: courses, loading } = useFetchData(
-    `${email}`,
-    `/faculty-assign/courses/${email}`
-  );
+  const axiosInstance = AxiosSecure();
 
   const [formData, setFormData] = useState({
     courseId: "",
@@ -26,10 +20,10 @@ const CreateAssignment = () => {
     deadline: "",
     semester: "",
   });
+  const [allCourses, setAllCourses] = useState([]);
   const [error, setError] = useState("");
   const fileInputRef = useRef();
   const navigate = useNavigate();
-  const axiosInstance = AxiosSecure();
   const { user } = useAuth();
 
   const getCurrentDateTimeLocal = () => {
@@ -51,6 +45,21 @@ const CreateAssignment = () => {
     }
   }, [id, data]);
 
+  useEffect(() => {
+    const fetchCoursesByQuarter = async () => {
+      if (formData.semester && email) {
+        try {
+          const res = await axiosInstance.get(`/faculty-assign/courses-by-quarter?email=${email}&semester=${formData.semester}`);
+          setAllCourses(res.data || []);
+        } catch (err) {
+          console.error("Failed to fetch courses by quarter", err);
+          setAllCourses([]);
+        }
+      }
+    };
+    fetchCoursesByQuarter();
+  }, [formData.semester, email, axiosInstance]);
+
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
     setFormData((prev) => ({
@@ -63,16 +72,8 @@ const CreateAssignment = () => {
     e.preventDefault();
     setError("");
 
-    const { courseId, title, instructions, file, deadline, semester } =
-      formData;
-    if (
-      !courseId ||
-      !title ||
-      !instructions ||
-      (!file && !id) ||
-      !deadline ||
-      !semester
-    ) {
+    const { courseId, title, instructions, file, deadline, semester } = formData;
+    if (!courseId || !title || !instructions || (!file && !id) || !deadline || !semester) {
       setError("All fields are required including the deadline and semester.");
       return;
     }
@@ -95,13 +96,9 @@ const CreateAssignment = () => {
 
     try {
       if (id) {
-        const res = await axiosInstance.patch(
-          `/update-assignment/${id}`,
-          data,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          }
-        );
+        const res = await axiosInstance.patch(`/update-assignment/${id}`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         if (res?.data?.modifiedCount > 0) {
           Swal.fire({
             position: "center",
@@ -127,18 +124,8 @@ const CreateAssignment = () => {
         });
 
         navigate("/dashboard/assignment");
-
-        setFormData({
-          courseId: "",
-          title: "",
-          instructions: "",
-          file: null,
-          deadline: "",
-          semester: "",
-        });
-        if (fileInputRef.current) {
-          fileInputRef.current.value = null;
-        }
+        setFormData({ courseId: "", title: "", instructions: "", file: null, deadline: "", semester: "" });
+        if (fileInputRef.current) fileInputRef.current.value = null;
       }
     } catch (err) {
       console.error("Upload error:", err);
@@ -154,26 +141,6 @@ const CreateAssignment = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <label className="label">
-            <span className="label-text">Select Course *</span>
-          </label>
-          <select
-            className="select select-bordered w-full"
-            name="courseId"
-            value={formData.courseId}
-            onChange={handleChange}
-            required
-          >
-            <option disabled value="">
-              Select Course
-            </option>
-            {courses?.map((c, i) => (
-              <option key={c?._id} value={`${c?._id}`}>
-                {c?.name}
-              </option>
-            ))}
-          </select>
-
-          <label className="label">
             <span className="label-text">Quarter *</span>
           </label>
           <select
@@ -183,25 +150,26 @@ const CreateAssignment = () => {
             onChange={handleChange}
             required
           >
-            <option disabled value="">
-              Select Quarter
-            </option>
-            <option value="Quarter-1">Quarter-1</option>
-            <option value="Quarter-2">Quarter-2</option>
-            <option value="Quarter-3">Quarter-3</option>
-            <option value="Quarter-4">Quarter-4</option>
-            <option value="Quarter-4">Quarter-5</option>
-            <option value="Quarter-4">Quarter-6</option>
-            <option value="Quarter-4">Quarter-7</option>
-            <option value="Quarter-4">Quarter-8</option>
-            <option value="Quarter-4">Quarter-9</option>
-            <option value="Quarter-4">Quarter-10</option>
-            <option value="Quarter-4">Quarter-11</option>
-            <option value="Quarter-4">Quarter-12</option>
-            <option value="Quarter-4">Quarter-13</option>
-            <option value="Quarter-4">Quarter-14</option>
-            <option value="Quarter-4">Quarter-15</option>
-            <option value="Quarter-4">Quarter-16</option>
+            <option disabled value="">Select Quarter</option>
+            {[...Array(16)].map((_, i) => (
+              <option key={i + 1} value={`Quarter-${i + 1}`}>Quarter-{i + 1}</option>
+            ))}
+          </select>
+
+          <label className="label">
+            <span className="label-text">Select Course *</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            name="courseId"
+            value={formData.courseId}
+            onChange={handleChange}
+            required
+          >
+            <option disabled value="">Select Course</option>
+            {allCourses.map((c) => (
+              <option key={c._id} value={c._id}>{c.name}</option>
+            ))}
           </select>
 
           <label className="label">
@@ -248,12 +216,9 @@ const CreateAssignment = () => {
           </label>
           {formData?.file === null && data?.filename && (
             <div className="mb-2 text-sm text-gray-600">
-              Current File:{" "}
+              Current File: {" "}
               <a
-                href={`http://localhost:3000/${data?.path?.replace(
-                  /\\/g,
-                  "/"
-                )}`}
+                href={`http://localhost:3000/${data?.path?.replace(/\\/g, "/")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 underline"

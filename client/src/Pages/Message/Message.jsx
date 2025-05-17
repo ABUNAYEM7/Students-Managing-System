@@ -8,19 +8,26 @@ import useFetchData from '../../Components/Hooks/useFetchData';
 const Message = () => {
   const { user } = useAuth();
   const axiosInstance = AxiosSecure();
+  const navigate = useNavigate();
+
   const [messages, setMessages] = useState([]);
+  const [totalMessages, setTotalMessages] = useState(0);
   const [expandedMessageId, setExpandedMessageId] = useState(null);
   const [replies, setReplies] = useState({});
   const [originalMessages, setOriginalMessages] = useState({});
   const [expandedSendId, setExpandedSendId] = useState(null);
-  const navigate = useNavigate();
+
+  const [page, setPage] = useState(1);
+  const [limit] = useState(5);
+
   const { data: sendMessage = [] } = useFetchData(`${user?.email}`, `/user-send/message/${user?.email}`);
 
   useEffect(() => {
     if (user?.email) {
-      axiosInstance.get(`/messages/${user.email}`)
+      axiosInstance
+        .get(`/messages/${user.email}?page=${page}&limit=${limit}`)
         .then((res) => {
-          const formatted = res.data.map((msg) => ({
+          const formatted = res.data.messages.map((msg) => ({
             id: msg._id,
             from: msg.email,
             subject: msg.subject,
@@ -29,15 +36,17 @@ const Message = () => {
             replyTo: msg.replyTo || null,
           }));
           setMessages(formatted);
+          setTotalMessages(res.data.total);
         })
         .catch((err) => console.error("Failed to fetch messages:", err));
     }
-  }, [user?.email]);
+  }, [user?.email, page, limit]);
 
   useEffect(() => {
     if (!expandedMessageId) return;
 
-    axiosInstance.get(`/message/${expandedMessageId}/replies`)
+    axiosInstance
+      .get(`/message/${expandedMessageId}/replies`)
       .then(res => {
         setReplies(prev => ({ ...prev, [expandedMessageId]: res.data }));
       })
@@ -60,6 +69,8 @@ const Message = () => {
   const handleSendNew = () => {
     navigate('/dashboard/send-message');
   };
+
+  const totalPages = Math.ceil(totalMessages / limit);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
@@ -160,6 +171,21 @@ const Message = () => {
         </table>
       </div>
 
+      {/* Pagination outside the table */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6 gap-2">
+          {Array.from({ length: totalPages }).map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setPage(idx + 1)}
+              className={`btn btn-sm ${page === idx + 1 ? "btn-primary" : "btn-outline"}`}
+            >
+              {idx + 1}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Sendbox Modal */}
       <input type="checkbox" id="sendbox-modal" className="modal-toggle" />
       <div className="modal">
@@ -176,7 +202,7 @@ const Message = () => {
               </thead>
               <tbody>
                 {sendMessage.length > 0 ? (
-                  sendMessage.map((msg, i) => (
+                  sendMessage.map((msg) => (
                     <React.Fragment key={msg._id}>
                       <tr
                         className="hover:bg-base-100 cursor-pointer"

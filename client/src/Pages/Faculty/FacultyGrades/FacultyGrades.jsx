@@ -15,16 +15,15 @@ const FacultyGrades = () => {
     `/faculty-assign/courses/${email}`
   );
 
-  const courses = Array.isArray(fetchedCourses)
-    ? fetchedCourses
-    : fetchedCourses?.data || [];
+  const courses = Array.isArray(fetchedCourses?.courses)
+    ? fetchedCourses.courses
+    : [];
 
   const [selectedCourse, setSelectedCourse] = useState("");
   const [semester, setSemester] = useState("");
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState({});
 
-  // 🔁 Reusable fetch students function
   const fetchStudents = async () => {
     if (!selectedCourse || !semester) return;
 
@@ -45,7 +44,6 @@ const FacultyGrades = () => {
     }
   };
 
-  // 📦 Call fetch on dependency change
   useEffect(() => {
     fetchStudents();
   }, [selectedCourse, semester, axiosInstance]);
@@ -105,7 +103,7 @@ const FacultyGrades = () => {
           showConfirmButton: false,
         });
         setGrades({});
-        await fetchStudents(); // ✅ REFETCH to update UI
+        await fetchStudents();
       }
 
       if (!success && alreadyGraded?.length > 0) {
@@ -129,6 +127,8 @@ const FacultyGrades = () => {
     }
   };
 
+  console.log(students)
+
   return (
     <div className="p-6 bg-base-200 min-h-screen">
       <h1 className="text-3xl font-bold mb-6 text-center text-primary flex items-center justify-center gap-2">
@@ -146,23 +146,11 @@ const FacultyGrades = () => {
             onChange={(e) => setSemester(e.target.value)}
           >
             <option value="">-- Choose a Quarter --</option>
-            <option value="Quarter-1">Quarter-1</option>
-            <option value="Quarter-2">Quarter-2</option>
-            <option value="Quarter-3">Quarter-3</option>
-            <option value="Quarter-3">Quarter-3</option>
-            <option value="Quarter-4">Quarter-4</option>
-            <option value="Quarter-5">Quarter-5</option>
-            <option value="Quarter-6">Quarter-6</option>
-            <option value="Quarter-7">Quarter-7</option>
-            <option value="Quarter-8">Quarter-8</option>
-            <option value="Quarter-9">Quarter-9</option>
-            <option value="Quarter-10">Quarter-10</option>
-            <option value="Quarter-11">Quarter-11</option>
-            <option value="Quarter-12">Quarter-12</option>
-            <option value="Quarter-13">Quarter-13</option>
-            <option value="Quarter-14">Quarter-14</option>
-            <option value="Quarter-15">Quarter-15</option>
-            <option value="Quarter-16">Quarter-16</option>
+            {[...Array(16)].map((_, i) => (
+              <option key={i + 1} value={`Quarter-${i + 1}`}>
+                Quarter-{i + 1}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -178,15 +166,14 @@ const FacultyGrades = () => {
             <option value="">-- Choose a course --</option>
             {!courseLoading &&
               courses.map((course) => (
-                <option key={course._id} value={course.courseId}>
-                  {course.name}
+                <option key={course._id} value={course._id}>
+                  {course.name} ({course.courseId})
                 </option>
               ))}
           </select>
         </div>
       </div>
 
-      {/* Student Grade Table */}
       {selectedCourse && students?.length > 0 && (
         <div className="overflow-x-auto mt-6">
           <table className="table table-zebra bg-white shadow-lg rounded-lg">

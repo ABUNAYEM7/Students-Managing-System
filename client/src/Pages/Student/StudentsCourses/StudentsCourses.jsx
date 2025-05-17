@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import useFetchData from "../../../Components/Hooks/useFetchData";
-import { FaBookOpen, FaChalkboardTeacher, FaClock, FaReact } from "react-icons/fa";
+import { FaBookOpen, FaChalkboardTeacher, FaClock } from "react-icons/fa";
 import { MdOutlineCalendarToday } from "react-icons/md";
 import Swal from "sweetalert2";
 import useAuth from "../../../Components/Hooks/useAuth";
@@ -17,6 +17,9 @@ const StudentsCourses = () => {
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6); // Courses per page
+  const [totalCourses, setTotalCourses] = useState(0);
 
   const enrolledCourseIds = student?.courses?.map((c) => c.courseId) || [];
 
@@ -26,9 +29,10 @@ const StudentsCourses = () => {
         setLoading(true);
         try {
           const res = await axiosSecure.get(
-            `/all-courses-by-department?department=${student.department}`
+            `/all-courses-by-department?department=${student.department}&page=${page}&limit=${limit}`
           );
-          setCourses(res.data);
+          setCourses(res.data.courses);
+          setTotalCourses(res.data.total);
         } catch (err) {
           console.error("Error fetching courses by department:", err);
         } finally {
@@ -38,7 +42,7 @@ const StudentsCourses = () => {
     };
 
     fetchCourses();
-  }, [student?.department, axiosSecure]);
+  }, [student?.department, page, limit, axiosSecure]);
 
   const handleEnroll = async (course) => {
     try {
@@ -49,8 +53,8 @@ const StudentsCourses = () => {
           courseName: course.name,
           credit: course.credit,
           semester: course.semester,
-          fee :0,
-          paymentStatus :'unpaid',
+          fee: 0,
+          paymentStatus: "unpaid",
           enrolledAt: new Date().toISOString(),
         },
       });
@@ -81,13 +85,13 @@ const StudentsCourses = () => {
       className="card bg-white shadow-md hover:shadow-xl transition duration-300 border-t-4 border-primary"
     >
       <div className="card-body">
-      <h2 className="card-title text-xl text-highlight">
+        <h2 className="card-title text-xl text-highlight">
           <FaBookOpen /> {course.name}
         </h2>
         <h2 className="card-title text-xl text-highlight">
-        Course Code : {course.courseId}
+          Course Code : {course.courseId}
         </h2>
-        
+
         <p className="text-sm text-gray-700 flex items-center gap-2">
           <FaChalkboardTeacher /> Instructor: {course.facultyName || "TBD"}
         </p>
@@ -108,9 +112,7 @@ const StudentsCourses = () => {
           <button
             disabled={isEnrolled}
             onClick={() => handleEnroll(course)}
-            className={`btn btn-sm ${
-              isEnrolled ? "btn-disabled bg-gray-400" : "bg-primary text-white"
-            }`}
+            className={`btn btn-sm ${isEnrolled ? "btn-disabled bg-gray-400" : "bg-primary text-white"}`}
           >
             {isEnrolled ? "Enrolled" : "Enroll"}
           </button>
@@ -118,6 +120,8 @@ const StudentsCourses = () => {
       </div>
     </div>
   );
+
+  const totalPages = Math.ceil(totalCourses / limit);
 
   return (
     <div className="min-h-screen bg-base-200 p-6">
@@ -129,9 +133,7 @@ const StudentsCourses = () => {
         <>
           {enrolledCourseIds.length > 0 && (
             <div className="mb-10">
-              <h3 className="text-2xl font-semibold text-primary mb-4">
-                Enrolled Courses
-              </h3>
+              <h3 className="text-2xl font-semibold text-primary mb-4">Enrolled Courses</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {courses
                   .filter((c) => enrolledCourseIds.includes(c._id))
@@ -141,15 +143,27 @@ const StudentsCourses = () => {
           )}
 
           <div>
-            <h3 className="text-2xl font-semibold text-primary mb-4">
-              Other Available Courses
-            </h3>
+            <h3 className="text-2xl font-semibold text-primary mb-4">Other Available Courses</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses
                 .filter((c) => !enrolledCourseIds.includes(c._id))
                 .map((course) => renderCourseCard(course, false))}
             </div>
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-6 gap-2">
+              {Array.from({ length: totalPages }).map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setPage(idx + 1)}
+                  className={`btn btn-sm ${page === idx + 1 ? "btn-primary" : "btn-outline"}`}
+                >
+                  {idx + 1}
+                </button>
+              ))}
+            </div>
+          )}
 
           {courses?.length === 0 && (
             <p className="text-center col-span-3 text-gray-500 mt-8">

@@ -28,21 +28,25 @@ const Doctorate = [
 const Courses = () => {
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [courses, setCourses] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 10;
   const axiosInstance = AxiosSecure();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (selectedDepartment) {
-      fetchCoursesByDepartment(selectedDepartment);
+      fetchCoursesByDepartment(selectedDepartment, page);
     }
-  }, [selectedDepartment]);
+  }, [selectedDepartment, page]);
 
-  const fetchCoursesByDepartment = async (department) => {
+  const fetchCoursesByDepartment = async (department, currentPage) => {
     try {
       const res = await axiosInstance.get(
-        `/all-courses-by-department?department=${encodeURIComponent(department)}`
+        `/all-courses-by-department?department=${encodeURIComponent(department)}&page=${currentPage}&limit=${limit}`
       );
-      setCourses(res.data || []);
+      setCourses(res.data?.courses || []);
+      setTotalPages(Math.ceil(res.data?.total / limit));
     } catch (error) {
       console.error("Failed to fetch courses", error);
     }
@@ -61,7 +65,7 @@ const Courses = () => {
       if (result.isConfirmed) {
         const res = await axiosInstance.delete(`/delete-course/${id}`);
         if (res?.data?.deletedCount > 0) {
-          fetchCoursesByDepartment(selectedDepartment);
+          fetchCoursesByDepartment(selectedDepartment, page);
           Swal.fire("Deleted!", "Course has been deleted.", "success");
         }
       }
@@ -72,13 +76,16 @@ const Courses = () => {
     navigate(`/edit-course/${id}`);
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
+  };
+
   return (
     <div>
-      <h3 className="text-3xl font-black text-center mt-6">
-        Course Management
-      </h3>
+      <h3 className="text-3xl font-black text-center mt-6">Course Management</h3>
 
-      {/* Department Filter Dropdown */}
       <div className="mt-6 p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
         <select
           className="select select-bordered w-full max-w-sm"
@@ -119,58 +126,72 @@ const Courses = () => {
         </Link>
       </div>
 
-      {/* Course Table */}
       <div className="mt-6 p-2 max-w-full md:max-w-[90%] lg:max-w-full  mx-auto">
         {courses.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>No</th>
-                  <th>Course ID</th>
-                  <th>Name </th>
-                  <th>Credit</th>
-                  <th>Description</th>
-                  <th>Create At</th>
-                  <th>Edit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {courses.map((c, i) => (
-                  <tr key={c?._id} className="bg-base-200">
-                    <th>{i + 1}</th>
-                    <td>{c?.courseId}</td>
-                    <td>{c?.name}</td>
-                    <td>{c?.credit}</td>
-                    <td>{c?.description}</td>
-                    <td>{c?.date?.split("T")[0]}</td>
-                    <td>
-                      <div className="dropdown dropdown-start">
-                        <div tabIndex={0} role="button" className="btn m-1">
-                          Click ⬇️
-                        </div>
-                        <ul
-                          tabIndex={0}
-                          className="dropdown-content menu bg-base-100 rounded-box z-1 w-30 p-2 shadow-sm"
-                        >
-                          <li>
-                            <button onClick={() => updateHandler(c?._id)}>
-                              Update
-                            </button>
-                          </li>
-                          <li>
-                            <button onClick={() => deleteHandler(c?._id)}>
-                              Delete
-                            </button>
-                          </li>
-                        </ul>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Course ID</th>
+                    <th>Name</th>
+                    <th>Credit</th>
+                    <th>Description</th>
+                    <th>Create At</th>
+                    <th>Edit</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {courses.map((c, i) => (
+                    <tr key={c?._id} className="bg-base-200">
+                      <th>{(page - 1) * limit + i + 1}</th>
+                      <td>{c?.courseId}</td>
+                      <td>{c?.name}</td>
+                      <td>{c?.credit}</td>
+                      <td>{c?.description}</td>
+                      <td>{c?.date?.split("T")[0]}</td>
+                      <td>
+                        <div className="dropdown dropdown-start">
+                          <div tabIndex={0} role="button" className="btn m-1">
+                            Click ⬇️
+                          </div>
+                          <ul
+                            tabIndex={0}
+                            className="dropdown-content menu bg-base-100 rounded-box z-1 w-30 p-2 shadow-sm"
+                          >
+                            <li>
+                              <button onClick={() => updateHandler(c?._id)}>
+                                Update
+                              </button>
+                            </li>
+                            <li>
+                              <button onClick={() => deleteHandler(c?._id)}>
+                                Delete
+                              </button>
+                            </li>
+                          </ul>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex justify-center mt-6 gap-2">
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => handlePageChange(i + 1)}
+                  className={`btn btn-sm ${page === i + 1 ? "btn-primary" : "btn-outline"}`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          </>
         ) : (
           selectedDepartment && (
             <p className="text-center mt-6 text-red-500 font-semibold">
