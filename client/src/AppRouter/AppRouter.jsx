@@ -45,6 +45,7 @@ import CourseDetails from "../Pages/CourseDetails/CourseDetails";
 import PaymentPage from "../Pages/PaymentPage/PaymentPage";
 import ReviewEnrollReq from "../Pages/ReviewEnrollReq/ReviewEnrollReq";
 import Enroll from "../Pages/Enroll";
+import StudentsMaterials from "../Pages/StudentsMaterials/StudentsMaterials";
 
 const AppRouter = () => {
   return (
@@ -106,6 +107,7 @@ const AppRouter = () => {
           <Route path="attendance" element={<Attendance />} />
           <Route path="grade" element={<Grade />} />
           <Route path="Fee" element={<Fee />} />
+          <Route path="studentMaterials" element={<StudentsMaterials />} />
           <Route path="leave-form/:email" element={<LeaveForm />} />
 
           {/* Faculty Routes */}

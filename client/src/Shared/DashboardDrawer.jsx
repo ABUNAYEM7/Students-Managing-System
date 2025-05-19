@@ -479,6 +479,13 @@ const DashboardDrawer = () => {
                   </li>
                   <li>
                     <ResponsiveNavLink
+                      to="/dashboard/studentMaterials"
+                      label="Materials"
+                      icon={navIcons.Materials}
+                    />
+                  </li>
+                  <li>
+                    <ResponsiveNavLink
                       to="/dashboard/message"
                       label="Message"
                       icon={navIcons.Message}

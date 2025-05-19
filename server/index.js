@@ -417,21 +417,16 @@ async function run() {
     );
 
     // update user information secured
-    app.patch(
-      "/update/user-info/:email",
-      verifyToken,
-      verifyAdmin,
-      async (req, res) => {
-        const email = req.params.email;
-        const filter = { email };
-        const data = req.body;
-        const updatedInfo = {
-          $set: { ...data },
-        };
-        const result = await usersCollection.updateOne(filter, updatedInfo);
-        res.send(result);
-      }
-    );
+    app.patch("/update/user-info/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const filter = { email };
+      const data = req.body;
+      const updatedInfo = {
+        $set: { ...data },
+      };
+      const result = await usersCollection.updateOne(filter, updatedInfo);
+      res.send(result);
+    });
 
     // ✅ PATCH: Update leave status (approve/decline) secured
     app.patch("/update-leave-status/:id", verifyToken, async (req, res) => {
@@ -548,7 +543,6 @@ async function run() {
     app.patch(
       "/update-routine-day-status/:routineId/:dayIndex",
       verifyToken,
-      verifyAdmin,
       async (req, res) => {
         const { routineId, dayIndex } = req.params;
         const { status } = req.body;
@@ -1148,7 +1142,7 @@ async function run() {
     });
 
     // get all users from db secured
-    app.get("/all-users", verifyToken, verifyAdmin, async (req, res) => {
+    app.get("/all-users", verifyToken, async (req, res) => {
       const userRole = req.query.role;
       const filter = userRole ? { role: userRole } : {};
       const result = await usersCollection.find(filter).toArray();
@@ -1388,7 +1382,7 @@ async function run() {
       }
     });
 
-    // get specific students secured route v
+    // get specific students secured route
     app.get("/student/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
       if (
@@ -1624,6 +1618,27 @@ async function run() {
         res.send({ ...material, department });
       } catch (error) {
         console.error("❌ Error fetching material:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+      
+    // get material department wise secured 
+    app.get("/materials-by-department", verifyToken, async (req, res) => {
+      const { department } = req.query;
+
+      if (!department) {
+        return res.status(400).send({ message: "Department is required" });
+      }
+
+      try {
+        const result = await materialsCollection
+          .find({ department })
+          .sort({ uploadedAt: -1 })
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.error("❌ Error fetching materials by department:", error);
         res.status(500).send({ message: "Internal server error" });
       }
     });
@@ -2460,7 +2475,9 @@ async function run() {
     });
 
     // get faculties notification route secured
-    app.get("/faculties-notifications/:facultyEmail",verifyToken,
+    app.get(
+      "/faculties-notifications/:facultyEmail",
+      verifyToken,
       async (req, res) => {
         const { facultyEmail } = req.params;
 
@@ -2514,7 +2531,7 @@ async function run() {
 
     // Get Admin Notifications
     app.get("/admin-notifications", async (req, res) => {
-      console.log('hello')
+      console.log("hello");
       try {
         const notifications = await notificationCollection
           .find({ type: "payment" }) // only payment-related notifications
