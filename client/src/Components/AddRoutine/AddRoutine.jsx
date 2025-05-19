@@ -47,7 +47,24 @@ const AddRoutine = () => {
   ];
 
   const Associate = ["English as a Second Language"];
-  const semesters = ["Quarter-1", "Quarter-2", "Quarter-3", "Quarter-4", "Quarter-5", "Quarter-6", "Quarter-7", "Quarter-8", "Quarter-9", "Quarter-10", "Quarter-11", "Quarter-11", "Quarter-13", "Quarter-14", "Quarter-15", "Quarter-16"];
+  const semesters = [
+    "Quarter-1",
+    "Quarter-2",
+    "Quarter-3",
+    "Quarter-4",
+    "Quarter-5",
+    "Quarter-6",
+    "Quarter-7",
+    "Quarter-8",
+    "Quarter-9",
+    "Quarter-10",
+    "Quarter-11",
+    "Quarter-11",
+    "Quarter-13",
+    "Quarter-14",
+    "Quarter-15",
+    "Quarter-16",
+  ];
 
   const daysOfWeek = [
     "Sunday",
@@ -72,44 +89,37 @@ const AddRoutine = () => {
         setCurrentDay(selectedDay.day);
         setCurrentTime(selectedDay.time);
         setCurrentLink(selectedDay.onlineLink);
+        setSelectedCourse(selectedDay.course || "");
       });
     }
   }, [routineId, dayIndex]);
 
   useEffect(() => {
     if (formData.department) {
+      // Fetch faculties
       axiosInstance
         .get(`/faculties-by-department?department=${formData.department}`)
-        .then((res) => {
-          setFacultyList(res.data);
-        })
+        .then((res) => setFacultyList(res.data))
         .catch((err) => {
           console.error("Error fetching faculty list:", err);
-        });
-    } else {
-      setFacultyList([]);
-    }
-  }, [formData.department]);
-
-  useEffect(() => {
-    if (formData.department) {
-      axiosInstance
-        .get(`/faculties-by-department?department=${formData.department}`)
-        .then((res) => {
-          setFacultyList(res.data);
-        })
-        .catch((err) => {
-          console.error("Error fetching faculty list:", err);
+          setFacultyList([]);
         });
 
-      // 🔥 NEW: fetch courses for selected department
+      // Fetch courses
       axiosInstance
         .get(`/all-courses-by-department?department=${formData.department}`)
-        .then((res) => setCourseList(res.data))
-        .catch((err) => console.error("Error fetching course list:", err));
+        .then((res) => {
+          setCourseList(
+            Array.isArray(res.data.courses) ? res.data.courses : []
+          );
+        })
+        .catch((err) => {
+          console.error("Error fetching course list:", err);
+          setCourseList([]);
+        });
     } else {
       setFacultyList([]);
-      setCourseList([]); // 🔥 reset course list if department is unselected
+      setCourseList([]);
     }
   }, [formData.department]);
 
@@ -256,13 +266,13 @@ const AddRoutine = () => {
               disabled={!!routineId}
             >
               <option value="">Select Quarter</option>
-              {semesters.map((sem, idx) => (
+              {semesters?.map((sem, idx) => (
                 <option key={idx} value={sem}>
                   {sem}
                 </option>
               ))}
             </select>
-            {errors.semester && (
+            {errors?.semester && (
               <p className="text-red-500 text-sm mt-1">{errors.semester}</p>
             )}
           </div>
@@ -319,13 +329,13 @@ const AddRoutine = () => {
               onChange={(e) => setSelectedCourse(e.target.value)}
             >
               <option value="">Select Course</option>
-              {courseList.map((course, idx) => (
+              {courseList?.map((course, idx) => (
                 <option key={idx} value={course.name}>
                   {course.name}
                 </option>
               ))}
             </select>
-            {errors.selectedCourse && (
+            {errors?.selectedCourse && (
               <p className="text-red-500 text-sm mt-1">
                 {errors.selectedCourse}
               </p>
@@ -360,13 +370,13 @@ const AddRoutine = () => {
               }}
             >
               <option value="">Select Day</option>
-              {daysOfWeek.map((day, idx) => (
+              {daysOfWeek?.map((day, idx) => (
                 <option key={idx} value={day}>
                   {day}
                 </option>
               ))}
             </select>
-            {errors.currentDay && (
+            {errors?.currentDay && (
               <p className="text-red-500 text-sm mt-1">{errors.currentDay}</p>
             )}
           </div>
@@ -383,7 +393,7 @@ const AddRoutine = () => {
               }}
               placeholder="e.g., 10:00 AM - 11:30 AM"
             />
-            {errors.currentTime && (
+            {errors?.currentTime && (
               <p className="text-red-500 text-sm mt-1">{errors.currentTime}</p>
             )}
           </div>
@@ -400,7 +410,7 @@ const AddRoutine = () => {
               }}
               placeholder="https://zoom.us/..."
             />
-            {errors.currentLink && (
+            {errors?.currentLink && (
               <p className="text-red-500 text-sm mt-1">{errors.currentLink}</p>
             )}
           </div>
@@ -415,18 +425,18 @@ const AddRoutine = () => {
                 >
                   ➕ Add to Weekly Routine
                 </button>
-                {errors.routines && (
+                {errors?.routines && (
                   <p className="text-red-500 text-sm mt-2">{errors.routines}</p>
                 )}
               </div>
 
-              {formData.routines.length > 0 && (
+              {formData?.routines?.length > 0 && (
                 <div className="md:col-span-2 bg-base-200 p-4 rounded">
                   <label className="label font-semibold text-primary">
                     Weekly Schedule Preview
                   </label>
                   <ul className="list-disc list-inside text-sm">
-                    {formData.routines.map((entry, idx) => (
+                    {formData?.routines?.map((entry, idx) => (
                       <li key={idx}>
                         <strong>{entry.day}</strong>: {entry.time} |{" "}
                         {entry.onlineLink} | {entry?.course}

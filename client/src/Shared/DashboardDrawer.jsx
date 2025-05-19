@@ -65,27 +65,27 @@ const DashboardDrawer = () => {
   const userRole = data?.data?.role;
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
-
   const toggleDrawer = () => setIsOpen(!isOpen);
 
   const { notifications, setNotifications } = useNotification();
+  const markSeen = useMarkNotificationsSeen();
+  const sidebarRef = useRef(null);
+
+  const email = user?.email;
 
   const { data: fetchedNotifications = [] } =
     userRole === "faculty"
-      ? useFacultyNotifications(user?.email)
+      ? useFacultyNotifications(email, userRole)
       : userRole === "student"
-      ? useStudentNotifications(user?.email)
+      ? useStudentNotifications(email, userRole)
       : userRole === "admin"
       ? useAdminNotifications()
       : { data: [] };
 
-  const sidebarRef = useRef(null);
-  const markSeen = useMarkNotificationsSeen();
-
   useEffect(() => {
     if (fetchedNotifications.length) {
       const sorted = [...fetchedNotifications].sort(
-        (a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)
+        (a, b) => new Date(b.applicationDate || b.time) - new Date(a.applicationDate || a.time)
       );
       setNotifications(sorted);
     }
@@ -93,32 +93,18 @@ const DashboardDrawer = () => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        isOpen &&
-        sidebarRef.current &&
-        !sidebarRef.current.contains(event.target)
-      ) {
-        setIsOpen(false); // ✅ Close the sidebar if clicked outside
+      if (isOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+        setIsOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
   const logoutHandler = async () => {
     try {
       await userLogOut();
-      Swal.fire({
-        position: "center",
-        icon: "success",
-        title: "Logout Successful",
-        showConfirmButton: false,
-        timer: 1500,
-      });
+      Swal.fire({ position: "center", icon: "success", title: "Logout Successful", showConfirmButton: false, timer: 1500 });
     } catch (err) {
       console.error(err);
     }
@@ -129,18 +115,12 @@ const DashboardDrawer = () => {
     const unseenNotifications = notifications.filter((n) => !n.seen);
     if (unseenNotifications.length > 0) {
       await markSeen(unseenNotifications, "/faculty-notifications/mark-seen");
-
       const updated = notifications.map((n) =>
-        unseenNotifications.find((u) => u._id === n._id)
-          ? { ...n, seen: true }
-          : n
+        unseenNotifications.find((u) => u._id === n._id) ? { ...n, seen: true } : n
       );
-
       setNotifications(updated);
     }
   };
-
-  // console.log(notifications);
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
@@ -176,123 +156,111 @@ const DashboardDrawer = () => {
                     {notifications.length === 0 ? (
                       <li className="py-2 text-gray-500">No notifications</li>
                     ) : (
-                      notifications.map((n, i) => (
-                        <li key={n._id || i} className="py-2 text-sm space-y-1">
-                          {/* 🔵 Faculty View */}
-                          {userRole === "faculty" && (
-                            <>
-                              {n.type === "leave-request" && (
-                                <>
-                                  <strong>📝 Leave Request</strong>
-                                  <div className="text-xs">From: {n.email}</div>
-                                  <div className="text-xs text-gray-500">
-                                    {n.reason}
-                                  </div>
-                                </>
-                              )}
-                              {n.type === "course-assigned" && (
-                                <>
-                                  <strong>📘 New Course Assigned</strong>
-                                  <div className="text-xs">
-                                    Course: {n.courseName}
-                                  </div>
-                                </>
-                              )}
-                              {n.type === "student-enrolled" && (
-                                <>
-                                  <strong>👨‍🎓 New Student Enrolled</strong>
-                                  <div className="text-xs">
-                                    {n.email} → {n.courseName}
-                                  </div>
-                                </>
-                              )}
-                            </>
-                          )}
-
-                          {/* 🎓 Student View */}
-                          {[...notifications]
-                            .sort(
-                              (a, b) =>
-                                new Date(b.applicationDate || b.time) -
-                                new Date(a.applicationDate || a.time)
-                            )
-                            .map((n, i) => (
-                              <li
-                                key={n._id || i}
-                                className="py-2 text-sm space-y-1"
-                              >
-                                {userRole === "student" && (
+                      [...notifications]
+                        .sort(
+                          (a, b) =>
+                            new Date(b.applicationDate || b.time) -
+                            new Date(a.applicationDate || a.time)
+                        )
+                        .map((n, i) => (
+                          <li
+                            key={n._id || i}
+                            className="py-2 text-sm space-y-1"
+                          >
+                            {/* 🔵 Faculty View */}
+                            {userRole === "faculty" && (
+                              <>
+                                {n.type === "leave-request" && (
                                   <>
-                                    {n.type === "assignment" && (
-                                      <>
-                                        <strong>📚 New Assignment</strong>
-                                        <div className="text-xs">
-                                          Course: {n.courseName}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                          Title: {n.title}
-                                        </div>
-                                      </>
-                                    )}
-                                    {n.type === "grade" && (
-                                      <>
-                                        <strong>📊 Grade Released</strong>
-                                        <div className="text-xs">
-                                          {n.courseName} → {n.point} /{" "}
-                                          {n.outOf || 5}
-                                        </div>
-                                      </>
-                                    )}
-                                    {n.type === "fee-updated" && (
-                                      <>
-                                        <strong>💰 Fee Updated</strong>
-                                        <div className="text-xs">
-                                          Course: {n.courseName}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                          {n.message}
-                                        </div>
-                                      </>
-                                    )}
+                                    <strong>📝 Leave Request</strong>
+                                    <div className="text-xs">
+                                      From: {n.email}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {n.reason}
+                                    </div>
                                   </>
                                 )}
+                                {n.type === "course-assigned" && (
+                                  <>
+                                    <strong>📘 New Course Assigned</strong>
+                                    <div className="text-xs">
+                                      Course: {n.courseName}
+                                    </div>
+                                  </>
+                                )}
+                                {n.type === "student-enrolled" && (
+                                  <>
+                                    <strong>👨‍🎓 New Student Enrolled</strong>
+                                    <div className="text-xs">
+                                      {n.email} → {n.courseName}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            )}
 
-                                {/* 🕒 Date for all roles */}
-                                <div className="text-[10px] text-gray-400">
-                                  {new Date(
-                                    n.applicationDate || n.time
-                                  ).toLocaleString()}
+                            {/* 🎓 Student View */}
+                            {userRole === "student" && (
+                              <>
+                                {n.type === "assignment" && (
+                                  <>
+                                    <strong>📚 New Assignment</strong>
+                                    <div className="text-xs">
+                                      Course: {n.courseName}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Title: {n.title}
+                                    </div>
+                                  </>
+                                )}
+                                {n.type === "grade" && (
+                                  <>
+                                    <strong>📊 Grade Released</strong>
+                                    <div className="text-xs">
+                                      {n.courseName} → {n.point} /{" "}
+                                      {n.outOf || 5}
+                                    </div>
+                                  </>
+                                )}
+                                {n.type === "fee-updated" && (
+                                  <>
+                                    <strong>💰 Fee Updated</strong>
+                                    <div className="text-xs">
+                                      Course: {n.courseName}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {n.message}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            )}
+
+                            {/* 🧑‍💼 Admin View */}
+                            {userRole === "admin" && n.type === "payment" && (
+                              <>
+                                <strong>💳 Payment Received</strong>
+                                <div className="text-xs">From: {n.email}</div>
+                                <div className="text-xs">
+                                  Amount:{" "}
+                                  {n.message?.match(/\$[\d.]+/)?.[0] ||
+                                    `$${n.amount}`}
                                 </div>
-                              </li>
-                            ))}
+                                <div className="text-[10px] text-gray-500">
+                                  Txn: {n.transactionId}
+                                </div>
+                              </>
+                            )}
 
-                          {/* 🧑‍💼 Admin View */}
-                          {userRole === "admin" && (
-                            <>
-                              {n.type === "payment" && (
-                                <>
-                                  <strong>💳 Payment Received</strong>
-                                  <div className="text-xs">From: {n.email}</div>
-                                  <div className="text-xs">
-                                    Amount:{" "}
-                                    {n.message.split("$")[1].split("f")[0]} $
-                                  </div>
-                                  <div className="text-[10px] text-gray-500">
-                                    Txn: {n.transactionId}
-                                  </div>
-                                </>
-                              )}
-                            </>
-                          )}
-
-                          {/* 🕒 Date (Common for all) */}
-                          <div className="text-[10px] text-gray-400">
-                            {new Date(
-                              n.applicationDate || n.time
-                            ).toLocaleString()}
-                          </div>
-                        </li>
-                      ))
+                            {/* 🕒 Date */}
+                            <div className="text-[10px] text-gray-400">
+                              {new Date(
+                                n.applicationDate || n.time
+                              ).toLocaleString()}
+                            </div>
+                          </li>
+                        ))
                     )}
                   </ul>
                 </div>

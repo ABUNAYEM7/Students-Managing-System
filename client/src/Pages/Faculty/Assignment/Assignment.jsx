@@ -102,7 +102,7 @@ const Assignment = () => {
             ) : (
               <tr>
                 <td colSpan="6" className="text-center py-10 text-red-500 ">
-                  No materials uploaded yet.
+                  No assignment uploaded yet.
                 </td>
               </tr>
             )}

@@ -61,6 +61,9 @@ const FacultyGrades = () => {
       });
     }
 
+    // ✅ Get course name based on selected course ID
+    const selectedCourseObj = courses.find((c) => c._id === selectedCourse);
+
     const gradedData = students
       .filter((s) => {
         const point = parseFloat(grades[s.email]);
@@ -72,6 +75,8 @@ const FacultyGrades = () => {
         studentEmail: student.email,
         studentName: student.name,
         courseId: selectedCourse,
+        courseName: selectedCourseObj?.name || "",
+        courseCode: selectedCourseObj?.courseId || "",
         facultyEmail: email,
         point: parseFloat(grades[student.email]),
         outOf: 5.0,
@@ -126,8 +131,6 @@ const FacultyGrades = () => {
       });
     }
   };
-
-  console.log(students)
 
   return (
     <div className="p-6 bg-base-200 min-h-screen">

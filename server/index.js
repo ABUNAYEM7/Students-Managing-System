@@ -2370,6 +2370,8 @@ async function run() {
             $push: {
               grades: {
                 courseId,
+                courseCode: record.courseCode || "Unknown Code",
+                courseName: record.courseName || "Unknown Course",
                 facultyEmail: record.facultyEmail,
                 point: parseFloat(record.point),
                 outOf: record.outOf || 5.0,
@@ -2457,24 +2459,36 @@ async function run() {
       }
     });
 
-    // get faculty notification route
-    app.get("/faculty-notifications", async (req, res) => {
-      const { facultyEmail } = req.query;
-      if (!facultyEmail) {
-        return res.status(400).send({ error: "facultyEmail is required" });
-      }
+    // get faculties notification route secured
+    app.get("/faculties-notifications/:facultyEmail",verifyToken,
+      async (req, res) => {
+        const { facultyEmail } = req.params;
 
-      try {
-        const notifications = await notificationCollection
-          .find({ facultyEmail })
-          .sort({ applicationDate: -1 })
-          .toArray();
-        res.send(notifications);
-      } catch (err) {
-        console.error("❌ Error fetching faculty notifications:", err);
-        res.status(500).send({ error: "Server error" });
+        console.log("🔐 Requested facultyEmail:", facultyEmail);
+        console.log("🔐 Token email:", req.user?.email);
+
+        if (!facultyEmail) {
+          return res.status(400).send({ error: "facultyEmail is required" });
+        }
+
+        // Security check: Ensure user can only fetch their own notifications
+        if (req.user?.email !== facultyEmail) {
+          return res.status(403).send({ error: "Forbidden: Email mismatch" });
+        }
+
+        try {
+          const notifications = await notificationCollection
+            .find({ facultyEmail })
+            .sort({ applicationDate: -1 })
+            .toArray();
+
+          res.send(notifications);
+        } catch (err) {
+          console.error("❌ Error fetching faculty notifications:", err);
+          res.status(500).send({ error: "Server error" });
+        }
       }
-    });
+    );
 
     // ✅ GET: Fetch student notifications from DB
     app.get("/student-notifications", async (req, res) => {
@@ -2500,6 +2514,7 @@ async function run() {
 
     // Get Admin Notifications
     app.get("/admin-notifications", async (req, res) => {
+      console.log('hello')
       try {
         const notifications = await notificationCollection
           .find({ type: "payment" }) // only payment-related notifications
@@ -2569,8 +2584,15 @@ async function run() {
       upload.single("file"),
       async (req, res) => {
         try {
-          const { courseId, title, instructions, email, deadline, semester } =
-            req.body;
+          const {
+            courseId,
+            courseCode,
+            title,
+            instructions,
+            email,
+            deadline,
+            semester,
+          } = req.body;
           const fileInfo = req.file;
 
           // ✅ Ensure only faculty can upload
@@ -2583,7 +2605,7 @@ async function run() {
           // ✅ Check course assignment
           const course = await courseCollection.findOne({
             _id: new ObjectId(courseId),
-            facultyEmail: req.user.email, // Only assigned faculty allowed
+            facultyEmail: email,
           });
 
           if (!course) {
@@ -2594,6 +2616,7 @@ async function run() {
 
           const assignment = {
             courseId,
+            courseCode,
             semester,
             title,
             instructions,

@@ -22,6 +22,7 @@ const AssignmentDetails = () => {
     window.history.back();
   };
 
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="bg-white rounded-2xl shadow p-6 space-y-4">
@@ -41,7 +42,7 @@ const AssignmentDetails = () => {
           </div>
           <div>
             <p className="text-sm font-semibold">Course ID</p>
-            <p>{assignment?.courseId}</p>
+            <p>{assignment?.courseCode || 'unknown'}</p>
           </div>
           <div>
             <p className="text-sm font-semibold">Email</p>

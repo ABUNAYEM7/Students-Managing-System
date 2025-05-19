@@ -11,6 +11,7 @@ export const useAdminNotifications = () => {
     queryKey: ["adminNotifications"],
     queryFn: async () => {
       const res = await AxiosSecure().get("/admin-notifications");
+     console.log('hello admin',res)
       return res.data || [];
     },
     staleTime: 1000 * 60 * 5,

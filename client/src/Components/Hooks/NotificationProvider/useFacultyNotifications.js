@@ -4,46 +4,61 @@ import AxiosSecure from "../AxiosSecure";
 import socket from "../useSocket";
 import { useNotification } from "./NotificationProvider";
 
-export const useFacultyNotifications = (facultyEmail) => {
+export const useFacultyNotifications = (facultyEmail, userRole) => {
   const { setNotifications } = useNotification();
 
+  console.log("🟢 useFacultyNotifications called with:", facultyEmail, userRole);
+
   const query = useQuery({
-    queryKey: ["facultyNotifications", facultyEmail],
+    queryKey: [facultyEmail,userRole],
     queryFn: async () => {
+      console.log("🔄 Executing queryFn for:", facultyEmail);
+
       const res = await AxiosSecure().get(
-        `/faculty-notifications?facultyEmail=${facultyEmail}`
+        `/faculties-notifications/${facultyEmail}`
       );
+      console.log("✅ Query success. Data:", res.data);
       return res.data || [];
     },
-    enabled: !!facultyEmail,
+    enabled: userRole === "faculty" && !!facultyEmail,
     staleTime: 1000 * 60 * 5,
   });
 
-  // Set context when initial query completes
   useEffect(() => {
     if (query.data) {
+      console.log("📥 Setting notifications in context:", query.data);
       setNotifications(query.data);
     }
   }, [query.data, setNotifications]);
 
   useEffect(() => {
-    if (!facultyEmail) return;
+    if (!facultyEmail) {
+      console.warn("⚠️ No facultyEmail provided, skipping socket join.");
+      return;
+    }
 
+    console.log("📡 Joining socket room for faculty:", facultyEmail);
     socket.emit("join-role", "faculty", facultyEmail);
 
-    // 🔁 Dynamically update context on socket event
     socket.on("faculty-notification", async () => {
+      console.log("📬 Received socket notification event");
+
       try {
         const res = await AxiosSecure().get(
-          `/faculty-notifications?facultyEmail=${facultyEmail}`
+          `/faculties-notifications/${facultyEmail}` // ✅ also updated here
         );
+        console.log("📬 Updated notification data from socket:", res.data);
         setNotifications(res.data || []);
       } catch (err) {
-        console.error("❌ Failed to update notifications dynamically", err);
+        console.error(
+          "❌ Failed to fetch updated notifications via socket:",
+          err
+        );
       }
     });
 
     return () => {
+      console.log("❎ Leaving socket room for faculty:", facultyEmail);
       socket.off("faculty-notification");
     };
   }, [facultyEmail, setNotifications]);

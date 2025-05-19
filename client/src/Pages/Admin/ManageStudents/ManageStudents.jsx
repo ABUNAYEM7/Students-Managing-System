@@ -9,7 +9,10 @@ const ManageStudents = () => {
   const { data: students, refetch } = useFetchData("students", "/all-students");
   const navigate = useNavigate();
 
-  const deleteHandler = (id) => {
+  const deleteHandler = (student) => {
+    const id = student?._id;
+    const email = student?.email;
+
     Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
@@ -20,13 +23,51 @@ const ManageStudents = () => {
       confirmButtonText: "Yes, delete it!",
     }).then(async (result) => {
       if (result.isConfirmed) {
-        const res = await axiosInstance.delete(`/delete-student/${id}`);
-        if (res?.data?.deletedCount > 0) {
-          refetch();
+        try {
+          // Step 1: Update user role to "user"
+          const updateRes = await axiosInstance.patch(
+            `/update/user-info/${email}`,
+            {
+              role: "user",
+            }
+          );
+
+          if (
+            updateRes?.data?.modifiedCount > 0 ||
+            updateRes?.data?.matchedCount > 0
+          ) {
+            // Step 2: Delete student
+            const deleteRes = await axiosInstance.delete(
+              `/delete-student/${id}`
+            );
+
+            if (deleteRes?.data?.deletedCount > 0) {
+              refetch();
+              Swal.fire({
+                title: "Deleted!",
+                text: "Student has been deleted and role reset to user.",
+                icon: "success",
+              });
+            } else {
+              Swal.fire({
+                title: "Failed!",
+                text: "Role updated but student deletion failed.",
+                icon: "error",
+              });
+            }
+          } else {
+            Swal.fire({
+              title: "Failed!",
+              text: "Failed to update user role.",
+              icon: "error",
+            });
+          }
+        } catch (error) {
+          console.error("❌ Error during deletion process:", error);
           Swal.fire({
-            title: "Deleted!",
-            text: "Student has been deleted.",
-            icon: "success",
+            title: "Error",
+            text: "Something went wrong during the deletion process.",
+            icon: "error",
           });
         }
       }
@@ -92,7 +133,7 @@ const ManageStudents = () => {
 
                     <td>
                       <button
-                        onClick={() => deleteHandler(student._id)}
+                        onClick={() => deleteHandler(student)}
                         className="btn btn-sm btn-error text-white"
                       >
                         Delete

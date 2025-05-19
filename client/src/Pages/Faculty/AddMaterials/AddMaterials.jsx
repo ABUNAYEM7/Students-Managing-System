@@ -23,7 +23,7 @@ const AddMaterials = () => {
     "Doctor of Public Health",
     "Doctor of Science in Computer Science",
     "Doctor of Management",
-    "English as a Second Language"
+    "English as a Second Language",
   ]);
 
   const [selectedDepartment, setSelectedDepartment] = useState("");
@@ -33,7 +33,7 @@ const AddMaterials = () => {
     courseId: "",
     email: "",
     file: null,
-    existingFileUrl: ""
+    existingFileUrl: "",
   });
 
   useEffect(() => {
@@ -49,9 +49,10 @@ const AddMaterials = () => {
         const res = await axiosInstance.get(
           `/all-courses-by-department?department=${encodeURIComponent(selectedDepartment)}`
         );
-        setDepartmentCourses(res.data);
+        setDepartmentCourses(Array.isArray(res.data.courses) ? res.data.courses : []);
       } catch (err) {
         console.error("Error fetching courses by department:", err);
+        setDepartmentCourses([]);
       }
     };
     fetchCourses();
@@ -69,7 +70,7 @@ const AddMaterials = () => {
           courseId: data.courseId,
           email: data.email,
           file: null,
-          existingFileUrl: `/files/${data.filename}`
+          existingFileUrl: `/files/${data.filename}`,
         });
       } catch (err) {
         console.error("Failed to fetch material for edit:", err);
@@ -93,7 +94,7 @@ const AddMaterials = () => {
     form.append("title", formData.title);
     form.append("courseId", formData.courseId);
     form.append("email", formData.email);
-    form.append("department", selectedDepartment); 
+    form.append("department", selectedDepartment);
     if (formData.file) {
       form.append("file", formData.file);
     }
@@ -152,11 +153,12 @@ const AddMaterials = () => {
             <option value="" disabled>
               Choose Course
             </option>
-            {departmentCourses.map((course) => (
-              <option key={course._id} value={course.courseId}>
-                {course.name} - {course.courseId}
-              </option>
-            ))}
+            {Array.isArray(departmentCourses) &&
+              departmentCourses.map((course) => (
+                <option key={course._id} value={course.courseId}>
+                  {course.name} - {course.courseId}
+                </option>
+              ))}
           </select>
         </div>
 

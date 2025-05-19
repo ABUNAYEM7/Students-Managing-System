@@ -1,37 +1,59 @@
-import React, { useState } from 'react';
-import { FaStar, FaChartLine } from 'react-icons/fa';
-import useFetchData from '../../../Components/Hooks/useFetchData';
-import useAuth from '../../../Components/Hooks/useAuth';
+import React, { useState } from "react";
+import { FaStar, FaChartLine } from "react-icons/fa";
+import useFetchData from "../../../Components/Hooks/useFetchData";
+import useAuth from "../../../Components/Hooks/useAuth";
 
 const Grade = () => {
-  const semesterOptions =  ["Quarter-1", "Quarter-2", "Quarter-3", "Quarter-4", "Quarter-5", "Quarter-6", "Quarter-7", "Quarter-8", "Quarter-9", "Quarter-10", "Quarter-11", "Quarter-11", "Quarter-13", "Quarter-14", "Quarter-15", "Quarter-16"];
-;
+  const semesterOptions = [
+    "Quarter-1",
+    "Quarter-2",
+    "Quarter-3",
+    "Quarter-4",
+    "Quarter-5",
+    "Quarter-6",
+    "Quarter-7",
+    "Quarter-8",
+    "Quarter-9",
+    "Quarter-10",
+    "Quarter-11",
+    "Quarter-11",
+    "Quarter-13",
+    "Quarter-14",
+    "Quarter-15",
+    "Quarter-16",
+  ];
   const [selectedSemester, setSelectedSemester] = useState(semesterOptions[1]);
   const { user } = useAuth();
 
   // Updated: added semester inside the key
   const { data: dbGrades, refetch } = useFetchData(
     `${user?.email}-${selectedSemester}`,
-    `/student-result/${user?.email}?semester=${encodeURIComponent(selectedSemester)}`
+    `/student-result/${user?.email}?semester=${encodeURIComponent(
+      selectedSemester
+    )}`
   );
 
-  const currentSemesterData = dbGrades?.semester === selectedSemester ? dbGrades : null;
+  const currentSemesterData =
+    dbGrades?.semester === selectedSemester ? dbGrades : null;
   const grades = currentSemesterData?.grades ?? [];
 
   const average = grades.length
-    ? (grades.reduce((sum, g) => sum + (g?.point ?? 0), 0) / grades.length).toFixed(2)
-    : 'N/A';
+    ? (
+        grades.reduce((sum, g) => sum + (g?.point ?? 0), 0) / grades.length
+      ).toFixed(2)
+    : "N/A";
 
   const getGradeLetter = (point) => {
-    if (point >= 4.5) return 'A+';
-    if (point >= 4.0) return 'A';
-    if (point >= 3.5) return 'B+';
-    if (point >= 3.0) return 'B';
-    if (point >= 2.5) return 'C+';
-    if (point >= 2.0) return 'C';
-    if (point >= 1.5) return 'D';
-    return 'F';
+    if (point >= 4.5) return "A+";
+    if (point >= 4.0) return "A";
+    if (point >= 3.5) return "B+";
+    if (point >= 3.0) return "B";
+    if (point >= 2.5) return "C+";
+    if (point >= 2.0) return "C";
+    if (point >= 1.5) return "D";
+    return "F";
   };
+
 
   return (
     <div className="p-6 max-w-11/12 mx-auto">
@@ -69,7 +91,8 @@ const Grade = () => {
           <table className="table w-full">
             <thead>
               <tr>
-                <th>Course</th>
+                <th>Course Code</th>
+                <th>Course Name</th>
                 <th>Point</th>
                 <th>Grade</th>
               </tr>
@@ -78,10 +101,12 @@ const Grade = () => {
               {grades.length > 0 ? (
                 grades.map((item, index) => (
                   <tr key={index}>
-                    <td>{item?.courseId}</td>
+                    <td>{item?.courseCode}</td>
+                    <td>{item?.courseName}</td>
                     <td>{(item?.point ?? 0).toFixed(2)}</td>
                     <td className="flex items-center gap-2">
-                      <FaStar className="text-yellow-500" /> {getGradeLetter(item?.point ?? 0)}
+                      <FaStar className="text-yellow-500" />{" "}
+                      {getGradeLetter(item?.point ?? 0)}
                     </td>
                   </tr>
                 ))
