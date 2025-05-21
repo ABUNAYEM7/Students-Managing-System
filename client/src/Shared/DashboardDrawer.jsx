@@ -16,7 +16,7 @@ import { MdMessage } from "react-icons/md";
 import Swal from "sweetalert2";
 import useAuth from "../Components/Hooks/useAuth";
 import useUserRole from "../Components/Hooks/useUserRole";
-import logo from "../assets/logo.jfif";
+import logo from "../assets/logo.png";
 import FacultyRoutine from "../Pages/Faculty/FacultyRoutine/FacultyRoutine";
 import { FaBell } from "react-icons/fa";
 import { useNotification } from "../Components/Hooks/NotificationProvider/NotificationProvider";
@@ -24,6 +24,7 @@ import { useFacultyNotifications } from "../Components/Hooks/NotificationProvide
 import useMarkNotificationsSeen from "../Components/Hooks/NotificationProvider/useMarkNotificationsSeen";
 import { useStudentNotifications } from "../Components/Hooks/NotificationProvider/useStudentNotifications";
 import { useAdminNotifications } from "../Components/Hooks/NotificationProvider/useAdminNotifications";
+import useRoleBasedNotifications from "../Components/Hooks/NotificationProvider/useRoleBasedNotifications";
 
 const navIcons = {
   "ADMIN Dashboard": <FaHome />,
@@ -73,14 +74,8 @@ const DashboardDrawer = () => {
 
   const email = user?.email;
 
-  const { data: fetchedNotifications = [] } =
-    userRole === "faculty"
-      ? useFacultyNotifications(email, userRole)
-      : userRole === "student"
-      ? useStudentNotifications(email, userRole)
-      : userRole === "admin"
-      ? useAdminNotifications()
-      : { data: [] };
+const { data: fetchedNotifications = [] } = useRoleBasedNotifications(email, userRole);
+
 
   useEffect(() => {
     if (fetchedNotifications.length) {
@@ -130,7 +125,7 @@ const DashboardDrawer = () => {
             {isOpen ? <FaBars size={25} /> : <FaChartBar size={25} />}
           </button>
           <Link to={"/"}>
-            <img className="w-12 h-12 rounded-full" src={logo} alt="logo" />
+            <img className="w-20 h-20 rounded-full" src={logo} alt="logo" />
           </Link>
         </div>
         <div className="flex items-center gap-2">
@@ -496,7 +491,7 @@ const DashboardDrawer = () => {
             </ul>
           </div>
         </div>
-        <div className="p-2 flex-1 bg-base-100">
+        <div className="p-2 flex-1 bg-base-100 mt-2">
           <Outlet />
         </div>
       </div>

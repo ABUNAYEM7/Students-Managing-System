@@ -3,7 +3,7 @@ import AxiosSecure from "../AxiosSecure";
 
 export const useStudentNotifications = (email) => {
   const axiosInstance = AxiosSecure();
-  console.log('hook is calling with the email -->',email )
+  // console.log('hook is calling with the email -->',email )
 
   return useQuery({
     queryKey: ["student-notifications", email],

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, NavLink } from "react-router";
-import logo from "../assets/logo.jfif";
+import logo from "../assets/logo.png";
 import useAuth from "../Components/Hooks/useAuth";
 import Swal from "sweetalert2";
 import useUserRole from "../Components/Hooks/useUserRole";
@@ -67,7 +67,7 @@ const Navbar = () => {
           </ul>
         </div>
         <Link to={"/"}>
-          <img className="w-16 h-16 rounded-full" src={logo} alt="logo" />
+          <img className="w-20 h-20 rounded-full" src={logo} alt="logo" />
         </Link>
       </div>
 

@@ -8,7 +8,7 @@ export const getImageUrl = async(formdata)=>{
         }
     })
     if(res?.data?.status === 200){
-        console.log('success')
+        // console.log('success')
         const photoUrl = res?.data?.data?.display_url;
         return photoUrl
     }

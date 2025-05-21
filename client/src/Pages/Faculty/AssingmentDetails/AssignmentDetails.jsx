@@ -22,14 +22,16 @@ const AssignmentDetails = () => {
     window.history.back();
   };
 
-
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="bg-white rounded-2xl shadow p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Assignment Details</h1>
           <div className="flex items-center mb-6">
-            <button onClick={handleBack} className="btn bg-prime text-highlight">
+            <button
+              onClick={handleBack}
+              className="btn bg-prime text-highlight"
+            >
               <FaArrowLeft className="w-4 h-4" /> Back
             </button>
           </div>
@@ -42,7 +44,7 @@ const AssignmentDetails = () => {
           </div>
           <div>
             <p className="text-sm font-semibold">Course ID</p>
-            <p>{assignment?.courseCode || 'unknown'}</p>
+            <p>{assignment?.courseCode || "unknown"}</p>
           </div>
           <div>
             <p className="text-sm font-semibold">Email</p>
@@ -60,7 +62,10 @@ const AssignmentDetails = () => {
 
         <div className="mt-4">
           <a
-            href={`http://localhost:3000/${assignment?.path?.replace(/\\/g, "/")}`}
+            href={`https://student-management-server-green.vercel.app/${assignment?.path?.replace(
+              /\\/g,
+              "/"
+            )}`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn bg-orange-600 text-white w-full"
@@ -93,7 +98,10 @@ const AssignmentDetails = () => {
                     <td>{new Date(s.uploadedAt).toLocaleString()}</td>
                     <td>
                       <a
-                        href={`http://localhost:3000/${s.path.replace(/\\/g, "/")}`}
+                        href={`https://student-management-server-green.vercel.app/${s.path.replace(
+                          /\\/g,
+                          "/"
+                        )}`}
                         className="text-blue-600 underline"
                         target="_blank"
                         rel="noopener noreferrer"

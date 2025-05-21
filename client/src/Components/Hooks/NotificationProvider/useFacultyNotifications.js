@@ -7,17 +7,17 @@ import { useNotification } from "./NotificationProvider";
 export const useFacultyNotifications = (facultyEmail, userRole) => {
   const { setNotifications } = useNotification();
 
-  console.log("🟢 useFacultyNotifications called with:", facultyEmail, userRole);
+  // console.log("🟢 useFacultyNotifications called with:", facultyEmail, userRole);
 
   const query = useQuery({
-    queryKey: [facultyEmail,userRole],
+    queryKey: [facultyEmail, userRole],
     queryFn: async () => {
-      console.log("🔄 Executing queryFn for:", facultyEmail);
+      // console.log("🔄 Executing queryFn for:", facultyEmail);
 
       const res = await AxiosSecure().get(
         `/faculties-notifications/${facultyEmail}`
       );
-      console.log("✅ Query success. Data:", res.data);
+      // console.log("✅ Query success. Data:", res.data);
       return res.data || [];
     },
     enabled: userRole === "faculty" && !!facultyEmail,
@@ -26,7 +26,7 @@ export const useFacultyNotifications = (facultyEmail, userRole) => {
 
   useEffect(() => {
     if (query.data) {
-      console.log("📥 Setting notifications in context:", query.data);
+      // console.log("📥 Setting notifications in context:", query.data);
       setNotifications(query.data);
     }
   }, [query.data, setNotifications]);
@@ -37,28 +37,30 @@ export const useFacultyNotifications = (facultyEmail, userRole) => {
       return;
     }
 
-    console.log("📡 Joining socket room for faculty:", facultyEmail);
+    // console.log("📡 Joining socket room for faculty:", facultyEmail);
     socket.emit("join-role", "faculty", facultyEmail);
 
     socket.on("faculty-notification", async () => {
-      console.log("📬 Received socket notification event");
+      // console.log("📬 Received socket notification event");
 
       try {
         const res = await AxiosSecure().get(
           `/faculties-notifications/${facultyEmail}` // ✅ also updated here
         );
-        console.log("📬 Updated notification data from socket:", res.data);
+        // console.log("📬 Updated notification data from socket:", res.data);
         setNotifications(res.data || []);
       } catch (err) {
-        console.error(
-          "❌ Failed to fetch updated notifications via socket:",
-          err
-        );
+        if (process.env.NODE_ENV === "development") {
+          console.error(
+            "❌ Failed to fetch updated notifications via socket:",
+            err
+          );
+        }
       }
     });
 
     return () => {
-      console.log("❎ Leaving socket room for faculty:", facultyEmail);
+      // console.log("❎ Leaving socket room for faculty:", facultyEmail);
       socket.off("faculty-notification");
     };
   }, [facultyEmail, setNotifications]);

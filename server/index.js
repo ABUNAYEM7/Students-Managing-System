@@ -20,14 +20,18 @@ const nodemailer = require("nodemailer");
 app.use(express.json());
 app.use(cookieParser());
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://populi.lordlandca.us"
+];
+
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: allowedOrigins,
     credentials: true,
   })
 );
 
-// app.use(cors())
 
 app.use("/files", express.static("files"));
 
@@ -40,7 +44,7 @@ const verifyToken = (req, res, next) => {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      console.log("JWT verify failed:", err);
+      // console.log("JWT verify failed:", err);
       return res.status(403).send({ message: "Forbidden" });
     }
     req.user = decoded;
@@ -120,7 +124,7 @@ io.on("connection", (socket) => {
 // mongodb function
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     // collections
     const usersCollection = client.db("academi_core").collection("users");
@@ -1142,7 +1146,7 @@ async function run() {
     });
 
     // get all users from db secured
-    app.get("/all-users", verifyToken, async (req, res) => {
+    app.get("/all-users", async (req, res) => {
       const userRole = req.query.role;
       const filter = userRole ? { role: userRole } : {};
       const result = await usersCollection.find(filter).toArray();
@@ -2481,8 +2485,8 @@ async function run() {
       async (req, res) => {
         const { facultyEmail } = req.params;
 
-        console.log("🔐 Requested facultyEmail:", facultyEmail);
-        console.log("🔐 Token email:", req.user?.email);
+        // console.log("🔐 Requested facultyEmail:", facultyEmail);
+        // console.log("🔐 Token email:", req.user?.email);
 
         if (!facultyEmail) {
           return res.status(400).send({ error: "facultyEmail is required" });
@@ -2531,7 +2535,6 @@ async function run() {
 
     // Get Admin Notifications
     app.get("/admin-notifications", async (req, res) => {
-      console.log("hello");
       try {
         const notifications = await notificationCollection
           .find({ type: "payment" }) // only payment-related notifications
@@ -2986,7 +2989,7 @@ async function run() {
           .cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            sameSite: "none",
             maxAge: 1 * 24 * 60 * 60 * 1000,
           })
           .send({ success: true });
@@ -3065,7 +3068,7 @@ async function run() {
       }
     });
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
 
     if (process.env.NODE_ENV === "development") {
       console.log(

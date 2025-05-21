@@ -44,7 +44,7 @@ const Home = () => {
   }
 
   return (
-    <div className="mt-[75px]">
+    <div className="mt-[90px]">
       {/* banner */}
       <div className="relative h-[600px]">
         <Swiper

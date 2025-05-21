@@ -1,7 +1,7 @@
 // CustomLoader.jsx
 import React from "react";
 import { Orbit } from "@uiball/loaders";
-import logo from '../../public/logo.jfif'
+import logo from '../../public/logo.png'
 
 const CustomLoader = () => {
   return (

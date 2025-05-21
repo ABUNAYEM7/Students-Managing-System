@@ -72,95 +72,99 @@ const CreateAssignment = () => {
     }));
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
 
-  const { courseId, title, instructions, file, deadline, semester } = formData;
-  if (
-    !courseId ||
-    !title ||
-    !instructions ||
-    (!file && !id) ||
-    !deadline ||
-    !semester
-  ) {
-    setError("All fields are required including the deadline and semester.");
-    return;
-  }
+    const { courseId, title, instructions, file, deadline, semester } =
+      formData;
+    if (
+      !courseId ||
+      !title ||
+      !instructions ||
+      (!file && !id) ||
+      !deadline ||
+      !semester
+    ) {
+      setError("All fields are required including the deadline and semester.");
+      return;
+    }
 
-  const deadlineDate = new Date(deadline);
-  const now = new Date();
-  if (deadlineDate < now) {
-    setError("Deadline must be a future date and time.");
-    return;
-  }
+    const deadlineDate = new Date(deadline);
+    const now = new Date();
+    if (deadlineDate < now) {
+      setError("Deadline must be a future date and time.");
+      return;
+    }
 
-  const selectedCourse = allCourses.find(
-    (c) => c._id.toString() === courseId.toString()
-  );
+    const selectedCourse = allCourses.find(
+      (c) => c._id.toString() === courseId.toString()
+    );
 
-  if (!selectedCourse) {
-    setError("Selected course not found.");
-    return;
-  }
+    if (!selectedCourse) {
+      setError("Selected course not found.");
+      return;
+    }
 
-  const data = new FormData();
-  data.append("courseId", selectedCourse._id); 
-  data.append("courseCode", selectedCourse.courseId);
-  data.append("title", title);
-  data.append("instructions", instructions);
-  data.append("file", file);
-  data.append("email", user?.email);
-  data.append("deadline", deadline);
-  data.append("semester", semester);
+    const data = new FormData();
+    data.append("courseId", selectedCourse._id);
+    data.append("courseCode", selectedCourse.courseId);
+    data.append("title", title);
+    data.append("instructions", instructions);
+    data.append("file", file);
+    data.append("email", user?.email);
+    data.append("deadline", deadline);
+    data.append("semester", semester);
 
-  try {
-    if (id) {
-      const res = await axiosInstance.patch(`/update-assignment/${id}`, data, {
+    try {
+      if (id) {
+        const res = await axiosInstance.patch(
+          `/update-assignment/${id}`,
+          data,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          }
+        );
+        if (res?.data?.modifiedCount > 0) {
+          Swal.fire({
+            position: "center",
+            icon: "success",
+            title: "Assignment has been Updated",
+            showConfirmButton: false,
+            timer: 1500,
+          });
+          return navigate("/dashboard/assignment");
+        }
+      }
+      const res = await axiosInstance.post("/upload-assignment", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      if (res?.data?.modifiedCount > 0) {
+
+      if (res?.data?.insertedId) {
         Swal.fire({
           position: "center",
           icon: "success",
-          title: "Assignment has been Updated",
+          title: "Assignment has been created",
           showConfirmButton: false,
           timer: 1500,
         });
-        return navigate("/dashboard/assignment");
+
+        navigate("/dashboard/assignment");
+        setFormData({
+          courseId: "",
+          title: "",
+          instructions: "",
+          file: null,
+          deadline: "",
+          semester: "",
+        });
+        if (fileInputRef.current) fileInputRef.current.value = null;
       }
+    } catch (err) {
+      console.error("Upload error:", err);
+      Swal.fire("Error", "Failed to upload assignment", "error");
     }
-    const res = await axiosInstance.post("/upload-assignment", data, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    if (res?.data?.insertedId) {
-      Swal.fire({
-        position: "center",
-        icon: "success",
-        title: "Assignment has been created",
-        showConfirmButton: false,
-        timer: 1500,
-      });
-
-      navigate("/dashboard/assignment");
-      setFormData({
-        courseId: "",
-        title: "",
-        instructions: "",
-        file: null,
-        deadline: "",
-        semester: "",
-      });
-      if (fileInputRef.current) fileInputRef.current.value = null;
-    }
-  } catch (err) {
-    console.error("Upload error:", err);
-    Swal.fire("Error", "Failed to upload assignment", "error");
-  }
-};
-
+  };
 
   return (
     <div className="p-6">
@@ -255,7 +259,7 @@ const handleSubmit = async (e) => {
             <div className="mb-2 text-sm text-gray-600">
               Current File:{" "}
               <a
-                href={`http://localhost:3000/${data?.path?.replace(
+                href={`https://student-management-server-green.vercel.app/${data?.path?.replace(
                   /\\/g,
                   "/"
                 )}`}
