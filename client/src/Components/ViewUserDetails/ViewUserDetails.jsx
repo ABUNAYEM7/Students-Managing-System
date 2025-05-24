@@ -17,6 +17,12 @@ const ViewUserDetails = () => {
   const [loading, setLoading] = useState(true);
   const [editingIndex, setEditingIndex] = useState(null);
   const [feeInputs, setFeeInputs] = useState({});
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [studentLimit] = useState(10);
+  const [totalAssignedCourses, setTotalAssignedCourses] = useState(0);
+  const [studentPage, setStudentPage] = useState(1);
+  const [totalStudentCourses, setTotalStudentCourses] = useState(0);
 
   useEffect(() => {
     const fetchUserAndDetails = async () => {
@@ -30,12 +36,13 @@ const ViewUserDetails = () => {
           setExtraDetails(facultyRes?.data);
 
           const courseRes = await axiosInstance.get(
-            `/faculty-assign/courses/${email}`
+            `/faculty-assign/courses/${email}?page=${page}&limit=${limit}`
           );
-          setAssignedCourses(courseRes?.data || []);
+          setAssignedCourses(courseRes?.data?.courses || []);
+          setTotalAssignedCourses(courseRes?.data?.total || 0);
         } else if (userData?.role === "student") {
           const studentRes = await axiosInstance.get(
-            `/student-full-details/${email}`
+            `/student-full-details/${email}?page=${studentPage}&limit=${studentLimit}`
           );
           const initialFees = {};
           (studentRes?.data?.student?.courses || []).forEach((course, idx) => {
@@ -44,7 +51,8 @@ const ViewUserDetails = () => {
           setFeeInputs(initialFees);
 
           setExtraDetails(studentRes?.data?.student || {});
-          setStudentCourses(studentRes?.data?.enrolledCourses || []);
+          setStudentCourses(studentRes?.data?.student?.courses || []);
+          setTotalStudentCourses(studentRes?.data?.totalCourses || 0);
         }
       } catch (err) {
         if (process.env.NODE_ENV === "development") {
@@ -56,7 +64,7 @@ const ViewUserDetails = () => {
     };
 
     fetchUserAndDetails();
-  }, [email, axiosInstance]);
+  }, [email, axiosInstance, page,studentPage]);
 
   if (loading) {
     return <div className="text-center mt-10">Loading...</div>;
@@ -70,11 +78,11 @@ const ViewUserDetails = () => {
     );
   }
 
-  // handle save 
+  // handle save
   const handleSaveFee = async (index, course) => {
     try {
       const updatedFee = parseFloat(feeInputs[index]);
-  
+
       if (isNaN(updatedFee) || updatedFee < 0) {
         Swal.fire({
           icon: "error",
@@ -83,7 +91,7 @@ const ViewUserDetails = () => {
         });
         return;
       }
-  
+
       const response = await axiosInstance.patch(
         `/update-student-course-fee/${extraDetails?._id}`,
         {
@@ -91,7 +99,7 @@ const ViewUserDetails = () => {
           newFee: updatedFee,
         }
       );
-  
+
       if (response?.data?.success) {
         setEditingIndex(null);
         Swal.fire({
@@ -118,7 +126,10 @@ const ViewUserDetails = () => {
     }
   };
 
-  // console.log(extraDetails?.courses)
+  // progressHandler
+  const progressHandler=(email)=>{
+    navigate(`/dashboard/student-progress/${email}`)
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-8 bg-base-100 shadow-xl rounded-3xl border border-gray-300 mt-10">
@@ -233,8 +244,11 @@ const ViewUserDetails = () => {
                 {extraDetails?.permanentAddress || "N/A"}
               </p>
               <p>
-                <strong>Enrolled Courses:</strong> {studentCourses?.length || 0}
+                <strong>Enrolled Courses:</strong> {totalStudentCourses || 0}
               </p>
+              <button 
+              onClick={()=>progressHandler(email)}
+              className="btn bg-highlight text-white">View Student Progress</button>
             </>
           )}
         </div>
@@ -246,6 +260,7 @@ const ViewUserDetails = () => {
           <h3 className="text-2xl font-semibold mb-4">
             Assigned Course Details
           </h3>
+
           <div className="overflow-x-auto">
             <table className="table table-zebra w-full">
               <thead>
@@ -262,7 +277,7 @@ const ViewUserDetails = () => {
               <tbody>
                 {assignedCourses?.map((course, index) => (
                   <tr key={course?._id || index}>
-                    <td>{index + 1}</td>
+                    <td>{(page - 1) * limit + index + 1}</td>
                     <td>{course?.courseId || "N/A"}</td>
                     <td>{course?.name || "N/A"}</td>
                     <td>{course?.credit || "N/A"}</td>
@@ -278,12 +293,34 @@ const ViewUserDetails = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalAssignedCourses > limit && (
+            <div className="flex justify-center items-center gap-4 mt-4">
+              <button
+                className="btn btn-sm"
+                disabled={page === 1}
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              >
+                Previous
+              </button>
+              <span className="font-medium">
+                Page {page} of {Math.ceil(totalAssignedCourses / limit)}
+              </span>
+              <button
+                className="btn btn-sm"
+                disabled={page >= Math.ceil(totalAssignedCourses / limit)}
+                onClick={() => setPage((prev) => prev + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Student Enrolled Courses */}
       {/* Student Enrolled Courses Table */}
-      {user?.role === "student" && extraDetails?.courses?.length > 0 && (
+      {user?.role === "student" && studentCourses?.length > 0 && (
         <div className="mt-10">
           <h3 className="text-2xl font-semibold mb-4">
             Enrolled Course Details
@@ -303,9 +340,9 @@ const ViewUserDetails = () => {
                 </tr>
               </thead>
               <tbody>
-                {extraDetails?.courses?.map((course, index) => (
+                {studentCourses.map((course, index) => (
                   <tr key={course?.courseId || index}>
-                    <td>{index + 1}</td>
+                    <td>{(studentPage - 1) * studentLimit + index + 1}</td>
                     <td>{course?.courseName || "N/A"}</td>
                     <td>{course?.credit || "N/A"}</td>
                     <td>{course?.semester || "N/A"}</td>
@@ -336,19 +373,17 @@ const ViewUserDetails = () => {
                     </td>
                     <td className="flex gap-2">
                       {editingIndex === index ? (
-                        <>
-                          <button
-                            className="btn btn-sm btn-success"
-                            onClick={() => handleSaveFee(index, course)}
-                          >
-                            Save
-                          </button>
-                        </>
+                        <button
+                          className="btn btn-sm btn-success"
+                          onClick={() => handleSaveFee(index, course)}
+                        >
+                          Save
+                        </button>
                       ) : (
                         <button
                           className="btn btn-sm btn-accent"
                           onClick={() => setEditingIndex(index)}
-                          disabled= {course?.paymentStatus === "paid"}
+                          disabled={course?.paymentStatus === "paid"}
                         >
                           Edit
                         </button>
@@ -359,6 +394,32 @@ const ViewUserDetails = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination outside the table */}
+          {totalStudentCourses > studentLimit && (
+            <div className="flex justify-center items-center gap-4 mt-4">
+              <button
+                className="btn btn-sm"
+                disabled={studentPage === 1}
+                onClick={() => setStudentPage((prev) => Math.max(prev - 1, 1))}
+              >
+                Previous
+              </button>
+              <span className="font-medium">
+                Page {studentPage} of{" "}
+                {Math.ceil(totalStudentCourses / studentLimit)}
+              </span>
+              <button
+                className="btn btn-sm"
+                disabled={
+                  studentPage >= Math.ceil(totalStudentCourses / studentLimit)
+                }
+                onClick={() => setStudentPage((prev) => prev + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

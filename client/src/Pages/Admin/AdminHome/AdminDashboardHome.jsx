@@ -40,7 +40,7 @@ const AdminDashboardHome = () => {
   ];
 
   return (
-    <div className="p-3 md:p-6 bg-gray-100 min-h-screen z-0">
+    <div className="p-3 md:p-6 bg-gray-100 min-h-screen z-0 mt-6">
       <h1 className="text-xl md:text-4xl font-bold text-[#243c5a] mb-8">
         Welcome Dear {user?.displayName}
       </h1>

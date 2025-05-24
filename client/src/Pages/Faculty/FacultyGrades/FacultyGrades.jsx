@@ -79,7 +79,7 @@ const FacultyGrades = () => {
         courseCode: selectedCourseObj?.courseId || "",
         facultyEmail: email,
         point: parseFloat(grades[student.email]),
-        outOf: 5.0,
+        outOf: 4.0,
         submittedAt: new Date(),
       }));
 
@@ -185,7 +185,7 @@ const FacultyGrades = () => {
                 <th>#</th>
                 <th>Student Name</th>
                 <th>Email</th>
-                <th>Grade Point (out of 5.00)</th>
+                <th>Grade Point (out of 4.00)</th>
               </tr>
             </thead>
             <tbody>
@@ -199,8 +199,8 @@ const FacultyGrades = () => {
                       type="number"
                       step="0.01"
                       min="0"
-                      max="5"
-                      placeholder="e.g. 4.50"
+                      max="4"
+                      placeholder="e.g. 3.50"
                       value={
                         student.alreadyGraded?.point !== undefined
                           ? student.alreadyGraded.point.toFixed(2)

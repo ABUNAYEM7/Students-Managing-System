@@ -85,7 +85,7 @@ const SignUp = () => {
             };
             // post data in db
             const res = await axios.post(
-              `https://student-management-server-green.vercel.app/users`,
+              `http://localhost:3000/users`,
               userData
             );
             if (res?.data?.insertedId) {

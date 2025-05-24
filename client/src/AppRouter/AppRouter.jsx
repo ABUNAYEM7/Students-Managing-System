@@ -46,6 +46,9 @@ import PaymentPage from "../Pages/PaymentPage/PaymentPage";
 import ReviewEnrollReq from "../Pages/ReviewEnrollReq/ReviewEnrollReq";
 import Enroll from "../Pages/Enroll";
 import StudentsMaterials from "../Pages/StudentsMaterials/StudentsMaterials";
+import SentBox from "../Pages/SentBox/SentBox";
+import ErrorPage from "../Pages/ErrorPage/ErrorPage";
+import StudentProgress from "../Pages/StudentProgress/StudentProgress";
 
 const AppRouter = () => {
   return (
@@ -97,6 +100,10 @@ const AppRouter = () => {
             path="/dashboard/review-enrollReq/:id"
             element={<ReviewEnrollReq />}
           />
+          <Route
+            path="/dashboard/student-progress/:email"
+            element={<StudentProgress />}
+          />
 
           {/* Student Routes */}
           <Route path="profile" element={<Profile />} />
@@ -137,9 +144,11 @@ const AppRouter = () => {
           {/* dynamic route */}
           <Route path="payment-page" element={<PaymentPage />} />
           <Route path="send-message" element={<SendMessage />} />
+          <Route path="sent-box" element={<SentBox />} />
           <Route path="send-message/:id" element={<SendMessage />} />
         </Route>
       </Route>
+      <Route path="*" element={<ErrorPage/>}/>
     </Routes>
   );
 };

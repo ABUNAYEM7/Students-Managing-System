@@ -7,6 +7,7 @@ import { Pagination, Autoplay } from "swiper/modules"; // Import Autoplay module
 import image1 from "../../assets/bannerImage1.jpg";
 import image2 from "../../assets/bannerImage2.jpg";
 import image3 from "../../assets/bannerImage3.jpg";
+import image4 from "../../assets/bannerImage4.jpeg";
 import KeyFeatures from "../../Components/Features/KeyFeatures";
 import SimpleSteps from "../../Components/SimpleSteps/SimpleSteps";
 import ContactUs from "../../Components/ContactUs/ContactUs";
@@ -32,7 +33,7 @@ const Home = () => {
         "Easily monitor grades, attendance, and progress in real-time with our secure, user-friendly system, ensuring accurate tracking, seamless management, and improved student performance.",
     },
     {
-      image: image3,
+      image: image4,
       heading: "Efficient Communication",
       description:
         "Keep students, teachers, and parents connected effortlessly with our seamless communication platform, ensuring collaboration, real-time updates, and improved academic engagement.",

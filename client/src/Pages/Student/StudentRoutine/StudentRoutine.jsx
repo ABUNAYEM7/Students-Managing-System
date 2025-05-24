@@ -92,50 +92,53 @@ const StudentRoutine = () => {
         </p>
       ) : (
         routines.map((routine, i) => (
-          <div key={i} className="border rounded-lg p-4 mb-6 shadow bg-white">
-            <div className="mb-4">
-              <h3 className="font-bold text-lg">
-                {routine.department} - {routine.semester}
-              </h3>
-              <p className="text-sm text-green-500">
-                Week Start: {dayjs(routine.weekStartDate).format("MMMM D, YYYY")}
-              </p>
-            </div>
+<div key={i} className="border rounded-lg p-4 mb-6 shadow bg-white">
+  <div className="mb-4">
+    <h3 className="font-bold text-lg">
+      {routine.department} - {routine.semester}
+    </h3>
+    <p className="text-sm text-green-500">
+      Week Start: {dayjs(routine.weekStartDate).format("MMMM D, YYYY")}
+    </p>
+  </div>
 
-            <table className="min-w-full table-auto border">
-              <thead>
-                <tr className="bg-gray-100 text-left">
-                  <th className="border p-2">Day</th>
-                  <th className="border p-2">Course :</th>
-                  <th className="border p-2">Time</th>
-                  <th className="border p-2">Online Link</th>
-                </tr>
-              </thead>
-              <tbody>
-                {routine.routines.map((day, idx) => (
-                  <tr key={idx}>
-                    <td className="border p-2">{day.day}</td>
-                    <td className="border p-2">{day.course || "N/A"}</td>
-                    <td className="border p-2">{day.time}</td>
-                    <td className="border p-2">
-                      {day.status === "completed" ? (
-                        <span className="text-green-600 font-semibold">Completed</span>
-                      ) : (
-                        <a
-                          href={day.onlineLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
-                        >
-                          Join Class
-                        </a>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+  {/* Responsive wrapper */}
+  <div className="w-full overflow-x-auto">
+    <table className="table-auto w-full border text-sm">
+      <thead>
+        <tr className="bg-gray-100 text-left">
+          <th className="border p-2 whitespace-nowrap">Day</th>
+          <th className="border p-2 whitespace-nowrap">Course</th>
+          <th className="border p-2 whitespace-nowrap">Time</th>
+          <th className="border p-2 whitespace-nowrap">Online Link</th>
+        </tr>
+      </thead>
+      <tbody>
+        {routine.routines.map((day, idx) => (
+          <tr key={idx}>
+            <td className="border p-2 whitespace-nowrap">{day.day}</td>
+            <td className="border p-2 whitespace-nowrap">{day.course || "N/A"}</td>
+            <td className="border p-2 whitespace-nowrap">{day.time}</td>
+            <td className="border p-2 whitespace-nowrap">
+              {day.status === "completed" ? (
+                <span className="text-green-600 font-semibold">Completed</span>
+              ) : (
+                <a
+                  href={day.onlineLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  Join Class
+                </a>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
         ))
       )}
     </div>

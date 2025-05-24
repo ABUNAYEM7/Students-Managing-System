@@ -4,7 +4,7 @@ import { NavLink, Outlet } from "react-router";
 
 const AdminDashboard = () => {
   return (
-    <div>
+    <div >
       <div className="w-fit drawer z-50">
         <input id="my-drawer" type="checkbox" className="drawer-toggle" />
         <div className="drawer-content">

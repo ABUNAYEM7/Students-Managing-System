@@ -82,7 +82,7 @@ const StudentsCourses = () => {
   const renderCourseCard = (course, isEnrolled) => (
     <div
       key={course._id}
-      className="card bg-white shadow-md hover:shadow-xl transition duration-300 border-t-4 border-primary"
+      className="card bg-white shadow-md hover:shadow-xl transition duration-300 border-t-4 border-primary mt-4"
     >
       <div className="card-body">
         <h2 className="card-title text-xl text-highlight">

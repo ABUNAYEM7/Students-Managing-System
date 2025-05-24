@@ -22,7 +22,7 @@ app.use(cookieParser());
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://populi.lordlandca.us"
+  "https://populi.lordlandca.us",
 ];
 
 app.use(
@@ -31,7 +31,6 @@ app.use(
     credentials: true,
   })
 );
-
 
 app.use("/files", express.static("files"));
 
@@ -953,6 +952,144 @@ async function run() {
       res.send(result);
     });
 
+    // get user overview
+    app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
+  const { email } = req.params;
+
+  if (req.user.email !== email && req.user.role !== "admin") {
+    return res.status(403).send({ message: "Forbidden: Access denied" });
+  }
+
+  try {
+    const student = await studentsCollection.findOne({ email });
+    if (!student) return res.status(404).send({ message: "Student not found" });
+
+    const enrolledCourses = student.courses || [];
+    const enrolledCourseIds = enrolledCourses.map(c => c.courseId);
+    const totalEnrolled = enrolledCourses.length;
+
+    const distribution = await courseDistributionCollection.findOne({ program: student.department });
+    const totalProgramCourses = distribution
+      ? distribution.quarters.reduce((sum, q) => sum + (q.courses?.length || 0), 0)
+      : 0;
+
+    const quarterStats = {};
+    for (const course of enrolledCourses) {
+      const semester = course.semester || "Unknown";
+      if (!quarterStats[semester]) quarterStats[semester] = [];
+      quarterStats[semester].push(course);
+    }
+
+    const attendanceRecords = await attendanceCollection
+      .find({ courseId: { $in: enrolledCourseIds } })
+      .sort({ date: 1 })
+      .toArray();
+
+    let totalAttendanceDays = 0;
+    let presentDays = 0;
+
+    // 🆕 Daily attendance report
+    const dailyAttendanceReport = {};
+
+    for (const record of attendanceRecords) {
+      const studentStatus = record.students.find((s) => s.email === email);
+      if (studentStatus) {
+        totalAttendanceDays++;
+        if (studentStatus.status === "present") presentDays++;
+
+        const course = enrolledCourses.find(c => c.courseId === record.courseId);
+        const courseName = course?.courseName || "Unknown";
+        const semester = course?.semester || "Unknown";
+
+        if (!dailyAttendanceReport[semester]) {
+          dailyAttendanceReport[semester] = {};
+        }
+
+        if (!dailyAttendanceReport[semester][courseName]) {
+          dailyAttendanceReport[semester][courseName] = [];
+        }
+
+        dailyAttendanceReport[semester][courseName].push({
+          date: record.date,
+          status: studentStatus.status
+        });
+      }
+    }
+
+    const attendancePercentage = totalAttendanceDays > 0
+      ? (presentDays / totalAttendanceDays) * 100
+      : 0;
+
+    const gradeDoc = await gradesCollection.findOne({ studentEmail: email });
+    let gradePercentage = 0;
+
+    if (gradeDoc?.grades?.length > 0) {
+      const totalPoints = gradeDoc.grades.reduce((sum, g) => sum + g.point, 0);
+      const totalOutOf = gradeDoc.grades.reduce((sum, g) => sum + (g.outOf || 4), 0);
+      gradePercentage = totalOutOf > 0 ? (totalPoints / totalOutOf) * 100 : 0;
+    }
+
+    const allAssignments = await assignmentsCollection
+      .find({ courseId: { $in: enrolledCourseIds } })
+      .toArray();
+
+    const submittedAssignments = await subAssignmentsCollection
+      .find({ email })
+      .toArray();
+
+    const submittedMap = new Map(
+      submittedAssignments.map(sa => [sa.assignmentId, sa])
+    );
+
+const detailedAssignments = allAssignments.map(assign => {
+  const submitted = submittedMap.get(assign._id.toString());
+  const relatedCourse = enrolledCourses.find(c => c.courseId === assign.courseId);
+  return {
+    assignmentId: assign._id.toString(),
+    title: assign.title || "Untitled",
+    courseName: relatedCourse?.courseName || "Unknown",
+    semester: relatedCourse?.semester || "Unknown",
+    releasedDate: assign.uploadedAt || assign.createdAt || null,
+    submittedDate: submitted?.uploadedAt || null,
+    status: submitted ? "Submitted" : "Pending",
+    submittedFile: submitted?.path || null  // ✅ Just give the path
+  };
+});
+
+    const totalAssignmentsReleased = allAssignments.length;
+    const totalAssignmentsSubmitted = submittedAssignments.length;
+
+    const payments = await paymentsCollection
+      .find({ userEmail: email })
+      .sort({ date: -1 })
+      .toArray();
+
+    res.send({
+      profile: student,
+      stats: {
+        totalProgramCourses,
+        totalEnrolled,
+        attendancePercentage: Number(attendancePercentage.toFixed(2)),
+        gradePercentage: Number(gradePercentage.toFixed(2)),
+        enrollmentPercentage: totalProgramCourses > 0
+          ? Number(((totalEnrolled / totalProgramCourses) * 100).toFixed(2))
+          : 0,
+        totalAssignmentsReleased,
+        totalAssignmentsSubmitted,
+      },
+      enrolledCourses,
+      quarterStats,
+      gradeDetails: gradeDoc?.grades || [],
+      payments,
+      assignments: detailedAssignments,
+      dailyAttendanceReport // 🆕 Included in response
+    });
+  } catch (err) {
+    console.error("❌ Error in /student/full-overview:", err);
+    res.status(500).send({ message: "Internal server error" });
+  }
+    });
+
     // get-courses from db secured
     app.get("/all-courses-by-department", async (req, res) => {
       try {
@@ -1159,13 +1296,112 @@ async function run() {
       res.send(result);
     });
 
+    // get students stats
+    // ✅ GET: Student dashboard state (attendance %, grade %, enrollment %)
+    app.get(
+      "/student-dashboard-state/:email",
+      verifyToken,
+      async (req, res) => {
+        const { email } = req.params;
+
+        // 🔐 Access Control
+        if (req.user.email !== email || req.user.role !== "student") {
+          console.warn("🚫 Unauthorized access attempt by:", req.user.email);
+          return res.status(403).send({ message: "Forbidden: Access denied" });
+        }
+
+        try {
+          // 1. Fetch student info
+          const student = await studentsCollection.findOne({ email });
+          if (!student) {
+            console.error("❌ Student not found for email:", email);
+            return res.status(404).send({ message: "Student not found" });
+          }
+
+          const enrolledCourses = student.courses || [];
+
+          // 2. Attendance Percentage
+          const attendanceRecords = await attendanceCollection
+            .find({ courseId: { $in: enrolledCourses.map((c) => c.courseId) } })
+            .toArray();
+
+          let totalAttendanceDays = 0;
+          let presentDays = 0;
+
+          for (const record of attendanceRecords) {
+            const found = record.students.find((s) => s.email === email);
+            if (found) {
+              totalAttendanceDays++;
+              if (found.status === "present") presentDays++;
+            }
+          }
+
+          const attendancePercentage =
+            totalAttendanceDays > 0
+              ? (presentDays / totalAttendanceDays) * 100
+              : 0;
+
+          // 3. Grade Percentage
+          const gradeDoc = await gradesCollection.findOne({
+            studentEmail: email,
+          });
+
+          let totalPoints = 0;
+          let totalOutOf = 0;
+
+          if (gradeDoc?.grades?.length > 0) {
+            for (const grade of gradeDoc.grades) {
+              totalPoints += grade.point || 0;
+              totalOutOf += grade.outOf || 4.0;
+            }
+          }
+
+          const gradePercentage =
+            totalOutOf > 0 ? (totalPoints / totalOutOf) * 100 : 0;
+
+
+          // 4. Enrollment Percentage
+          const courseDistribution = await courseDistributionCollection.findOne(
+            {
+              program: student.department,
+            }
+          );
+
+          const totalProgramCourses = courseDistribution
+            ? courseDistribution.quarters.reduce(
+                (acc, q) => acc + (q.courses?.length || 0),
+                0
+              )
+            : 0;
+
+          const enrollmentPercentage =
+            totalProgramCourses > 0
+              ? (enrolledCourses.length / totalProgramCourses) * 100
+              : 0;
+
+          // ✅ Final Response
+          const responseData = {
+            email,
+            name: student.name || "",
+            attendancePercentage: Number(attendancePercentage.toFixed(2)),
+            gradePercentage: Number(gradePercentage.toFixed(2)),
+            enrollmentPercentage: Number(enrollmentPercentage.toFixed(2)),
+          };
+
+          res.send(responseData);
+        } catch (err) {
+          console.error("❌ Error in student dashboard route:", err);
+          res.status(500).send({ message: "Server error" });
+        }
+      }
+    );
+
     // ✅ Get student full details with enrolled courses (including courseId) secured
     app.get("/student-full-details/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
       const page = parseInt(req.query.page);
       const limit = parseInt(req.query.limit);
 
-      // Get user role from JWT token (assuming it's included there)
       const requesterEmail = req.user?.email;
       const requesterRole = req.user?.role;
 
@@ -1173,7 +1409,6 @@ async function run() {
         return res.status(400).send({ message: "Email is required" });
       }
 
-      // 🚫 Secure access: only admin, faculty, or the student themself
       const isAdminOrFaculty =
         requesterRole === "admin" || requesterRole === "faculty";
       const isSameStudent =
@@ -1192,25 +1427,27 @@ async function run() {
           return res.status(404).send({ message: "Student not found" });
         }
 
-        let courses = Array.isArray(student.courses)
-          ? [...student.courses]
+        let fullCourseList = Array.isArray(student.courses)
+          ? student.courses
           : [];
-        const totalCourses = courses.length;
+        const totalCourses = fullCourseList.length;
 
+        // 🔄 Apply pagination only if page & limit are valid
+        let paginatedCourses = fullCourseList;
         if (!isNaN(page) && !isNaN(limit)) {
           const start = (page - 1) * limit;
-          const end = start + limit;
-          courses = courses.slice(start, end);
+          paginatedCourses = fullCourseList.slice(start, start + limit);
         }
 
-        const courseObjectIds = courses.map((c) => new ObjectId(c.courseId));
-
+        const courseObjectIds = paginatedCourses.map(
+          (c) => new ObjectId(c.courseId)
+        );
         const enrolledCourses = await courseCollection
           .find({ _id: { $in: courseObjectIds } })
           .project({ name: 1, credit: 1, semester: 1, courseId: 1 })
           .toArray();
 
-        const enrichedCourses = courses.map((course) => {
+        const enrichedCourses = paginatedCourses.map((course) => {
           const match = enrolledCourses.find(
             (c) => c.courseId === course.courseId
           );
@@ -1220,13 +1457,13 @@ async function run() {
           };
         });
 
-        const studentWithPaginatedCourses = {
+        const studentWithCourses = {
           ...student,
           courses: enrichedCourses,
         };
 
         res.send({
-          student: studentWithPaginatedCourses,
+          student: studentWithCourses,
           totalCourses,
         });
       } catch (err) {
@@ -1625,8 +1862,8 @@ async function run() {
         res.status(500).send({ message: "Internal server error" });
       }
     });
-      
-    // get material department wise secured 
+
+    // get material department wise secured
     app.get("/materials-by-department", verifyToken, async (req, res) => {
       const { department } = req.query;
 
@@ -2012,7 +2249,7 @@ async function run() {
       }
     });
 
-    // get specific message by id secured
+    // get specific message by email secured
     app.get("/messages/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
       const page = parseInt(req.query.page);
@@ -2028,15 +2265,15 @@ async function run() {
       }
 
       try {
+        // ✅ Only fetch inbox messages (received)
         const query = {
-          $or: [{ recipients: email }, { sender: email }],
+          recipients: email,
         };
 
         const total = await messageCollection.countDocuments(query);
 
         let messages;
 
-        // ✅ If page and limit are valid numbers, apply pagination
         if (!isNaN(page) && !isNaN(limit)) {
           const skip = (page - 1) * limit;
           messages = await messageCollection
@@ -2046,7 +2283,6 @@ async function run() {
             .limit(limit)
             .toArray();
         } else {
-          // ✅ Default: return all messages
           messages = await messageCollection
             .find(query)
             .sort({ createdAt: -1 })
@@ -2102,11 +2338,51 @@ async function run() {
     });
 
     // get specific user email
-    app.get("/user-send/message/:email", async (req, res) => {
+    app.get("/user-send/message/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
-      const filter = { email };
-      const result = await messageCollection.find(filter).toArray();
-      res.send(result);
+      const page = parseInt(req.query.page);
+      const limit = parseInt(req.query.limit);
+
+      // 🔐 Ensure the logged-in user is accessing their own messages
+      if (req.user.email !== email) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("Unauthorized access attempt by:", req.user.email);
+        }
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
+
+      if (!email) {
+        return res.status(400).send({ message: "Email is required" });
+      }
+
+      try {
+        const query = { email };
+        const total = await messageCollection.countDocuments(query);
+
+        let messages;
+
+        if (!isNaN(page) && !isNaN(limit)) {
+          const skip = (page - 1) * limit;
+          messages = await messageCollection
+            .find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .toArray();
+        } else {
+          messages = await messageCollection
+            .find(query)
+            .sort({ createdAt: -1 })
+            .toArray();
+        }
+
+        res.send({ total, messages });
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Error fetching sent messages:", error);
+        }
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
     // get student course outline
@@ -2393,7 +2669,7 @@ async function run() {
                 courseName: record.courseName || "Unknown Course",
                 facultyEmail: record.facultyEmail,
                 point: parseFloat(record.point),
-                outOf: record.outOf || 5.0,
+                outOf: record.outOf || 4.0,
                 semester,
                 submittedAt: new Date(record.submittedAt),
               },
@@ -2985,13 +3261,24 @@ async function run() {
           expiresIn: "1d",
         });
 
+        res;
+        // for production
+        // .cookie("token", token, {
+        //   httpOnly: true,
+        //   secure: process.env.NODE_ENV === "production",
+        //   sameSite: "none",
+        //   maxAge: 1 * 24 * 60 * 60 * 1000,
+        // })
+
+        // for dev
         res
           .cookie("token", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "none",
-            maxAge: 1 * 24 * 60 * 60 * 1000,
+            secure: process.env.NODE_ENV === "production" ? true : false,
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            maxAge: 24 * 60 * 60 * 1000,
           })
+
           .send({ success: true });
       } catch (error) {
         console.error(error);

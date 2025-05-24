@@ -3,7 +3,7 @@ import StudentProfile from '../../../Components/StudentProfile/StudentProfile'
 
 const Profile = () => {
   return (
-    <div>
+    <div className='mt-6'>
       <StudentProfile/>
     </div>
   )

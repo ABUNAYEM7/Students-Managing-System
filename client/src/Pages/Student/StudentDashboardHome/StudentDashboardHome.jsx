@@ -9,6 +9,11 @@ const StudentDashboardHome = () => {
 
   const [studentInfo, setStudentInfo] = useState(null);
   const [courseOutline, setCourseOutline] = useState(null);
+  const [dashboardStats, setDashboardStats] = useState({
+    attendance: 0,
+    grades: 0,
+    courses: 0,
+  });
 
   useEffect(() => {
     const fetchStudentInfo = async () => {
@@ -17,9 +22,7 @@ const StudentDashboardHome = () => {
           const res = await axiosInstance.get(`/student/${user.data.email}`);
           setStudentInfo(res.data);
         } catch (err) {
-          if (process.env.NODE_ENV === "development") {
-            console.error("❌ Error fetching student info:", err);
-          }
+          console.error("❌ Error fetching student info:", err);
         }
       }
     };
@@ -35,17 +38,41 @@ const StudentDashboardHome = () => {
           );
           setCourseOutline(res.data);
         } catch (err) {
-          if (process.env.NODE_ENV === "development") {
-            console.error("❌ Error fetching course distribution:", err);
-          }
+          console.error("❌ Error fetching course distribution:", err);
         }
       }
     };
     fetchCourseOutline();
   }, [studentInfo, axiosInstance]);
 
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      if (user?.data?.email) {
+        try {
+          const res = await axiosInstance.get(`/student-dashboard-state/${user.data.email}`);
+          const { attendancePercentage, gradePercentage, enrollmentPercentage } = res.data;
+
+          setDashboardStats({
+            attendance: attendancePercentage,
+            grades: gradePercentage,
+            courses: enrollmentPercentage,
+          });
+
+          console.log("✅ Dashboard Stats:", res.data);
+        } catch (err) {
+          console.error("❌ Error fetching dashboard stats:", err);
+        }
+      }
+    };
+
+    fetchDashboardStats();
+  }, [user, axiosInstance]);
+
+
+  console.log(courseOutline)
+
   return (
-    <div className="p-4">
+    <div className="p-4 mt-6">
       {/* Profile Section */}
       <div className="flex flex-col md:flex-row items-center gap-5 mb-6">
         <div className="avatar">
@@ -62,7 +89,11 @@ const StudentDashboardHome = () => {
 
       {/* Stats */}
       <div className="mb-6">
-        <StudentsProfileStats attendance={70} grades={60} courses={50} />
+        <StudentsProfileStats
+          attendance={dashboardStats.attendance}
+          grades={dashboardStats.grades}
+          courses={dashboardStats.courses}
+        />
       </div>
 
       {/* Course Distribution */}
@@ -74,13 +105,11 @@ const StudentDashboardHome = () => {
               <h3 className="text-lg font-bold mb-2 text-highlight">
                 Quarter {quarter.quarter || index + 1}
               </h3>
-
-              {/* Show note if exists */}
               {quarter.note && (
-                <p className="text-md font-bold italic text-black mb-2">📝 {quarter.note}</p>
+                <p className="text-md font-bold italic text-black mb-2">
+                  📝 {quarter.note}
+                </p>
               )}
-
-              {/* Show course table if courses exist */}
               {quarter.courses?.length > 0 ? (
                 <div className="overflow-x-auto bg-base-100 shadow rounded-lg max-w-[80%] mx-auto">
                   <table className="table table-zebra w-full">
@@ -97,7 +126,7 @@ const StudentDashboardHome = () => {
                         <tr key={idx}>
                           <td>{idx + 1}</td>
                           <td>{course.code || "N/A"}</td>
-                          <td>{course.name}</td>
+                          <td>{course.name ||course.title}</td>
                           <td>{course.credits || "-"}</td>
                         </tr>
                       ))}

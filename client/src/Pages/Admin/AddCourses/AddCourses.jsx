@@ -87,6 +87,7 @@ const AddCourses = () => {
     "Bachelor of Science in Business Administration",
     "Bachelor of Science in Civil Engineering",
     "Bachelor of Science in Computer Science",
+    "Bachelor of Science in Public",
     "Bachelor of Science in Information System Management",
   ];
 

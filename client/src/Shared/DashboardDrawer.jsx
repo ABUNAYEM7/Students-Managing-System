@@ -214,7 +214,7 @@ const { data: fetchedNotifications = [] } = useRoleBasedNotifications(email, use
                                     <strong>📊 Grade Released</strong>
                                     <div className="text-xs">
                                       {n.courseName} → {n.point} /{" "}
-                                      {n.outOf || 5}
+                                      {n.outOf || 4}
                                     </div>
                                   </>
                                 )}
@@ -296,14 +296,14 @@ const { data: fetchedNotifications = [] } = useRoleBasedNotifications(email, use
       </div>
 
       {/* Sidebar and Page Content */}
-      <div className="flex flex-col sm:flex-row flex-1 mt-14">
+      <div className="flex flex-col sm:flex-row flex-1 mt-20">
         <div
           ref={sidebarRef}
           className={`transition-all duration-300 ${
             isOpen ? "w-64" : "w-0"
           } bg-base-200 fixed top-16 sm:top-16 left-0 h-[calc(100vh-4rem)] z-40 overflow-y-auto`}
         >
-          <div className="p-4">
+          <div className="p-4 mt-4">
             <ul className="menu w-full text-lg font-semibold space-y-2">
               {userRole === "admin" && (
                 <>

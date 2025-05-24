@@ -4,12 +4,13 @@ import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import { Link, useNavigate } from "react-router";
 
-const BachelorProgram = [
-  "Bachelor of Science in Business Administration",
-  "Bachelor of Science in Civil Engineering",
-  "Bachelor of Science in Computer Science",
-  "Bachelor of Science in Information System Management",
-];
+  const BachelorProgram = [
+    "Bachelor of Science in Business Administration",
+    "Bachelor of Science in Civil Engineering",
+    "Bachelor of Science in Computer Science",
+    "Bachelor of Science in Public",
+    "Bachelor of Science in Information System Management",
+  ];
 
 const Masters = [
   "Master of Public Health",

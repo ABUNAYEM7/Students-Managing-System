@@ -76,7 +76,7 @@ const StudentAssignment = () => {
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6 mt-4">
       <h1 className="text-3xl font-bold text-center mb-8">My Assignments</h1>
 
       {assignments.length === 0 && (
@@ -125,7 +125,7 @@ const StudentAssignment = () => {
 
               <a
                 className="btn btn-outline btn-sm mt-3"
-                href={`https://student-management-server-green.vercel.app/${item.path.replace(/\\/g, "/")}`}
+                href={`http://localhost:3000/${item.path.replace(/\\/g, "/")}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -162,7 +162,7 @@ const StudentAssignment = () => {
                 <div className="flex items-center justify-center">
                   <a
                     className="btn btn-success text-white mt-4"
-                    href={`https://student-management-server-green.vercel.app/${item.submission.path.replace(
+                    href={`http://localhost:3000/${item.submission.path.replace(
                       /\\/g,
                       "/"
                     )}`}
