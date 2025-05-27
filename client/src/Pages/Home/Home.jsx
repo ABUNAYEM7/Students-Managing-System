@@ -5,8 +5,8 @@ import "swiper/css/pagination";
 import "swiper/css/autoplay"; // Ensure Autoplay styles are imported
 import { Pagination, Autoplay } from "swiper/modules"; // Import Autoplay module
 import image1 from "../../assets/bannerImage1.jpg";
-import image2 from "../../assets/bannerImage2.jpg";
-import image3 from "../../assets/bannerImage3.jpg";
+import image2 from "../../assets/banner2.jpg";
+import image3 from "../../assets/banner3.jpg";
 import image4 from "../../assets/bannerImage4.jpeg";
 import KeyFeatures from "../../Components/Features/KeyFeatures";
 import SimpleSteps from "../../Components/SimpleSteps/SimpleSteps";
@@ -15,19 +15,19 @@ import SmartCampus from "../../Components/SmartCampus/SmartCampus";
 import University from "../../Components/Universilty/University";
 import OurGallery from "../../Components/OurGallery/OurGallery";
 import OurCourses from "../../Components/OurCourses/OurCourses";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 const Home = () => {
   const navigate = useNavigate()
   const slides = [
     {
-      image: image1,
+      image: image2,
       heading: "Welcome to Student Management",
       description:
         "Manage student records effortlessly with our innovative platform, offering seamless enrollment, attendance, and performance tracking in a secure and user-friendly system.",
     },
     {
-      image: image2,
+      image: image3,
       heading: "Track Academic Performance",
       description:
         "Easily monitor grades, attendance, and progress in real-time with our secure, user-friendly system, ensuring accurate tracking, seamless management, and improved student performance.",
@@ -62,25 +62,27 @@ const Home = () => {
                 alt={`Slide ${index + 1}`}
               />
 
-              <div className="absolute inset-0 bg-black/40 bg-opacity-10"></div>
+              {/* <div className="absolute inset-0 bg-black/40 bg-opacity-10"></div> */}
 
               <div className="absolute inset-y-0 left-10 flex flex-col justify-center">
-                <h1 className="text-white text-4xl font-bold drop-shadow-lg">
+                <h1 className="text-black text-4xl font-bold drop-shadow-lg">
                   {slide.heading}
                 </h1>
-                <p className="text-white mt-4 drop-shadow-md lg:2/3 md:max-w-1/2 max-w-2/3">
+                <p className="text-black mt-4 drop-shadow-md lg:2/3 md:max-w-1/2 max-w-2/3">
                   {slide.description}
                 </p>
 
                 <div className="flex items-center gap-5">
                   <button 
                   onClick={enrolledHandler}
-                  className="btn w-fit mt-4 text-white bg-orange-600 border-none hover:bg-white hover:border-2 hover:text-orange-600">
+                  className="btn w-fit mt-4 text-white bg-orange-600 border-none hover:bg-white hover:border-2 hover:text-orange-600 hover:border-orange-600">
                     Enroll Now
                   </button>
-                  <button className="btn w-fit mt-4 text-white  border-2 border-prime bg-transparent">
+                  <Link
+                  to={'/aboutPage'}
+                   className="btn w-fit mt-4 text-highlight  border-2 border-highlight bg-transparent">
                     Learn More
-                  </button>
+                  </Link>
                 </div>
               </div>
             </SwiperSlide>

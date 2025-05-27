@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import useFetchData from "../../../Components/Hooks/useFetchData";
 import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import useAuth from "../../../Components/Hooks/useAuth";
@@ -7,17 +6,30 @@ import { useNavigate } from "react-router";
 
 const ManageUsers = () => {
   const [users, setUsers] = useState([]);
-  const { data: user, refetch } = useFetchData("users", "/all-users");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 20;
+
   const { user: admin } = useAuth();
   const axiosInstance = AxiosSecure();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (user) {
-      const updatedUser = user?.filter((u) => u.email !== admin?.email);
-      setUsers(updatedUser);
+  const fetchUsers = async () => {
+    try {
+      const res = await axiosInstance.get(`/all-users?page=${page}&limit=${limit}`);
+      const filtered = res.data?.users?.filter((u) => u.email !== admin?.email);
+      setUsers(filtered || []);
+      setTotalPages(Math.ceil((res.data?.total || 0) / limit));
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
     }
-  }, [user]);
+  };
+
+  useEffect(() => {
+    if (admin?.email) {
+      fetchUsers();
+    }
+  }, [admin?.email, page]);
 
   const adminHandler = async (id) => {
     const res = await axiosInstance.patch(`/update/user-role/${id}`, {
@@ -34,7 +46,7 @@ const ManageUsers = () => {
         showConfirmButton: false,
         timer: 1500,
       });
-      refetch();
+      fetchUsers();
     }
   };
 
@@ -55,7 +67,7 @@ const ManageUsers = () => {
       if (result.isConfirmed) {
         const res = await axiosInstance.delete(`/delete-user/${id}`);
         if (res?.data?.deletedCount > 0) {
-          refetch();
+          fetchUsers();
           Swal.fire({
             title: "Deleted!",
             text: "User has been deleted.",
@@ -69,6 +81,7 @@ const ManageUsers = () => {
   return (
     <div className="px-4 md:px-10 py-6 min-h-screen bg-base-200">
       <h3 className="text-3xl font-black text-center mt-6">User Management</h3>
+
       <div className="mt-12 w-full overflow-x-auto">
         <div className="inline-block min-w-full align-middle">
           <table className="table table-zebra min-w-[900px]">
@@ -178,6 +191,21 @@ const ManageUsers = () => {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ✅ Pagination buttons outside the table */}
+      <div className="flex justify-center mt-6 gap-2">
+        {[...Array(totalPages)].map((_, i) => (
+          <button
+            key={i + 1}
+            onClick={() => setPage(i + 1)}
+            className={`btn btn-sm ${
+              page === i + 1 ? "btn-primary" : "btn-outline"
+            }`}
+          >
+            {i + 1}
+          </button>
+        ))}
       </div>
     </div>
   );

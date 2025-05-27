@@ -4,13 +4,13 @@ import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import { Link, useNavigate } from "react-router";
 
-  const BachelorProgram = [
-    "Bachelor of Science in Business Administration",
-    "Bachelor of Science in Civil Engineering",
-    "Bachelor of Science in Computer Science",
-    "Bachelor of Science in Public",
-    "Bachelor of Science in Information System Management",
-  ];
+const BachelorProgram = [
+  "Bachelor of Science in Business Administration",
+  "Bachelor of Science in Civil Engineering",
+  "Bachelor of Science in Computer Science",
+  "Bachelor of Science in Public",
+  "Bachelor of Science in Information System Management",
+];
 
 const Masters = [
   "Master of Public Health",
@@ -25,6 +25,8 @@ const Doctorate = [
   "Doctor of Science in Computer Science",
   "Doctor of Management",
 ];
+
+const Associate = ["English as a Second Language"];
 
 const Courses = () => {
   const [selectedDepartment, setSelectedDepartment] = useState("");
@@ -44,7 +46,9 @@ const Courses = () => {
   const fetchCoursesByDepartment = async (department, currentPage) => {
     try {
       const res = await axiosInstance.get(
-        `/all-courses-by-department?department=${encodeURIComponent(department)}&page=${currentPage}&limit=${limit}`
+        `/all-courses-by-department?department=${encodeURIComponent(
+          department
+        )}&page=${currentPage}&limit=${limit}`
       );
       setCourses(res.data?.courses || []);
       setTotalPages(Math.ceil(res.data?.total / limit));
@@ -85,7 +89,9 @@ const Courses = () => {
 
   return (
     <div>
-      <h3 className="text-3xl font-black text-center mt-6">Course Management</h3>
+      <h3 className="text-3xl font-black text-center mt-6">
+        Course Management
+      </h3>
 
       <div className="mt-6 p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
         <select
@@ -112,6 +118,13 @@ const Courses = () => {
           </optgroup>
           <optgroup label="Doctorate Programs">
             {Doctorate.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Associate Programs">
+            {Associate.map((dept) => (
               <option key={dept} value={dept}>
                 {dept}
               </option>
@@ -186,7 +199,9 @@ const Courses = () => {
                 <button
                   key={i + 1}
                   onClick={() => handlePageChange(i + 1)}
-                  className={`btn btn-sm ${page === i + 1 ? "btn-primary" : "btn-outline"}`}
+                  className={`btn btn-sm ${
+                    page === i + 1 ? "btn-primary" : "btn-outline"
+                  }`}
                 >
                   {i + 1}
                 </button>

@@ -46,9 +46,25 @@ const CreateStudentForm = () => {
     try {
       if (user) {
         const { email, name, photo } = user;
-        const updateRole = await axiosInstance.patch(`/update/user-role/${id}`, {
-          role: "student",
-        });
+        const department = formData.department;
+        if (!department) {
+          return Swal.fire("Error", "Please select a department", "error");
+        }
+
+        const prefix = department
+          .replace(/[^A-Za-z]/g, "")
+          .substring(0, 2)
+          .toUpperCase();
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        const uniquePart = `${Date.now().toString().slice(-5)}${randomNum}`;
+        const studentId = `${prefix}${uniquePart}`;
+
+        const updateRole = await axiosInstance.patch(
+          `/update/user-role/${id}`,
+          {
+            role: "student",
+          }
+        );
 
         if (
           (updateRole?.data?.modifiedCount > 0 &&
@@ -60,6 +76,7 @@ const CreateStudentForm = () => {
             email,
             name,
             photo,
+            studentId,
             ...formData,
           };
           const res = await axiosInstance.post(`/create-student`, studentInfo);
@@ -68,9 +85,9 @@ const CreateStudentForm = () => {
             Swal.fire({
               position: "center",
               icon: "success",
-              title: "User Role Updated Successfully",
+              title: `Student Created: ID ${studentId}`,
               showConfirmButton: false,
-              timer: 1500,
+              timer: 1800,
             });
             refetch();
             navigate("/dashboard/manage-students");
@@ -79,6 +96,7 @@ const CreateStudentForm = () => {
       }
     } catch (err) {
       console.error(err);
+      Swal.fire("Error", "Something went wrong", "error");
     }
   };
 
@@ -168,27 +186,24 @@ const CreateStudentForm = () => {
           </select>
         </div>
 
-        {[
-          "city",
-          "country",
-          "currentAddress",
-          "permanentAddress",
-        ].map((field) => (
-          <div key={field}>
-            <label className="block text-sm font-medium text-gray-600 capitalize">
-              {field.replace(/([A-Z])/g, " $1")}
-            </label>
-            <input
-              type="text"
-              name={field}
-              value={formData[field] || ""}
-              onChange={handleChange}
-              placeholder={`Enter ${field.replace(/([A-Z])/g, " $1")}`}
-              className="w-full mt-1 px-4 py-2 bg-base-200 rounded-lg border border-[#0056b3] shadow-sm"
-              required
-            />
-          </div>
-        ))}
+        {["city", "country", "currentAddress", "permanentAddress"].map(
+          (field) => (
+            <div key={field}>
+              <label className="block text-sm font-medium text-gray-600 capitalize">
+                {field.replace(/([A-Z])/g, " $1")}
+              </label>
+              <input
+                type="text"
+                name={field}
+                value={formData[field] || ""}
+                onChange={handleChange}
+                placeholder={`Enter ${field.replace(/([A-Z])/g, " $1")}`}
+                className="w-full mt-1 px-4 py-2 bg-base-200 rounded-lg border border-[#0056b3] shadow-sm"
+                required
+              />
+            </div>
+          )
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-600 capitalize">

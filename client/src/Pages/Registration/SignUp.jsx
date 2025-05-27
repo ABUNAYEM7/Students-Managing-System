@@ -111,7 +111,7 @@ const SignUp = () => {
   };
 
   return (
-    <div className="hero bg-base-200 min-h-screen mt-12">
+    <div className="hero bg-base-200 min-h-screen mt-20">
       <div className="hero-content w-full flex-col lg:flex-row-reverse justify-between">
         {/* right-container */}
         <div className="w-full md:w-1/2 p-4 my-6">

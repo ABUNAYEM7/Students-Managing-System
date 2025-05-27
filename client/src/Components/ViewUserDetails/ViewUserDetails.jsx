@@ -23,6 +23,14 @@ const ViewUserDetails = () => {
   const [totalAssignedCourses, setTotalAssignedCourses] = useState(0);
   const [studentPage, setStudentPage] = useState(1);
   const [totalStudentCourses, setTotalStudentCourses] = useState(0);
+  const [facultyAssignments, setFacultyAssignments] = useState([]);
+  const [assignmentPage, setAssignmentPage] = useState(1);
+  const [assignmentLimit] = useState(10);
+  const [totalFacultyAssignments, setTotalFacultyAssignments] = useState(0);
+  const [facultyMaterials, setFacultyMaterials] = useState([]);
+  const [materialsPage, setMaterialsPage] = useState(1);
+  const [materialsLimit] = useState(10); // or any number you prefer
+  const [totalFacultyMaterials, setTotalFacultyMaterials] = useState(0);
 
   useEffect(() => {
     const fetchUserAndDetails = async () => {
@@ -40,6 +48,19 @@ const ViewUserDetails = () => {
           );
           setAssignedCourses(courseRes?.data?.courses || []);
           setTotalAssignedCourses(courseRes?.data?.total || 0);
+
+          // ✅ Corrected assignment fetch
+          const assignmentRes = await axiosInstance.get(
+            `/assignments/${email}?page=${assignmentPage}&limit=${assignmentLimit}`
+          );
+          const materialRes = await axiosInstance.get(
+            `/materials/${email}?page=${materialsPage}&limit=${materialsLimit}`
+          );
+          setFacultyMaterials(materialRes?.data?.materials || []);
+          setTotalFacultyMaterials(materialRes?.data?.total || 0);
+
+          setFacultyAssignments(assignmentRes?.data?.assignments || []);
+          setTotalFacultyAssignments(assignmentRes?.data?.total || 0);
         } else if (userData?.role === "student") {
           const studentRes = await axiosInstance.get(
             `/student-full-details/${email}?page=${studentPage}&limit=${studentLimit}`
@@ -64,7 +85,7 @@ const ViewUserDetails = () => {
     };
 
     fetchUserAndDetails();
-  }, [email, axiosInstance, page,studentPage]);
+  }, [email, axiosInstance, page, studentPage, assignmentPage, materialsPage]);
 
   if (loading) {
     return <div className="text-center mt-10">Loading...</div>;
@@ -127,9 +148,18 @@ const ViewUserDetails = () => {
   };
 
   // progressHandler
-  const progressHandler=(email)=>{
-    navigate(`/dashboard/student-progress/${email}`)
-  }
+  const progressHandler = (email) => {
+    navigate(`/dashboard/student-progress/${email}`);
+  };
+
+const handleViewSubmissions = (assignment) => {
+  navigate(`/dashboard/view-submissions/${assignment._id}`, {
+    state: {
+      title: assignment.title,
+      courseName: assignment.courseName,
+    },
+  });
+};
 
   return (
     <div className="max-w-6xl mx-auto p-8 bg-base-100 shadow-xl rounded-3xl border border-gray-300 mt-10">
@@ -246,9 +276,12 @@ const ViewUserDetails = () => {
               <p>
                 <strong>Enrolled Courses:</strong> {totalStudentCourses || 0}
               </p>
-              <button 
-              onClick={()=>progressHandler(email)}
-              className="btn bg-highlight text-white">View Student Progress</button>
+              <button
+                onClick={() => progressHandler(email)}
+                className="btn bg-highlight text-white"
+              >
+                View Student Progress
+              </button>
             </>
           )}
         </div>
@@ -311,6 +344,200 @@ const ViewUserDetails = () => {
                 className="btn btn-sm"
                 disabled={page >= Math.ceil(totalAssignedCourses / limit)}
                 onClick={() => setPage((prev) => prev + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* faculty created assignments */}
+      {user?.role === "faculty" && facultyAssignments?.length > 0 && (
+        <div className="mt-10">
+          <h3 className="text-2xl font-semibold mb-4">Created Assignments</h3>
+          <div className="overflow-x-auto">
+            <table className="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Course Name</th>
+                  <th>Title</th>
+                  <th>Semester</th>
+                  <th>Released</th>
+                  <th>Deadline</th>
+                  <th>PDF File</th>
+                  <th>Submission</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facultyAssignments.map((assignment, idx) => (
+                  <tr key={assignment.assignmentId || idx}>
+                    <td>{(assignmentPage - 1) * assignmentLimit + idx + 1}</td>
+                    <td>{assignment.courseName || "N/A"}</td>
+                    <td>{assignment.title || "Untitled"}</td>
+                    <td>{assignment.semester || "N/A"}</td>
+                    <td>
+                      {assignment.uploadedAt
+                        ? dayjs(assignment.uploadedAt).format("DD MMM YYYY")
+                        : "N/A"}
+                    </td>
+                    <td>
+                      {assignment.deadline
+                        ? dayjs(assignment.deadline).format("DD MMM YYYY")
+                        : "N/A"}
+                    </td>
+                    <td>
+                      {assignment.path ? (
+                        <a
+                          href={`http://localhost:3000/${assignment?.path?.replace(
+                            /\\/g,
+                            "/"
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 underline"
+                        >
+                          View PDF
+                        </a>
+                      ) : (
+                        "No File"
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-xs btn-outline btn-info mt-1"
+                        onClick={() =>
+                          handleViewSubmissions(assignment )
+                        }
+                      >
+                        View 
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 📄 Pagination Buttons Outside Table */}
+          {totalFacultyAssignments > assignmentLimit && (
+            <div className="flex justify-center items-center gap-4 mt-4">
+              <button
+                className="btn btn-sm"
+                disabled={assignmentPage === 1}
+                onClick={() =>
+                  setAssignmentPage((prev) => Math.max(prev - 1, 1))
+                }
+              >
+                Previous
+              </button>
+              <span className="font-medium">
+                Page {assignmentPage} of{" "}
+                {Math.ceil(totalFacultyAssignments / assignmentLimit)}
+              </span>
+              <button
+                className="btn btn-sm"
+                disabled={
+                  assignmentPage >=
+                  Math.ceil(totalFacultyAssignments / assignmentLimit)
+                }
+                onClick={() => setAssignmentPage((prev) => prev + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* faculty uploaded materials */}
+      {user?.role === "faculty" && facultyMaterials?.length > 0 && (
+        <div className="mt-10">
+          <h3 className="text-2xl font-semibold mb-4">Uploaded Materials</h3>
+          <div className="overflow-x-auto">
+            <table className="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Title</th>
+                  <th>Course ID</th>
+                  <th>Department</th>
+                  <th>Uploaded At</th>
+                  <th>PDF File</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facultyMaterials.map((material, idx) => (
+                  <tr key={material._id || idx}>
+                    <td>{(materialsPage - 1) * materialsLimit + idx + 1}</td>
+                    <td>{material.title || "Untitled"}</td>
+                    <td>{material.courseId || "N/A"}</td>
+                    <td>{material.department || "N/A"}</td>
+                    <td>
+                      {material.uploadedAt
+                        ? dayjs(material.uploadedAt).format("DD MMM YYYY")
+                        : "N/A"}
+                    </td>
+                    <td>
+                      {material.path ? (
+                        <a
+                          href={`http://localhost:3000/${material.path.replace(
+                            /\\/g,
+                            "/"
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 underline"
+                        >
+                          View PDF
+                        </a>
+                      ) : (
+                        "No File"
+                      )}
+                    </td>
+                    <td className="flex gap-2">
+                      <a
+                        href={`http://localhost:3000/${material.path.replace(
+                          /\\/g,
+                          "/"
+                        )}`}
+                        download
+                        className="btn btn-sm btn-outline btn-info"
+                      >
+                        Download
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ✅ Pagination Buttons Outside Table */}
+          {totalFacultyMaterials > materialsLimit && (
+            <div className="flex justify-center items-center gap-4 mt-4">
+              <button
+                className="btn btn-sm"
+                disabled={materialsPage === 1}
+                onClick={() =>
+                  setMaterialsPage((prev) => Math.max(prev - 1, 1))
+                }
+              >
+                Previous
+              </button>
+              <span className="font-medium">
+                Page {materialsPage} of{" "}
+                {Math.ceil(totalFacultyMaterials / materialsLimit)}
+              </span>
+              <button
+                className="btn btn-sm"
+                disabled={
+                  materialsPage >=
+                  Math.ceil(totalFacultyMaterials / materialsLimit)
+                }
+                onClick={() => setMaterialsPage((prev) => prev + 1)}
               >
                 Next
               </button>

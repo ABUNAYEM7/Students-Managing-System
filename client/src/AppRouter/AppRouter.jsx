@@ -49,6 +49,8 @@ import StudentsMaterials from "../Pages/StudentsMaterials/StudentsMaterials";
 import SentBox from "../Pages/SentBox/SentBox";
 import ErrorPage from "../Pages/ErrorPage/ErrorPage";
 import StudentProgress from "../Pages/StudentProgress/StudentProgress";
+import AboutPage from "../Pages/AboutPage/AboutPage";
+import ViewSubmissions from "../Pages/ViewSubmissions/ViewSubmissions";
 
 const AppRouter = () => {
   return (
@@ -61,6 +63,7 @@ const AppRouter = () => {
         <Route path="signUp" element={<SignUp />} />
         <Route path="edit-course/:id" element={<EditCourse />} />
         <Route path="enroll" element={<Enroll />} />
+        <Route path="aboutPage" element={<AboutPage />} />
 
         {/* Protected Dashboard Route for Admin & Student */}
         <Route
@@ -146,6 +149,7 @@ const AppRouter = () => {
           <Route path="send-message" element={<SendMessage />} />
           <Route path="sent-box" element={<SentBox />} />
           <Route path="send-message/:id" element={<SendMessage />} />
+          <Route path="/dashboard/view-submissions/:assignmentId" element={<ViewSubmissions />} />
         </Route>
       </Route>
       <Route path="*" element={<ErrorPage/>}/>

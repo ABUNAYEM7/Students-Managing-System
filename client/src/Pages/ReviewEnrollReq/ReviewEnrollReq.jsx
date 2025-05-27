@@ -48,6 +48,7 @@ const ReviewEnrollReq = () => {
             email,
             name,
             photo,
+            studentId : userData?.studentId,
             department: userData.department,
             city: userData.city,
             country: userData.country,

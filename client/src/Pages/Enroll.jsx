@@ -3,12 +3,15 @@ import { useNavigate, useLocation } from "react-router";
 import Swal from "sweetalert2";
 import AxiosSecure from "../Components/Hooks/AxiosSecure";
 import useAuth from "../Components/Hooks/useAuth";
+import useUserRole from "../Components/Hooks/useUserRole";
 
 const Enroll = () => {
   const { user } = useAuth();
   const { state } = useLocation();
   const navigate = useNavigate();
   const axiosInstance = AxiosSecure();
+  const { data } = useUserRole();
+  const userRole = data?.data?.role;
 
   const [formData, setFormData] = useState({
     city: "",
@@ -16,7 +19,7 @@ const Enroll = () => {
     currentAddress: "",
     permanentAddress: "",
     gender: "",
-    enrollRequest: true, 
+    enrollRequest: true,
   });
 
   const handleChange = (e) => {
@@ -30,12 +33,31 @@ const Enroll = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (userRole === "faculty" || userRole === "admin") {
+      return Swal.fire({
+        icon: "warning",
+        title: "Access Denied",
+        text: "Faculty and Admins are not allowed to enroll as students.",
+      });
+    }
+
+    const department = state?.program;
+    if (!department) {
+      return Swal.fire("Error", "Program info is missing", "error");
+    }
+
+    const prefix = department.replace(/[^A-Za-z]/g, "").substring(0, 2).toUpperCase();
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const uniquePart = `${Date.now().toString().slice(-5)}${randomNum}`;
+    const studentId = `${prefix}${uniquePart}`;
+
     const payload = {
       ...formData,
       email: user?.email,
       name: user?.displayName,
       photo: user?.photoURL || "",
-      department: state?.program,
+      department,
+      studentId,
     };
 
     try {
@@ -45,7 +67,7 @@ const Enroll = () => {
         Swal.fire({
           icon: "success",
           title: "Enrollment Submitted",
-          text: `You have requested to enroll in ${state?.program}`,
+          text: `You have requested to enroll in ${department}. Your Student ID is ${studentId}`,
         });
         navigate("/");
       } else {
@@ -65,12 +87,18 @@ const Enroll = () => {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto mt-20 bg-base-100 rounded shadow">
-      <h1 className="text-3xl font-bold mb-8 text-center text-highlight">
+    <div className="p-4 sm:p-6 md:p-8 max-w-full sm:max-w-2xl md:max-w-3xl mx-auto mt-20 bg-base-100 rounded shadow">
+      <h1 className="text-3xl font-bold mb-6 text-center text-highlight">
         Enrollment Form
       </h1>
 
-      <form className="grid grid-cols-1 md:grid-cols-2 gap-8" onSubmit={handleSubmit}>
+      {(userRole === "faculty" || userRole === "admin") && (
+        <div className="text-center text-red-500 font-semibold mb-6">
+          You are not allowed to submit the enrollment form.
+        </div>
+      )}
+
+      <form className="grid grid-cols-1 gap-6" onSubmit={handleSubmit}>
         <div>
           <label className="block text-sm font-medium text-gray-600">Name</label>
           <input
@@ -114,6 +142,7 @@ const Enroll = () => {
               placeholder={`Enter ${field.replace(/([A-Z])/g, " $1")}`}
               className="w-full mt-1 px-4 py-2 bg-base-200 rounded-lg border border-[#0056b3] shadow-sm"
               required
+              disabled={userRole === "faculty" || userRole === "admin"}
             />
           </div>
         ))}
@@ -126,6 +155,7 @@ const Enroll = () => {
             onChange={handleChange}
             className="w-full mt-1 px-4 py-2 bg-base-200 rounded-lg border border-[#0056b3] shadow-sm"
             required
+            disabled={userRole === "faculty" || userRole === "admin"}
           >
             <option value="">Select Gender</option>
             <option value="Male">Male</option>
@@ -136,7 +166,8 @@ const Enroll = () => {
 
         <button
           type="submit"
-          className="btn bg-[#0056b3] text-white w-full col-span-2"
+          className="btn bg-[#0056b3] text-white w-full"
+          disabled={userRole === "faculty" || userRole === "admin"}
         >
           Save
         </button>

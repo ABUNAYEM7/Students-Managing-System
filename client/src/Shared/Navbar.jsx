@@ -28,21 +28,43 @@ const Navbar = () => {
   };
 
   const Links = (
-    <>
-      <li>
-        <NavLink to={"/"}>Home</NavLink>
-      </li>
-      <li>
-        <NavLink to={"/about"}>About</NavLink>
-      </li>
-      <li>
-        <NavLink to={"/academic"}>Academic</NavLink>
-      </li>
-    </>
+<>
+  <li>
+    <NavLink
+      to="/"
+      className={({ isActive }) =>
+        isActive ? "text-highlight underline font-semibold" : "text-black"
+      }
+    >
+      Home
+    </NavLink>
+  </li>
+  <li>
+    <NavLink
+      to="/aboutPage"
+      className={({ isActive }) =>
+        isActive ? "text-highlight underline font-semibold" : "text-black"
+      }
+    >
+      About
+    </NavLink>
+  </li>
+  <li>
+    <NavLink
+      to="/academic"
+      className={({ isActive }) =>
+        isActive ? "text-highlight underline font-semibold" : "text-black"
+      }
+    >
+      Academic
+    </NavLink>
+  </li>
+</>
+
   );
 
   return (
-    <div className="navbar bg-prime/60 backdrop-blur-md shadow-sm fixed top-0 z-50 mx-auto max-w-[1480px]">
+    <div className="navbar bg-green-200/60 backdrop-blur-md shadow-sm fixed top-0 z-50 mx-auto max-w-[1480px]">
       {/* Left: Logo & Mobile Menu */}
       <div className="navbar-start">
         <div className="dropdown">
