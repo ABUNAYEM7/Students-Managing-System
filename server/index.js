@@ -955,165 +955,179 @@ async function run() {
     });
 
     // get user overview
-    app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
-      const { email } = req.params;
+app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
+  const { email } = req.params;
+  const { semester, courseName } = req.query; // <-- Added query params here
 
-      if (req.user.email !== email && req.user.role !== "admin") {
-        return res.status(403).send({ message: "Forbidden: Access denied" });
-      }
+  if (req.user.email !== email && req.user.role !== "admin") {
+    return res.status(403).send({ message: "Forbidden: Access denied" });
+  }
 
-      try {
-        const student = await studentsCollection.findOne({ email });
-        if (!student)
-          return res.status(404).send({ message: "Student not found" });
+  try {
+    const student = await studentsCollection.findOne({ email });
+    if (!student)
+      return res.status(404).send({ message: "Student not found" });
 
-        const enrolledCourses = student.courses || [];
-        const enrolledCourseIds = enrolledCourses.map((c) => c.courseId);
-        const totalEnrolled = enrolledCourses.length;
+    let enrolledCourses = student.courses || [];
+    // Filter enrolledCourses by semester if provided
+    if (semester && semester !== "All") {
+      enrolledCourses = enrolledCourses.filter((c) => c.semester === semester);
+    }
 
-        const distribution = await courseDistributionCollection.findOne({
-          program: student.department,
-        });
-        const totalProgramCourses = distribution
-          ? distribution.quarters.reduce(
-              (sum, q) => sum + (q.courses?.length || 0),
-              0
-            )
-          : 0;
+    const enrolledCourseIds = enrolledCourses.map((c) => c.courseId);
+    const totalEnrolled = enrolledCourses.length;
 
-        const quarterStats = {};
-        for (const course of enrolledCourses) {
-          const semester = course.semester || "Unknown";
-          if (!quarterStats[semester]) quarterStats[semester] = [];
-          quarterStats[semester].push(course);
-        }
-
-        const attendanceRecords = await attendanceCollection
-          .find({ courseId: { $in: enrolledCourseIds } })
-          .sort({ date: 1 })
-          .toArray();
-
-        let totalAttendanceDays = 0;
-        let presentDays = 0;
-
-        // 🆕 Daily attendance report
-        const dailyAttendanceReport = {};
-
-        for (const record of attendanceRecords) {
-          const studentStatus = record.students.find((s) => s.email === email);
-          if (studentStatus) {
-            totalAttendanceDays++;
-            if (studentStatus.status === "present") presentDays++;
-
-            const course = enrolledCourses.find(
-              (c) => c.courseId === record.courseId
-            );
-            const courseName = course?.courseName || "Unknown";
-            const semester = course?.semester || "Unknown";
-
-            if (!dailyAttendanceReport[semester]) {
-              dailyAttendanceReport[semester] = {};
-            }
-
-            if (!dailyAttendanceReport[semester][courseName]) {
-              dailyAttendanceReport[semester][courseName] = [];
-            }
-
-            dailyAttendanceReport[semester][courseName].push({
-              date: record.date,
-              status: studentStatus.status,
-            });
-          }
-        }
-
-        const attendancePercentage =
-          totalAttendanceDays > 0
-            ? (presentDays / totalAttendanceDays) * 100
-            : 0;
-
-        const gradeDoc = await gradesCollection.findOne({
-          studentEmail: email,
-        });
-        let gradePercentage = 0;
-
-        if (gradeDoc?.grades?.length > 0) {
-          const totalPoints = gradeDoc.grades.reduce(
-            (sum, g) => sum + g.point,
-            0
-          );
-          const totalOutOf = gradeDoc.grades.reduce(
-            (sum, g) => sum + (g.outOf || 4),
-            0
-          );
-          gradePercentage =
-            totalOutOf > 0 ? (totalPoints / totalOutOf) * 100 : 0;
-        }
-
-        const allAssignments = await assignmentsCollection
-          .find({ courseId: { $in: enrolledCourseIds } })
-          .toArray();
-
-        const submittedAssignments = await subAssignmentsCollection
-          .find({ email })
-          .toArray();
-
-        const submittedMap = new Map(
-          submittedAssignments.map((sa) => [sa.assignmentId, sa])
-        );
-
-        const detailedAssignments = allAssignments.map((assign) => {
-          const submitted = submittedMap.get(assign._id.toString());
-          const relatedCourse = enrolledCourses.find(
-            (c) => c.courseId === assign.courseId
-          );
-          return {
-            assignmentId: assign._id.toString(),
-            title: assign.title || "Untitled",
-            courseName: relatedCourse?.courseName || "Unknown",
-            semester: relatedCourse?.semester || "Unknown",
-            releasedDate: assign.uploadedAt || assign.createdAt || null,
-            submittedDate: submitted?.uploadedAt || null,
-            status: submitted ? "Submitted" : "Pending",
-            submittedFile: submitted?.path || null, // ✅ Just give the path
-          };
-        });
-
-        const totalAssignmentsReleased = allAssignments.length;
-        const totalAssignmentsSubmitted = submittedAssignments.length;
-
-        const payments = await paymentsCollection
-          .find({ userEmail: email })
-          .sort({ date: -1 })
-          .toArray();
-
-        res.send({
-          profile: student,
-          stats: {
-            totalProgramCourses,
-            totalEnrolled,
-            attendancePercentage: Number(attendancePercentage.toFixed(2)),
-            gradePercentage: Number(gradePercentage.toFixed(2)),
-            enrollmentPercentage:
-              totalProgramCourses > 0
-                ? Number(
-                    ((totalEnrolled / totalProgramCourses) * 100).toFixed(2)
-                  )
-                : 0,
-            totalAssignmentsReleased,
-            totalAssignmentsSubmitted,
-          },
-          enrolledCourses,
-          quarterStats,
-          gradeDetails: gradeDoc?.grades || [],
-          payments,
-          assignments: detailedAssignments,
-          dailyAttendanceReport, // 🆕 Included in response
-        });
-      } catch (err) {
-        console.error("❌ Error in /student/full-overview:", err);
-        res.status(500).send({ message: "Internal server error" });
-      }
+    const distribution = await courseDistributionCollection.findOne({
+      program: student.department,
     });
+    const totalProgramCourses = distribution
+      ? distribution.quarters.reduce(
+          (sum, q) => sum + (q.courses?.length || 0),
+          0
+        )
+      : 0;
+
+    const quarterStats = {};
+    for (const course of enrolledCourses) {
+      const sem = course.semester || "Unknown";
+      if (!quarterStats[sem]) quarterStats[sem] = [];
+      quarterStats[sem].push(course);
+    }
+
+    const attendanceRecords = await attendanceCollection
+      .find({ courseId: { $in: enrolledCourseIds } })
+      .sort({ date: 1 })
+      .toArray();
+
+    let totalAttendanceDays = 0;
+    let presentDays = 0;
+
+    // 🆕 Daily attendance report with filtering by semester & courseName
+    const dailyAttendanceReport = {};
+
+    for (const record of attendanceRecords) {
+      const studentStatus = record.students.find((s) => s.email === email);
+      if (studentStatus) {
+        const course = enrolledCourses.find(
+          (c) => c.courseId === record.courseId
+        );
+        const courseNameCurrent = course?.courseName || "Unknown";
+        const semesterCurrent = course?.semester || "Unknown";
+
+        // Skip records if semester filter is applied and doesn't match
+        if (semester && semester !== "All" && semesterCurrent !== semester)
+          continue;
+        // Skip records if courseName filter is applied and doesn't match
+        if (courseName && courseName !== "All" && courseNameCurrent !== courseName)
+          continue;
+
+        totalAttendanceDays++;
+        if (studentStatus.status === "present") presentDays++;
+
+        if (!dailyAttendanceReport[semesterCurrent]) {
+          dailyAttendanceReport[semesterCurrent] = {};
+        }
+
+        if (!dailyAttendanceReport[semesterCurrent][courseNameCurrent]) {
+          dailyAttendanceReport[semesterCurrent][courseNameCurrent] = [];
+        }
+
+        dailyAttendanceReport[semesterCurrent][courseNameCurrent].push({
+          date: record.date,
+          status: studentStatus.status,
+        });
+      }
+    }
+
+    const attendancePercentage =
+      totalAttendanceDays > 0
+        ? (presentDays / totalAttendanceDays) * 100
+        : 0;
+
+    const gradeDoc = await gradesCollection.findOne({
+      studentEmail: email,
+    });
+    let gradePercentage = 0;
+
+    if (gradeDoc?.grades?.length > 0) {
+      const totalPoints = gradeDoc.grades.reduce(
+        (sum, g) => sum + g.point,
+        0
+      );
+      const totalOutOf = gradeDoc.grades.reduce(
+        (sum, g) => sum + (g.outOf || 4),
+        0
+      );
+      gradePercentage =
+        totalOutOf > 0 ? (totalPoints / totalOutOf) * 100 : 0;
+    }
+
+    const allAssignments = await assignmentsCollection
+      .find({ courseId: { $in: enrolledCourseIds } })
+      .toArray();
+
+    const submittedAssignments = await subAssignmentsCollection
+      .find({ email })
+      .toArray();
+
+    const submittedMap = new Map(
+      submittedAssignments.map((sa) => [sa.assignmentId, sa])
+    );
+
+    const detailedAssignments = allAssignments.map((assign) => {
+      const submitted = submittedMap.get(assign._id.toString());
+      const relatedCourse = enrolledCourses.find(
+        (c) => c.courseId === assign.courseId
+      );
+      return {
+        assignmentId: assign._id.toString(),
+        title: assign.title || "Untitled",
+        courseName: relatedCourse?.courseName || "Unknown",
+        semester: relatedCourse?.semester || "Unknown",
+        releasedDate: assign.uploadedAt || assign.createdAt || null,
+        submittedDate: submitted?.uploadedAt || null,
+        status: submitted ? "Submitted" : "Pending",
+        submittedFile: submitted?.path || null,
+      };
+    });
+
+    const totalAssignmentsReleased = allAssignments.length;
+    const totalAssignmentsSubmitted = submittedAssignments.length;
+
+    const payments = await paymentsCollection
+      .find({ userEmail: email })
+      .sort({ date: -1 })
+      .toArray();
+
+    res.send({
+      profile: student,
+      stats: {
+        totalProgramCourses,
+        totalEnrolled,
+        attendancePercentage: Number(attendancePercentage.toFixed(2)),
+        gradePercentage: Number(gradePercentage.toFixed(2)),
+        enrollmentPercentage:
+          totalProgramCourses > 0
+            ? Number(
+                ((totalEnrolled / totalProgramCourses) * 100).toFixed(2)
+              )
+            : 0,
+        totalAssignmentsReleased,
+        totalAssignmentsSubmitted,
+      },
+      enrolledCourses,
+      quarterStats,
+      gradeDetails: gradeDoc?.grades || [],
+      payments,
+      assignments: detailedAssignments,
+      dailyAttendanceReport, // filtered by semester & courseName now
+    });
+  } catch (err) {
+    console.error("❌ Error in /student/full-overview:", err);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
 
     // get-courses from db secured
     app.get("/all-courses-by-department", async (req, res) => {

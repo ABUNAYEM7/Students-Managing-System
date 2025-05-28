@@ -101,7 +101,7 @@ const SendMessage = () => {
       Swal.fire("Error", "Something went wrong", "error");
     }
   };
-
+  console.log('recipients -->',recipients,'reply mode -->',isReplyMode,'send to all-->',sendToAll)
   return (
     <div className="max-w-3xl mx-auto mt-12 bg-gradient-to-tr from-white to-blue-50 shadow-2xl rounded-2xl p-10 border border-prime">
       <div className="flex items-center justify-center mb-8">
@@ -190,14 +190,14 @@ const SendMessage = () => {
           </div>
         )}
 
-        {!isReplyMode && !sendToAll && recipients.length > 0 && (
+        {!isReplyMode && !sendToAll && recipients?.users?.length > 0 && (
           <div>
             <label className="label">
               <span className="label-text">Select Recipients</span>
             </label>
             <Select
               isMulti
-              options={recipients.map((r) => ({
+              options={recipients?.users?.map((r) => ({
                 label: `${r.name} (${r.email})`,
                 value: r.email,
               }))}

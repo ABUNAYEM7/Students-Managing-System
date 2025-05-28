@@ -74,64 +74,78 @@ const StudentDashboardHome = () => {
     fetchDashboardStats();
   }, [user, axiosInstance]);
 
-  const programFolders = [
-    {
-      name: "Bachelor of Science in Business Administration",
-      link: "https://drive.google.com/drive/folders/1KPU32Ly-5YGZdq_B0HAbfnSUkUhOGy-w",
-    },
-    {
-      name: "Bachelor of Science in Civil Engineering",
-      link: "https://drive.google.com/drive/folders/1oEifztyOnywT3_kIrtf5CxHXT51e9MSh",
-    },
-    {
-      name: "Bachelor of Science in Information Systems",
-      link: "https://drive.google.com/drive/folders/1J7o9r934AUUBHm-JJ2PREXhj7-wj5Us8",
-    },
-    {
-      name: "Bachelor of Science in Computer Science",
-      link: "https://drive.google.com/drive/folders/1c9Wm-56wHoEsZj7o4_Zq-409P2PeiGru",
-    },
-    {
-      name: "Bachelor of Science in Public Health",
-      link: "https://drive.google.com/drive/folders/1_RlAq1jke91E9w8wzRVLXnf_jZmBqjWr",
-    },
-    {
-      name: "Diploma in Business Management",
-      link: "https://drive.google.com/drive/folders/1L4w0J8BtLdqw9QRZW48bU3wG0zwdNO2j",
-    },
-    {
-      name: "Doctor of Management",
-      link: "https://drive.google.com/drive/folders/1xLbTWuSxhz8N-JHSC9SsqQYbW8oUUfkh",
-    },
-    {
-      name: "Doctor of Public Health",
-      link: "https://drive.google.com/drive/folders/1z23Q7ip8IBXzaU01FAs26xufvPd4yBCA",
-    },
-    {
-      name: "Doctor of Science in Computer Science and Engineering",
-      link: "https://drive.google.com/drive/folders/1inJFmH8Rmja9bC20fzF_RwrmpUUljwDE",
-    },
-    {
-      name: "English as a Second Language",
-      link: "https://drive.google.com/drive/folders/1QaZDL8OdXafYUCV0lSbpRE0nA1rt0ALp",
-    },
-    {
-      name: "Master of Public Health",
-      link: "https://drive.google.com/drive/folders/1M2vaH4lmBQxj8B59AqksFFo7bNebTzQr",
-    },
-    {
-      name: "Master of Science in Business Administration",
-      link: "https://drive.google.com/drive/folders/1PPtKrOf1RnJQClU99xtkh7ToGGyRNqkg",
-    },
-    {
-      name: "Master of Science in Civil Engineering",
-      link: "https://drive.google.com/drive/folders/1NMGjhqauRZENMaM4pYdnK-9dlHUOXsGB",
-    },
-    {
-      name: "Master of Science in Computer Science and Engineering",
-      link: "https://drive.google.com/drive/folders/13IrZQ6h4YO6fkMf-iO79ouFw2cSvBA81",
-    },
-  ];
+const programFolders = [
+  {
+    name: "Bachelor of Science in Business Administration",
+    link: "https://drive.google.com/drive/folders/1KPU32Ly-5YGZdq_B0HAbfnSUkUhOGy-w",
+    bookLinks: "https://drive.google.com/drive/folders/1qVDYiHrf5KQRJMLh0PTyfQQUdxhp6giw"  // allBooks_BSBA
+  },
+  {
+    name: "Bachelor of Science in Civil Engineering",
+    link: "https://drive.google.com/drive/folders/1oEifztyOnywT3_kIrtf5CxHXT51e9MSh",
+    bookLinks: "https://drive.google.com/drive/folders/19SxxfqEQmMmrH1NQmwv3nhLBnnxvCcDX"  // allBooks_BSc Civil
+  },
+  {
+    name: "Bachelor of Science in Information Systems",
+    link: "https://drive.google.com/drive/folders/1J7o9r934AUUBHm-JJ2PREXhj7-wj5Us8",
+    bookLinks: "https://drive.google.com/drive/folders/18Y7memRBRpAZcxJQrczyt2SHmG8croQD"  // allBooks_BScIS
+  },
+  {
+    name: "Bachelor of Science in Computer Science",
+    link: "https://drive.google.com/drive/folders/1c9Wm-56wHoEsZj7o4_Zq-409P2PeiGru",
+    bookLinks: "https://drive.google.com/drive/folders/1I63u2mDWOkDGwQe8gicFWxaGpEcMnqlp"  // allBooks_BSCS
+  },
+  {
+    name: "Bachelor of Science in Public Health",
+    link: "https://drive.google.com/drive/folders/1_RlAq1jke91E9w8wzRVLXnf_jZmBqjWr",
+    bookLinks: "https://drive.google.com/drive/folders/1qpcXpjchE_z1ajqnDFJCpP8Vsjcahsj7"  // allBooks_BSPH
+  },
+  {
+    name: "Diploma in Business Management",
+    link: "https://drive.google.com/drive/folders/1L4w0J8BtLdqw9QRZW48bU3wG0zwdNO2j",
+    bookLinks: "https://drive.google.com/drive/folders/17fncbw3Q6Ezp8xBNoKMHmrEYfi97xHVI"  // allBooks_DBM
+  },
+  {
+    name: "Doctor of Management",
+    link: "https://drive.google.com/drive/folders/1xLbTWuSxhz8N-JHSC9SsqQYbW8oUUfkh",
+    bookLinks: "https://drive.google.com/drive/folders/1JERaU9in1R9lmUk4elL0CUmNxfftAKhC"  // allBooks_Doctor of Management
+  },
+  {
+    name: "Doctor of Public Health",
+    link: "https://drive.google.com/drive/folders/1z23Q7ip8IBXzaU01FAs26xufvPd4yBCA",
+    bookLinks: "https://drive.google.com/drive/folders/1tszARKATc3JSm6ZPb7mo4P4ICkF0j4OO"  // allBooks_DrPH
+  },
+  {
+    name: "Doctor of Science in Computer Science and Engineering",
+    link: "https://drive.google.com/drive/folders/1inJFmH8Rmja9bC20fzF_RwrmpUUljwDE",
+    bookLinks: "https://drive.google.com/drive/folders/1-VFtyLaV75EKNh461ysEREIAJdJCFZMi"  // allBooks_DSCSE
+  },
+  {
+    name: "English as a Second Language",
+    link: "https://drive.google.com/drive/folders/1QaZDL8OdXafYUCV0lSbpRE0nA1rt0ALp",
+    bookLinks: "https://drive.google.com/drive/folders/11dLO-aMWd_9zHL7gYk2TuI_S8gPE7whS"  // allBooks_ESL
+  },
+  {
+    name: "Master of Public Health",
+    link: "https://drive.google.com/drive/folders/1M2vaH4lmBQxj8B59AqksFFo7bNebTzQr",
+    bookLinks: "https://drive.google.com/drive/folders/1zdk6GWAd0NgO8TqS61ptKElZClDxjr0S"  // allBooks_MPH
+  },
+  {
+    name: "Master of Science in Business Administration",
+    link: "https://drive.google.com/drive/folders/1PPtKrOf1RnJQClU99xtkh7ToGGyRNqkg",
+    bookLinks: "https://drive.google.com/drive/folders/1lqsVRSJUHVM6VhFFYC-MH2viBdUBBXcO"  // allBooks_MSBA
+  },
+  {
+    name: "Master of Science in Civil Engineering",
+    link: "https://drive.google.com/drive/folders/1NMGjhqauRZENMaM4pYdnK-9dlHUOXsGB",
+    bookLinks: "https://drive.google.com/drive/folders/1u9AreygyDtwaPDM8qAYAB4go1Czj2XnA"  // allBooks_MSc Civil
+  },
+  {
+    name: "Master of Science in Computer Science and Engineering",
+    link: "https://drive.google.com/drive/folders/13IrZQ6h4YO6fkMf-iO79ouFw2cSvBA81",
+    bookLinks: "https://drive.google.com/drive/folders/1aAlCJ3Z4FZmundH83IcKmmwC5vLFnzme"  // allBooks_MSCSE
+  },
+];
 
 const matchedFolder = studentInfo
   ? programFolders.find((folder) => folder.name === studentInfo.department)
@@ -170,7 +184,8 @@ const matchedFolder = studentInfo
 
       {/* Department Folder Link */}
       {matchedFolder && (
-        <div className="my-10">
+       <>
+        <div className="my-10 not-even:">
           <h2 className="text-lg font-semibold">
             📁 Departmental Curriculum Link:
           </h2>
@@ -183,6 +198,21 @@ const matchedFolder = studentInfo
             {matchedFolder.name}
           </a>
         </div>
+
+         <div className="my-10 not-even:">
+          <h2 className="text-lg font-semibold">
+            📚 Departmental Books Link:
+          </h2>
+          <a
+            href={matchedFolder.bookLinks}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {matchedFolder.name}
+          </a>
+        </div>
+        </>
       )}
 
       {/* Course Distribution */}

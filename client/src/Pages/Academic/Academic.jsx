@@ -32,6 +32,13 @@ const departmentData = [
     color: "bg-indigo-100",
   },
   {
+    title: "Bachelor of Science in Public Health",
+    level: "Bachelor Program",
+    description:
+      "Gain knowledge in community health, disease prevention, and health promotion to improve public health outcomes.",
+    color: "bg-teal-100",
+  },
+  {
     title: "Master of Public Health",
     level: "Master Program",
     description:
@@ -95,6 +102,7 @@ const departmentData = [
     color: "bg-pink-200",
   },
 ];
+
 
 const Academic = () => {
   const navigate = useNavigate();

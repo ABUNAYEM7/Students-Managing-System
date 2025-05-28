@@ -43,6 +43,7 @@ const Assignment = () => {
   const detailsHandler = (id)=>{
     navigate(`/dashboard/assignment-details/${id}`)
   }
+
   return (
     <div>
       <div className="mt-3 p-2 md:p-4 flex items-center justify-between">
@@ -69,8 +70,8 @@ const Assignment = () => {
             </tr>
           </thead>
           <tbody>
-            {data?.length > 0 ? (
-              data.map((assignment, i) => (
+            {data?.assignments?.length > 0 ? (
+              data?.assignments?.map((assignment, i) => (
                 <tr key={assignment._id}>
                   <td>{i + 1}</td>
                   <td>{assignment.courseId}</td>

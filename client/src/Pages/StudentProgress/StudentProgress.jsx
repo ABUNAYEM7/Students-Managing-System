@@ -15,21 +15,35 @@ const StudentProgress = () => {
   const { email } = useParams();
   const [data, setData] = useState(null);
   const [selectedQuarter, setSelectedQuarter] = useState("All");
+  const [selectedCourse, setSelectedCourse] = useState("");
   const axiosInstance = AxiosSecure();
 
   useEffect(() => {
     if (email) {
+      let params = "";
+      if (selectedQuarter !== "All") params += `semester=${selectedQuarter}`;
+      if (selectedCourse !== "") {
+        params += params
+          ? `&courseName=${encodeURIComponent(selectedCourse)}`
+          : `courseName=${encodeURIComponent(selectedCourse)}`;
+      }
+      const queryString = params ? `?${params}` : "";
+
       axiosInstance
-        .get(`/student/full-overview/${email}`)
+        .get(`/student/full-overview/${email}${queryString}`)
         .then((res) => {
           setData(res.data);
         })
         .catch((err) => console.error("Error fetching student overview:", err));
     }
-  }, [email]);
+  }, [email, selectedQuarter, selectedCourse]);
 
   const handleQuarterChange = (e) => {
     setSelectedQuarter(e.target.value);
+  };
+
+  const handleCourseChange = (e) => {
+    setSelectedCourse(e.target.value);
   };
 
   const chartData = data
@@ -93,6 +107,32 @@ const StudentProgress = () => {
       : (data?.attendanceDayByDay || []).filter(
           (record) => record.semester === selectedQuarter
         );
+
+         const calculateAttendancePercentage = (courseName, attendanceReport) => {
+    let total = 0;
+    let present = 0;
+
+    Object.entries(attendanceReport).forEach(([semester, courses]) => {
+      if (courseName === "All") {
+        Object.values(courses).forEach((records) => {
+          records.forEach((rec) => {
+            total++;
+            if ((rec.status || "").toLowerCase() === "present") present++;
+          });
+        });
+      } else {
+        const records = courses[courseName];
+        if (records) {
+          records.forEach((rec) => {
+            total++;
+            if ((rec.status || "").toLowerCase() === "present") present++;
+          });
+        }
+      }
+    });
+
+    return total > 0 ? ((present / total) * 100).toFixed(2) : "0.00";
+  };
 
   return (
     <div className="mt-5 p-5 space-y-6">
@@ -315,47 +355,128 @@ const StudentProgress = () => {
       )}
 
       {/* Daily Attendance Report */}
-      {data?.dailyAttendanceReport && (
+{data?.dailyAttendanceReport && (
         <div>
-          <h3 className="text-xl font-semibold">
-            📅 Detailed Daily Attendance
-          </h3>
-          {Object.entries(data.dailyAttendanceReport)
-            .filter(
-              ([semester]) =>
-                selectedQuarter === "All" || selectedQuarter === semester
-            )
-            .map(([semester, courses]) => (
-              <div key={semester} className="mt-4">
-                <h4 className="font-medium text-lg text-gray-700">
-                  📘 {semester}
-                </h4>
-                {Object.entries(courses).map(([courseName, records], index) => (
-                  <div key={index} className="overflow-x-auto mt-2">
-                    <table className="min-w-full text-sm border table-auto">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="text-left p-2">Course</th>
-                          <th className="text-left p-2">Date</th>
-                          <th className="text-left p-2">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {records.map((rec, idx) => (
-                          <tr key={idx} className="border-t">
-                            <td className="p-2">{courseName}</td>
-                            <td className="p-2">
-                              {new Date(rec.date).toLocaleDateString()}
-                            </td>
-                            <td className="p-2">{rec.status}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-5">
+            <h3 className="text-xl font-semibold">📅 Detailed Daily Attendance</h3>
+
+            {/* Select course dropdown */}
+            {filteredQuarterCourses.length > 0 && (
+              <div className="w-full max-w-sm mt-4">
+                <label className="font-medium">Filter by Course:</label>
+                <select
+                  className="w-full p-2 border rounded mt-1"
+                  onChange={handleCourseChange}
+                  value={selectedCourse}
+                >
+                  <option value="">Select Course</option>
+                  <option value="All">All</option>
+                  {filteredQuarterCourses.map((course, idx) => (
+                    <option key={idx} value={course.courseName}>
+                      {course.courseName}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ))}
+            )}
+          </div>
+
+          {/* Show prompt if no course selected */}
+          {selectedCourse === "" && (
+            <p className="mt-4 text-red-700 italic">
+              Please select a course to view the daily attendance report.
+            </p>
+          )}
+
+          {/* Show attendance and percentage only when a course is selected */}
+          {selectedCourse !== "" && (
+            <>
+              {/* Attendance Percentage */}
+              <p className="mt-4 font-semibold text-highlight">
+                Attendance Percentage:{" "}
+                {calculateAttendancePercentage(
+                  selectedCourse,
+                  data.dailyAttendanceReport
+                )}
+                %
+              </p>
+
+              {/* Attendance Table */}
+              {Object.entries(data.dailyAttendanceReport)
+                .filter(
+                  ([semester]) =>
+                    selectedQuarter === "All" || selectedQuarter === semester
+                )
+                .map(([semester, courses]) => {
+                  if (selectedCourse === "All") {
+                    const allRecords = Object.values(courses).flat();
+                    if (allRecords.length === 0) return null;
+                    return (
+                      <div key={semester} className="mt-4 overflow-x-auto">
+                        <h4 className="font-medium text-lg text-gray-700">
+                          📘 {semester}
+                        </h4>
+                        <table className="min-w-full text-sm border table-auto">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="text-left p-2">Course</th>
+                              <th className="text-left p-2">Date</th>
+                              <th className="text-left p-2">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(courses).map(([courseName, records]) =>
+                              records.map((rec, idx) => (
+                                <tr
+                                  key={`${courseName}-${idx}`}
+                                  className="border-t"
+                                >
+                                  <td className="p-2">{courseName}</td>
+                                  <td className="p-2">
+                                    {new Date(rec.date).toLocaleDateString()}
+                                  </td>
+                                  <td className="p-2">{rec.status}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  } else {
+                    const records = courses[selectedCourse];
+                    if (!records) return null;
+                    return (
+                      <div key={semester} className="mt-4 overflow-x-auto">
+                        <h4 className="font-medium text-lg text-gray-700">
+                          📘 {semester}
+                        </h4>
+                        <table className="min-w-full text-sm border table-auto">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="text-left p-2">Course</th>
+                              <th className="text-left p-2">Date</th>
+                              <th className="text-left p-2">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {records.map((rec, idx) => (
+                              <tr key={idx} className="border-t">
+                                <td className="p-2">{selectedCourse}</td>
+                                <td className="p-2">
+                                  {new Date(rec.date).toLocaleDateString()}
+                                </td>
+                                <td className="p-2">{rec.status}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  }
+                })}
+            </>
+          )}
         </div>
       )}
 
