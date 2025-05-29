@@ -46,12 +46,13 @@ const StudentDashboardHome = () => {
     fetchCourseOutline();
   }, [studentInfo, axiosInstance]);
 
+
   useEffect(() => {
     const fetchDashboardStats = async () => {
       if (user?.data?.email) {
         try {
           const res = await axiosInstance.get(
-            `/student-dashboard-state/${user.data.email}`
+            `/student-dashboard-state/${user?.data?.email}`
           );
           const {
             attendancePercentage,
@@ -150,7 +151,7 @@ const programFolders = [
 const matchedFolder = studentInfo
   ? programFolders.find((folder) => folder.name === studentInfo.department)
   : null;
-  console.log(studentInfo?.department)
+
 
   return (
     <div className="p-4 mt-6">

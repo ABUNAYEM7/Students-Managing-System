@@ -34,7 +34,6 @@ const ViewSubmissions = () => {
   if (loading)
     return <div className="text-center mt-10">Loading submissions...</div>;
 
-
   return (
     <div className="max-w-6xl mx-auto p-6 mt-10 bg-white shadow-xl rounded-xl">
       {/* Header with Back Button */}
@@ -83,7 +82,9 @@ const ViewSubmissions = () => {
                           />
                         </div>
                       </div>
-                      <p className="font-medium">{sub.studentName || "Unknown"}</p>
+                      <p className="font-medium">
+                        {sub.studentName || "Unknown"}
+                      </p>
                     </div>
                   </td>
                   <td className="p-3 border">{sub.email}</td>
@@ -100,7 +101,7 @@ const ViewSubmissions = () => {
                   <td className="p-3 border">
                     {sub.path ? (
                       <a
-                        href={`http://localhost:3000/${sub.path.replace(
+                        href={`https://student-management-server-green.vercel.app/${sub.path.replace(
                           /\\/g,
                           "/"
                         )}`}

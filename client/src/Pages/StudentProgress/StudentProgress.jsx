@@ -108,7 +108,7 @@ const StudentProgress = () => {
           (record) => record.semester === selectedQuarter
         );
 
-         const calculateAttendancePercentage = (courseName, attendanceReport) => {
+  const calculateAttendancePercentage = (courseName, attendanceReport) => {
     let total = 0;
     let present = 0;
 
@@ -133,6 +133,7 @@ const StudentProgress = () => {
 
     return total > 0 ? ((present / total) * 100).toFixed(2) : "0.00";
   };
+
 
   return (
     <div className="mt-5 p-5 space-y-6">
@@ -306,7 +307,7 @@ const StudentProgress = () => {
                   <td className="p-2">
                     {a.submittedFile ? (
                       <a
-                        href={`http://localhost:3000/${a.submittedFile.replace(
+                        href={`https://student-management-server-green.vercel.app/${a.submittedFile.replace(
                           /\\/g,
                           "/"
                         )}`}
@@ -355,10 +356,12 @@ const StudentProgress = () => {
       )}
 
       {/* Daily Attendance Report */}
-{data?.dailyAttendanceReport && (
+      {data?.dailyAttendanceReport && (
         <div>
           <div className="flex flex-col md:flex-row items-center justify-between gap-5">
-            <h3 className="text-xl font-semibold">📅 Detailed Daily Attendance</h3>
+            <h3 className="text-xl font-semibold">
+              📅 Detailed Daily Attendance
+            </h3>
 
             {/* Select course dropdown */}
             {filteredQuarterCourses.length > 0 && (
@@ -425,19 +428,20 @@ const StudentProgress = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {Object.entries(courses).map(([courseName, records]) =>
-                              records.map((rec, idx) => (
-                                <tr
-                                  key={`${courseName}-${idx}`}
-                                  className="border-t"
-                                >
-                                  <td className="p-2">{courseName}</td>
-                                  <td className="p-2">
-                                    {new Date(rec.date).toLocaleDateString()}
-                                  </td>
-                                  <td className="p-2">{rec.status}</td>
-                                </tr>
-                              ))
+                            {Object.entries(courses).map(
+                              ([courseName, records]) =>
+                                records.map((rec, idx) => (
+                                  <tr
+                                    key={`${courseName}-${idx}`}
+                                    className="border-t"
+                                  >
+                                    <td className="p-2">{courseName}</td>
+                                    <td className="p-2">
+                                      {new Date(rec.date).toLocaleDateString()}
+                                    </td>
+                                    <td className="p-2">{rec.status}</td>
+                                  </tr>
+                                ))
                             )}
                           </tbody>
                         </table>

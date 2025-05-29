@@ -259,7 +259,7 @@ const CreateAssignment = () => {
             <div className="mb-2 text-sm text-gray-600">
               Current File:{" "}
               <a
-                href={`http://localhost:3000/${data?.path?.replace(
+                href={`https://student-management-server-green.vercel.app/${data?.path?.replace(
                   /\\/g,
                   "/"
                 )}`}

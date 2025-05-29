@@ -47,48 +47,54 @@ const Home = () => {
   return (
     <div className="mt-[90px]">
       {/* banner */}
-      <div className="relative h-[600px]">
-        <Swiper
-          pagination={{ clickable: true }}
-          modules={[Pagination, Autoplay]} // Add Autoplay module
-          autoplay={{ delay: 3000, disableOnInteraction: false }} // Configure autoplay
-          className="h-full"
-        >
-          {slides.map((slide, index) => (
-            <SwiperSlide key={index} className="relative">
-              <img
-                className="h-full w-full  object-center object-fill"
-                src={slide.image}
-                alt={`Slide ${index + 1}`}
-              />
+<div className="relative h-[600px] w-full">
+  <Swiper
+    pagination={{ clickable: true }}
+    modules={[Pagination, Autoplay]}
+    autoplay={{ delay: 3000, disableOnInteraction: false }}
+    className="h-full"
+  >
+    {slides.map((slide, index) => (
+      <SwiperSlide key={index} className="relative h-full">
+        <img
+          className="h-full w-full object-cover object-center"
+          src={slide.image}
+          alt={`Slide ${index + 1}`}
+        />
 
-              {/* <div className="absolute inset-0 bg-black/40 bg-opacity-10"></div> */}
+        {/* Optional overlay if needed */}
+        {/* <div className="absolute inset-0 bg-black bg-opacity-30"></div> */}
 
-              <div className="absolute inset-y-0 left-10 flex flex-col justify-center">
-                <h1 className="text-black text-4xl font-bold drop-shadow-lg">
-                  {slide.heading}
-                </h1>
-                <p className="text-black mt-4 drop-shadow-md lg:2/3 md:max-w-1/2 max-w-2/3">
-                  {slide.description}
-                </p>
+        <div className="absolute inset-y-0 left-10 flex flex-col justify-center
+                        sm:left-6 sm:px-4
+                        xs:left-4 xs:px-2 xs:max-w-[90vw] xs:inset-y-auto xs:bottom-10">
+          <h1 className="text-black text-4xl sm:text-3xl xs:text-2xl font-bold drop-shadow-lg max-w-[90vw]">
+            {slide.heading}
+          </h1>
+          <p className="text-black mt-4 drop-shadow-md sm:text-sm xs:text-xs max-w-[90vw]">
+            {slide.description}
+          </p>
 
-                <div className="flex items-center gap-5">
-                  <button 
-                  onClick={enrolledHandler}
-                  className="btn w-fit mt-4 text-white bg-orange-600 border-none hover:bg-white hover:border-2 hover:text-orange-600 hover:border-orange-600">
-                    Enroll Now
-                  </button>
-                  <Link
-                  to={'/aboutPage'}
-                   className="btn w-fit mt-4 text-highlight  border-2 border-highlight bg-transparent">
-                    Learn More
-                  </Link>
-                </div>
-              </div>
-            </SwiperSlide>
-          ))}
-        </Swiper>
-      </div>
+          <div className="flex flex-wrap items-center gap-3 mt-4">
+            <button
+              onClick={enrolledHandler}
+              className="btn w-fit text-white bg-orange-600 border-none hover:bg-white hover:border-2 hover:text-orange-600 hover:border-orange-600 px-4 py-2 text-sm sm:text-xs"
+            >
+              Enroll Now
+            </button>
+            <Link
+              to={"/aboutPage"}
+              className="btn w-fit text-highlight border-2 border-highlight bg-transparent px-4 py-2 text-sm sm:text-xs"
+            >
+              Learn More
+            </Link>
+          </div>
+        </div>
+      </SwiperSlide>
+    ))}
+  </Swiper>
+</div>
+
       {/* university-section */}
       <section>
         <University />

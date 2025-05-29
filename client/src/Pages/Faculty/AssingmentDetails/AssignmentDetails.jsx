@@ -62,7 +62,7 @@ const AssignmentDetails = () => {
 
         <div className="mt-4">
           <a
-            href={`http://localhost:3000/${assignment?.path?.replace(
+            href={`https://student-management-server-green.vercel.app/${assignment?.path?.replace(
               /\\/g,
               "/"
             )}`}
@@ -98,7 +98,7 @@ const AssignmentDetails = () => {
                     <td>{new Date(s.uploadedAt).toLocaleString()}</td>
                     <td>
                       <a
-                        href={`http://localhost:3000/${s.path.replace(
+                        href={`https://student-management-server-green.vercel.app/${s.path.replace(
                           /\\/g,
                           "/"
                         )}`}

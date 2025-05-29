@@ -1445,6 +1445,7 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
             gradePercentage: Number(gradePercentage.toFixed(2)),
             enrollmentPercentage: Number(enrollmentPercentage.toFixed(2)),
           };
+          console.log(responseData)
 
           res.send(responseData);
         } catch (err) {
@@ -3369,23 +3370,23 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
           expiresIn: "1d",
         });
 
-        res;
-        // for production
-        // .cookie("token", token, {
-        //   httpOnly: true,
-        //   secure: process.env.NODE_ENV === "production",
-        //   sameSite: "none",
-        //   maxAge: 1 * 24 * 60 * 60 * 1000,
-        // })
+                // for production
+        res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "none",
+          maxAge: 1 * 24 * 60 * 60 * 1000,
+        })
 
         // for dev
-        res
-          .cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production" ? true : false,
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            maxAge: 24 * 60 * 60 * 1000,
-          })
+        // res
+        //   .cookie("token", token, {
+        //     httpOnly: true,
+        //     secure: process.env.NODE_ENV === "production" ? true : false,
+        //     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        //     maxAge: 24 * 60 * 60 * 1000,
+        //   })
 
           .send({ success: true });
       } catch (error) {

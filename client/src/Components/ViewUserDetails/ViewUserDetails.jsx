@@ -152,14 +152,14 @@ const ViewUserDetails = () => {
     navigate(`/dashboard/student-progress/${email}`);
   };
 
-const handleViewSubmissions = (assignment) => {
-  navigate(`/dashboard/view-submissions/${assignment._id}`, {
-    state: {
-      title: assignment.title,
-      courseName: assignment.courseName,
-    },
-  });
-};
+  const handleViewSubmissions = (assignment) => {
+    navigate(`/dashboard/view-submissions/${assignment._id}`, {
+      state: {
+        title: assignment.title,
+        courseName: assignment.courseName,
+      },
+    });
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-8 bg-base-100 shadow-xl rounded-3xl border border-gray-300 mt-10">
@@ -390,7 +390,7 @@ const handleViewSubmissions = (assignment) => {
                     <td>
                       {assignment.path ? (
                         <a
-                          href={`http://localhost:3000/${assignment?.path?.replace(
+                          href={`https://student-management-server-green.vercel.app/${assignment?.path?.replace(
                             /\\/g,
                             "/"
                           )}`}
@@ -407,11 +407,9 @@ const handleViewSubmissions = (assignment) => {
                     <td>
                       <button
                         className="btn btn-xs btn-outline btn-info mt-1"
-                        onClick={() =>
-                          handleViewSubmissions(assignment )
-                        }
+                        onClick={() => handleViewSubmissions(assignment)}
                       >
-                        View 
+                        View
                       </button>
                     </td>
                   </tr>
@@ -483,7 +481,7 @@ const handleViewSubmissions = (assignment) => {
                     <td>
                       {material.path ? (
                         <a
-                          href={`http://localhost:3000/${material.path.replace(
+                          href={`https://student-management-server-green.vercel.app/${material.path.replace(
                             /\\/g,
                             "/"
                           )}`}
@@ -499,7 +497,7 @@ const handleViewSubmissions = (assignment) => {
                     </td>
                     <td className="flex gap-2">
                       <a
-                        href={`http://localhost:3000/${material.path.replace(
+                        href={`https://student-management-server-green.vercel.app/${material.path.replace(
                           /\\/g,
                           "/"
                         )}`}
