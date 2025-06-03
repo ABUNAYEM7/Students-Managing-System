@@ -10,6 +10,7 @@ import {
   Legend,
 } from "recharts";
 import AxiosSecure from "../../Components/Hooks/AxiosSecure";
+import StudentReportGenerator from "../Student/StudentReportGenerator/StudentReportGenerator";
 
 const StudentProgress = () => {
   const { email } = useParams();
@@ -133,7 +134,6 @@ const StudentProgress = () => {
 
     return total > 0 ? ((present / total) * 100).toFixed(2) : "0.00";
   };
-
 
   return (
     <div className="mt-5 p-5 space-y-6">
@@ -307,7 +307,7 @@ const StudentProgress = () => {
                   <td className="p-2">
                     {a.submittedFile ? (
                       <a
-                        href={`https://student-management-server-green.vercel.app/${a.submittedFile.replace(
+                        href={`http://localhost:3000/${a.submittedFile.replace(
                           /\\/g,
                           "/"
                         )}`}
@@ -510,6 +510,16 @@ const StudentProgress = () => {
           </table>
         </div>
       )}
+
+      <div className="my-10">
+<StudentReportGenerator
+  email={email}
+  selectedQuarter={selectedQuarter}
+  setSelectedQuarter={setSelectedQuarter}
+  reportData={data}
+  dailyAttendanceReport={data?.dailyAttendanceReport}
+/>
+      </div>
     </div>
   );
 };

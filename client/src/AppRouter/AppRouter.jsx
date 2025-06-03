@@ -51,6 +51,7 @@ import ErrorPage from "../Pages/ErrorPage/ErrorPage";
 import StudentProgress from "../Pages/StudentProgress/StudentProgress";
 import AboutPage from "../Pages/AboutPage/AboutPage";
 import ViewSubmissions from "../Pages/ViewSubmissions/ViewSubmissions";
+import StudentIdCard from "../Pages/StudentIdCard/StudentIdCard";
 
 const AppRouter = () => {
   return (
@@ -119,6 +120,7 @@ const AppRouter = () => {
           <Route path="Fee" element={<Fee />} />
           <Route path="studentMaterials" element={<StudentsMaterials />} />
           <Route path="leave-form/:email" element={<LeaveForm />} />
+          <Route path="student-idCard/:email" element={<StudentIdCard />} />
 
           {/* Faculty Routes */}
           <Route>

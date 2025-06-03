@@ -101,7 +101,7 @@ const ViewSubmissions = () => {
                   <td className="p-3 border">
                     {sub.path ? (
                       <a
-                        href={`https://student-management-server-green.vercel.app/${sub.path.replace(
+                        href={`http://localhost:3000/${sub.path.replace(
                           /\\/g,
                           "/"
                         )}`}

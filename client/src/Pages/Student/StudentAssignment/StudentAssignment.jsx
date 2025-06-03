@@ -125,10 +125,7 @@ const StudentAssignment = () => {
 
               <a
                 className="btn btn-outline btn-sm mt-3"
-                href={`https://student-management-server-green.vercel.app/${item.path.replace(
-                  /\\/g,
-                  "/"
-                )}`}
+                href={`http://localhost:3000/${item.path.replace(/\\/g, "/")}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -165,7 +162,7 @@ const StudentAssignment = () => {
                 <div className="flex items-center justify-center">
                   <a
                     className="btn btn-success text-white mt-4"
-                    href={`https://student-management-server-green.vercel.app/${item.submission.path.replace(
+                    href={`http://localhost:3000/${item.submission.path.replace(
                       /\\/g,
                       "/"
                     )}`}

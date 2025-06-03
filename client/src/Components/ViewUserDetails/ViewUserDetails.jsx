@@ -390,7 +390,7 @@ const ViewUserDetails = () => {
                     <td>
                       {assignment.path ? (
                         <a
-                          href={`https://student-management-server-green.vercel.app/${assignment?.path?.replace(
+                          href={`http://localhost:3000/${assignment?.path?.replace(
                             /\\/g,
                             "/"
                           )}`}
@@ -481,7 +481,7 @@ const ViewUserDetails = () => {
                     <td>
                       {material.path ? (
                         <a
-                          href={`https://student-management-server-green.vercel.app/${material.path.replace(
+                          href={`http://localhost:3000/${material.path.replace(
                             /\\/g,
                             "/"
                           )}`}
@@ -497,7 +497,7 @@ const ViewUserDetails = () => {
                     </td>
                     <td className="flex gap-2">
                       <a
-                        href={`https://student-management-server-green.vercel.app/${material.path.replace(
+                        href={`http://localhost:3000/${material.path.replace(
                           /\\/g,
                           "/"
                         )}`}

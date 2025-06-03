@@ -70,7 +70,7 @@ const Materials = () => {
                   <td>
                     {material?.path ? (
                       <a
-                        href={`https://student-management-server-green.vercel.app/${material.path.replace(
+                        href={`http://localhost:3000/${material.path.replace(
                           /\\/g,
                           "/"
                         )}`}

@@ -957,7 +957,7 @@ async function run() {
     // get user overview
 app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
   const { email } = req.params;
-  const { semester, courseName } = req.query; // <-- Added query params here
+  const { semester, courseName } = req.query; // <-- query params
 
   if (req.user.email !== email && req.user.role !== "admin") {
     return res.status(403).send({ message: "Forbidden: Access denied" });
@@ -971,7 +971,9 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
     let enrolledCourses = student.courses || [];
     // Filter enrolledCourses by semester if provided
     if (semester && semester !== "All") {
-      enrolledCourses = enrolledCourses.filter((c) => c.semester === semester);
+      enrolledCourses = enrolledCourses.filter(
+        (c) => c.semester === semester
+      );
     }
 
     const enrolledCourseIds = enrolledCourses.map((c) => c.courseId);
@@ -1002,7 +1004,7 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
     let totalAttendanceDays = 0;
     let presentDays = 0;
 
-    // 🆕 Daily attendance report with filtering by semester & courseName
+    // Daily attendance report with filtering by semester & courseName
     const dailyAttendanceReport = {};
 
     for (const record of attendanceRecords) {
@@ -1014,11 +1016,15 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
         const courseNameCurrent = course?.courseName || "Unknown";
         const semesterCurrent = course?.semester || "Unknown";
 
-        // Skip records if semester filter is applied and doesn't match
+        // Skip if semester filter applied and doesn't match
         if (semester && semester !== "All" && semesterCurrent !== semester)
           continue;
-        // Skip records if courseName filter is applied and doesn't match
-        if (courseName && courseName !== "All" && courseNameCurrent !== courseName)
+        // Skip if courseName filter applied and doesn't match
+        if (
+          courseName &&
+          courseName !== "All" &&
+          courseNameCurrent !== courseName
+        )
           continue;
 
         totalAttendanceDays++;
@@ -1049,17 +1055,22 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
     });
     let gradePercentage = 0;
 
-    if (gradeDoc?.grades?.length > 0) {
-      const totalPoints = gradeDoc.grades.reduce(
-        (sum, g) => sum + g.point,
-        0
-      );
-      const totalOutOf = gradeDoc.grades.reduce(
+    // New: filter grades by semester if semester is provided and not "All"
+    let filteredGrades = gradeDoc?.grades || [];
+    if (semester && semester !== "All") {
+      filteredGrades = filteredGrades.filter((g) => g.semester === semester);
+    }
+
+    if (filteredGrades.length > 0) {
+      const totalPoints = filteredGrades.reduce((sum, g) => sum + g.point, 0);
+      const totalOutOf = filteredGrades.reduce(
         (sum, g) => sum + (g.outOf || 4),
         0
       );
       gradePercentage =
         totalOutOf > 0 ? (totalPoints / totalOutOf) * 100 : 0;
+    } else {
+      gradePercentage = 0;
     }
 
     const allAssignments = await assignmentsCollection
@@ -1108,26 +1119,23 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
         gradePercentage: Number(gradePercentage.toFixed(2)),
         enrollmentPercentage:
           totalProgramCourses > 0
-            ? Number(
-                ((totalEnrolled / totalProgramCourses) * 100).toFixed(2)
-              )
+            ? Number(((totalEnrolled / totalProgramCourses) * 100).toFixed(2))
             : 0,
         totalAssignmentsReleased,
         totalAssignmentsSubmitted,
       },
       enrolledCourses,
       quarterStats,
-      gradeDetails: gradeDoc?.grades || [],
+      gradeDetails: filteredGrades, // updated to filtered grades by semester
       payments,
       assignments: detailedAssignments,
-      dailyAttendanceReport, // filtered by semester & courseName now
+      dailyAttendanceReport, // filtered by semester & courseName
     });
   } catch (err) {
     console.error("❌ Error in /student/full-overview:", err);
     res.status(500).send({ message: "Internal server error" });
   }
 });
-
 
     // get-courses from db secured
     app.get("/all-courses-by-department", async (req, res) => {
@@ -1445,7 +1453,6 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
             gradePercentage: Number(gradePercentage.toFixed(2)),
             enrollmentPercentage: Number(enrollmentPercentage.toFixed(2)),
           };
-          console.log(responseData)
 
           res.send(responseData);
         } catch (err) {
@@ -2870,9 +2877,6 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
       async (req, res) => {
         const { facultyEmail } = req.params;
 
-        // console.log("🔐 Requested facultyEmail:", facultyEmail);
-        // console.log("🔐 Token email:", req.user?.email);
-
         if (!facultyEmail) {
           return res.status(400).send({ error: "facultyEmail is required" });
         }
@@ -3370,23 +3374,23 @@ app.get("/student/full-overview/:email", verifyToken, async (req, res) => {
           expiresIn: "1d",
         });
 
-                // for production
-        res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "none",
-          maxAge: 1 * 24 * 60 * 60 * 1000,
-        })
+        // for production
+        // res
+        // .cookie("token", token, {
+        //   httpOnly: true,
+        //   secure: process.env.NODE_ENV === "production",
+        //   sameSite: "none",
+        //   maxAge: 1 * 24 * 60 * 60 * 1000,
+        // })
 
         // for dev
-        // res
-        //   .cookie("token", token, {
-        //     httpOnly: true,
-        //     secure: process.env.NODE_ENV === "production" ? true : false,
-        //     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        //     maxAge: 24 * 60 * 60 * 1000,
-        //   })
+        res
+          .cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production" ? true : false,
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            maxAge: 24 * 60 * 60 * 1000,
+          })
 
           .send({ success: true });
       } catch (error) {
