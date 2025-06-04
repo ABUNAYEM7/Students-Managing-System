@@ -4,6 +4,7 @@ import AxiosSecure from "../Hooks/AxiosSecure";
 import { FaArrowLeft } from "react-icons/fa";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
+import GenerateFacultyReport from "../../Pages/Faculty/GenerateFacultyReport/GenerateFacultyReport";
 
 const ViewUserDetails = () => {
   const { email } = useParams();
@@ -160,6 +161,10 @@ const ViewUserDetails = () => {
       },
     });
   };
+
+
+
+
 
   return (
     <div className="max-w-6xl mx-auto p-8 bg-base-100 shadow-xl rounded-3xl border border-gray-300 mt-10">
@@ -543,6 +548,9 @@ const ViewUserDetails = () => {
           )}
         </div>
       )}
+
+      {/* faculty quarterly report */}
+      <GenerateFacultyReport email ={user?.email} name={user?.name }/>
 
       {/* Student Enrolled Courses Table */}
       {user?.role === "student" && studentCourses?.length > 0 && (
