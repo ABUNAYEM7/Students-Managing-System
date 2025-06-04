@@ -35,102 +35,148 @@ const StudentReportGenerator = ({
     return reportData.enrolledCourses?.filter(c => c.semester === selectedQuarter) || [];
   };
 
-  const handleDownload = () => {
-    if (!selectedQuarter || !reportData) return;
+const handleDownload = () => {
+  if (!selectedQuarter || !reportData) return;
 
-    const attendancePercentage = getAttendancePercentage();
-    const gradePercentage = getGradePercentage();
-    const assignmentsReleasedCount = getAssignmentsReleased();
-    const assignmentsSubmittedCount = getAssignmentsSubmitted();
-    const leaveRequestsCount = getLeaveRequests();
-    const enrolledCourses = getEnrolledCourses();
+  const attendancePercentage = getAttendancePercentage();
+  const gradePercentage = getGradePercentage();
+  const assignmentsReleasedCount = getAssignmentsReleased();
+  const assignmentsSubmittedCount = getAssignmentsSubmitted();
+  const leaveRequestsCount = getLeaveRequests();
+  const enrolledCourses = getEnrolledCourses();
 
-    const pdf = new jsPDF();
-    const marginLeft = 15;
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    let y = 20;
+  const pdf = new jsPDF();  // Corrected: use pdf instead of doc
+  const marginLeft = 15;
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  let y = 20;
 
-    // Header & summary
-    pdf.setFontSize(16);
-    pdf.text(`Student Report for ${email}`, marginLeft, y);
-    y += 10;
+  // Header & summary
+  pdf.setFontSize(16);
+  pdf.text(`Student Report for ${email}`, marginLeft, y);
+  y += 10;
 
-    pdf.setFontSize(12);
-    pdf.text(`Quarter: ${selectedQuarter}`, marginLeft, y);
-    y += 10;
-    pdf.text(`Attendance: ${attendancePercentage || "N/A"}%`, marginLeft, y);
-    y += 10;
-    pdf.text(`Grade Performance: ${gradePercentage || "N/A"}%`, marginLeft, y);
-    y += 10;
-    pdf.text(`Assignments Released: ${assignmentsReleasedCount}`, marginLeft, y);
-    y += 10;
-    pdf.text(`Assignments Submitted: ${assignmentsSubmittedCount}`, marginLeft, y);
-    y += 10;
-    pdf.text(`Leave Requests: ${leaveRequestsCount}`, marginLeft, y);
-    y += 15;
+  pdf.setFontSize(12);
+  pdf.text(`Quarter: ${selectedQuarter}`, marginLeft, y);
+  y += 10;
+  pdf.text(`Attendance: ${attendancePercentage || "N/A"}%`, marginLeft, y);
+  y += 10;
+  pdf.text(`Grade Performance: ${gradePercentage || "N/A"}%`, marginLeft, y);
+  y += 10;
+  pdf.text(`Assignments Released: ${assignmentsReleasedCount}`, marginLeft, y);
+  y += 10;
+  pdf.text(`Assignments Submitted: ${assignmentsSubmittedCount}`, marginLeft, y);
+  y += 10;
+  pdf.text(`Leave Requests: ${leaveRequestsCount}`, marginLeft, y);
+  y += 15;
 
-    pdf.text(`Enrolled Courses:`, marginLeft, y);
-    y += 10;
+  // Enrolled Courses Section
+  pdf.text("Enrolled Courses:", marginLeft, y);
+  y += 10;
+  if (enrolledCourses.length > 0) {
+    const courseRows = enrolledCourses.map(course => [
+      course.courseName, 
+      course.courseId,
+      course.semester
+    ]);
 
-    enrolledCourses.forEach(course => {
-      if (y > pageHeight - 20) {
-        pdf.addPage();
-        y = 20;
-      }
-      pdf.text(`- ${course.courseName} (${course.semester})`, marginLeft + 5, y);
-      y += 8;
+    autoTable(pdf, {
+      startY: y,
+      head: [["Course Name", "Course ID", "Semester"]],
+      body: courseRows,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [100, 100, 100] },
+      margin: { left: marginLeft, right: marginLeft },
     });
 
-    // Daily Attendance Report table using autoTable
-    y += 15;
-    if (y > pageHeight - 40) {
-      pdf.addPage();
-      y = 20;
-    }
-    pdf.setFontSize(14);
-    pdf.text(" Daily Attendance Report", marginLeft, y);
+    y = pdf.autoTable.previous.finalY + 10;
+  } else {
+    pdf.text("No courses enrolled this quarter.", marginLeft, y);
+    y += 10;
+  }
+
+  // Assignments Section
+  if (assignmentsReleasedCount > 0) {
+    pdf.text("Assignments:", marginLeft, y);
     y += 10;
 
-    // Build attendance rows for PDF
+    const assignments = reportData.assignments.filter(a =>
+      selectedQuarter === "All" ? true : a.semester === selectedQuarter
+    );
+    const assignmentRows = assignments.map(assignment => {
+      const status = new Date(assignment.submittedDate) < new Date() ? "Expired" : "Active";
+
+      // Validate and format the submittedDate
+      let submittedDateStr = "Not Submitted";
+      const submittedDate = new Date(assignment.submittedDate);
+      if (!isNaN(submittedDate)) {
+        submittedDateStr = submittedDate.toLocaleString();  // Format the submitted date
+      }
+
+      return [
+        assignment.title,
+        assignment.courseId,
+        assignment.semester,
+        status,
+        submittedDateStr  // Use the formatted or fallback submittedDate
+      ];
+    });
+
+    autoTable(pdf, {
+      startY: y,
+      head: [["Title", "Course ID", "Semester", "Status", "Submitted Date"]],
+      body: assignmentRows,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [100, 100, 100] },
+      margin: { left: marginLeft, right: marginLeft },
+    });
+
+    y = pdf.autoTable.previous.finalY + 10;
+  } else {
+    pdf.text("No assignments uploaded for this quarter", marginLeft, y);
+    y += 10;
+  }
+
+  // Daily Attendance Report Section
+  if (dailyAttendanceReport && Object.keys(dailyAttendanceReport).length > 0) {
+    pdf.text("Daily Attendance Report:", marginLeft, y);
+    y += 10;
+
     const attendanceRows = [];
-    if (dailyAttendanceReport && Object.keys(dailyAttendanceReport).length > 0) {
-      if (selectedQuarter === "All") {
-        // flatten all quarters
-        for (const [semester, courses] of Object.entries(dailyAttendanceReport)) {
-          if (typeof courses !== "object" || courses === null) continue;
-          for (const [courseName, records] of Object.entries(courses)) {
-            if (!Array.isArray(records)) continue;
-            records.forEach(rec => {
-              attendanceRows.push([
-                semester,
-                courseName,
-                new Date(rec.date).toLocaleDateString(),
-                rec.status,
-              ]);
-            });
-          }
+    if (selectedQuarter === "All") {
+      for (const [semester, courses] of Object.entries(dailyAttendanceReport)) {
+        if (typeof courses !== "object" || courses === null) continue;
+        for (const [courseName, records] of Object.entries(courses)) {
+          if (!Array.isArray(records)) continue;
+          records.forEach(rec => {
+            attendanceRows.push([
+              semester,
+              courseName,
+              new Date(rec.date).toLocaleDateString(),
+              rec.status,
+            ]);
+          });
         }
-      } else {
-        // only selected quarter
-        const semesterCourses = dailyAttendanceReport[selectedQuarter];
-        if (semesterCourses && typeof semesterCourses === "object") {
-          for (const [courseName, records] of Object.entries(semesterCourses)) {
-            if (!Array.isArray(records)) continue;
-            records.forEach(rec => {
-              attendanceRows.push([
-                selectedQuarter,
-                courseName,
-                new Date(rec.date).toLocaleDateString(),
-                rec.status,
-              ]);
-            });
-          }
+      }
+    } else {
+      const semesterCourses = dailyAttendanceReport[selectedQuarter];
+      if (semesterCourses && typeof semesterCourses === "object") {
+        for (const [courseName, records] of Object.entries(semesterCourses)) {
+          if (!Array.isArray(records)) continue;
+          records.forEach(rec => {
+            attendanceRows.push([
+              selectedQuarter,
+              courseName,
+              new Date(rec.date).toLocaleDateString(),
+              rec.status,
+            ]);
+          });
         }
       }
     }
 
     if (attendanceRows.length === 0) {
       pdf.text("No attendance records available.", marginLeft, y);
+      y += 10;
     } else {
       autoTable(pdf, {
         startY: y,
@@ -140,13 +186,20 @@ const StudentReportGenerator = ({
         headStyles: { fillColor: [100, 100, 100] },
         margin: { left: marginLeft, right: marginLeft },
       });
+      y = pdf.autoTable.previous.finalY + 10;
     }
+  } else {
+    pdf.text("No daily attendance records available.", marginLeft, y);
+    y += 10;
+  }
 
-    pdf.save(`Student_Report_${email}_${selectedQuarter}.pdf`);
-  };
+  // Save PDF
+  pdf.save(`Student_Report_${email}_${selectedQuarter}.pdf`);
+};
+
+
 
   const isDownloadDisabled = !selectedQuarter || !reportData;
-
   return (
     <div className="border rounded p-4 bg-white shadow-sm">
       <h3 className="text-lg font-semibold mb-4">📤 Download Student Report</h3>
