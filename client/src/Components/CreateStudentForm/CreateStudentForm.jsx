@@ -77,6 +77,7 @@ const CreateStudentForm = () => {
             name,
             photo,
             studentId,
+             createdAt: new Date().toISOString(),
             ...formData,
           };
           const res = await axiosInstance.post(`/create-student`, studentInfo);

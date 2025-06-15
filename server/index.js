@@ -421,17 +421,59 @@ async function run() {
       }
     );
 
-    // update user information secured
+    // // update user information secured old
+    // app.patch("/update/user-info/:email", verifyToken, async (req, res) => {
+    //   const email = req.params.email;
+    //   const filter = { email };
+    //   const data = req.body;
+    //   const updatedInfo = {
+    //     $set: { ...data },
+    //   };
+    //   const result = await usersCollection.updateOne(filter, updatedInfo);
+    //   res.send(result);
+    // });
+
+        // // update user information secured old new
     app.patch("/update/user-info/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const filter = { email };
-      const data = req.body;
-      const updatedInfo = {
-        $set: { ...data },
-      };
-      const result = await usersCollection.updateOne(filter, updatedInfo);
-      res.send(result);
+  const email = req.params.email;
+  const filter = { email };
+  const data = req.body;
+
+  try {
+    // Step 1: Find user to determine role
+    const user = await usersCollection.findOne({ email });
+
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
+    }
+
+    // Step 2: Prepare the update object
+    const updatedInfo = {
+      $set: { ...data },
+    };
+
+    // Step 3: Update in usersCollection
+    const userUpdateResult = await usersCollection.updateOne(filter, updatedInfo);
+
+    // Step 4: If user is student, also update in studentsCollection
+    let secondaryUpdateResult = null;
+
+    if (user.role === "student") {
+      secondaryUpdateResult = await studentsCollection.updateOne(filter, updatedInfo);
+    } else if (user.role === "faculty") {
+      secondaryUpdateResult = await facultiesCollection.updateOne(filter, updatedInfo);
+    }
+    res.send({
+      success: true,
+      userUpdate: userUpdateResult.modifiedCount,
+      secondaryUpdate: secondaryUpdateResult?.modifiedCount || 0,
     });
+  } catch (error) {
+    console.error("❌ Failed to update user info:", error);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
 
     // ✅ PATCH: Update leave status (approve/decline) secured
     app.patch("/update-leave-status/:id", verifyToken, async (req, res) => {
