@@ -21,6 +21,7 @@ const Enroll = () => {
     gender: "",
     enrollRequest: true,
   });
+  const [submitting,setSubmitting] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -30,61 +31,69 @@ const Enroll = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (userRole === "faculty" || userRole === "admin") {
-      return Swal.fire({
-        icon: "warning",
-        title: "Access Denied",
-        text: "Faculty and Admins are not allowed to enroll as students.",
-      });
-    }
+  if (submitting) return; // Prevent extra clicks
+  setSubmitting(true);
 
-    const department = state?.program;
-    if (!department) {
-      return Swal.fire("Error", "Program info is missing", "error");
-    }
+  if (userRole === "faculty" || userRole === "admin") {
+    setSubmitting(false);
+    return Swal.fire({
+      icon: "warning",
+      title: "Access Denied",
+      text: "Faculty and Admins are not allowed to enroll as students.",
+    });
+  }
 
-    const prefix = department.replace(/[^A-Za-z]/g, "").substring(0, 2).toUpperCase();
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const uniquePart = `${Date.now().toString().slice(-5)}${randomNum}`;
-    const studentId = `${prefix}${uniquePart}`;
+  const department = state?.program;
+  if (!department) {
+    setSubmitting(false);
+    return Swal.fire("Error", "Program info is missing", "error");
+  }
 
-    const payload = {
-      ...formData,
-      email: user?.email,
-      name: user?.displayName,
-      photo: user?.photoURL || "",
-      department,
-      studentId,
-    };
+  const prefix = department.replace(/[^A-Za-z]/g, "").substring(0, 2).toUpperCase();
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  const uniquePart = `${Date.now().toString().slice(-5)}${randomNum}`;
+  const studentId = `${prefix}${uniquePart}`;
 
-    try {
-      const res = await axiosInstance.patch(`/update/user-info/${user.email}`, payload);
-
-      if (res.data?.modifiedCount > 0) {
-        Swal.fire({
-          icon: "success",
-          title: "Enrollment Submitted",
-          text: `You have requested to enroll in ${department}. Your Student ID is ${studentId}`,
-        });
-        navigate("/");
-      } else {
-        Swal.fire({
-          icon: "info",
-          title: "No Changes Made",
-          text: "It seems you're already enrolled or no updates were needed.",
-        });
-      }
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Submission Failed",
-        text: "Something went wrong. Please try again later.",
-      });
-    }
+  const payload = {
+    ...formData,
+    email: user?.email,
+    name: user?.displayName,
+    photo: user?.photoURL || "",
+    department,
+    studentId,
   };
+
+  try {
+    const res = await axiosInstance.patch(`/update/user-info/${user.email}`, payload);
+
+    if (res.data?.modifiedCount > 0) {
+      Swal.fire({
+        icon: "success",
+        title: "Enrollment Submitted",
+        text: `You have requested to enroll in ${department}. Your Student ID is ${studentId}`,
+      });
+      navigate("/");
+    } else {
+      Swal.fire({
+        icon: "info",
+        title: "No Changes Made",
+        text: "It seems you're already enrolled or no updates were needed.",
+      });
+    }
+  } catch (error) {
+    Swal.fire({
+      icon: "error",
+      title: "Submission Failed",
+      text: "Something went wrong. Please try again later.",
+    });
+  } finally {
+    setSubmitting(false); // ✅ Re-enable the button after request completes
+  }
+};
+
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-full sm:max-w-2xl md:max-w-3xl mx-auto mt-20 bg-base-100 rounded shadow">
@@ -167,7 +176,7 @@ const Enroll = () => {
         <button
           type="submit"
           className="btn bg-[#0056b3] text-white w-full"
-          disabled={userRole === "faculty" || userRole === "admin"}
+          disabled={submitting || userRole === "faculty" || userRole === "admin"}
         >
           Save
         </button>

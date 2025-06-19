@@ -13,8 +13,10 @@ const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
-// const { resolve4 } = require("dns");
 const nodemailer = require("nodemailer");
+const cron = require("node-cron");
+const sendScheduleEmail = require("./utils/sendScheduleEmail"); 
+
 
 // middleware
 app.use(express.json());
@@ -58,6 +60,12 @@ const verifyAdmin = (req, res, next) => {
   }
   next();
 };
+
+// This runs every day at 7:00 AM
+cron.schedule("0 7 * * *", () => {
+  console.log("⏰ Sending class schedule emails...");
+});
+
 
 // mongodb url
 const uri = `mongodb+srv://${process.env.VITE_USER}:${process.env.VITE_PASS}@cluster404.ppsob.mongodb.net/?retryWrites=true&w=majority`;
@@ -433,47 +441,55 @@ async function run() {
     //   res.send(result);
     // });
 
-        // // update user information secured old new
+    // // update user information secured old new
     app.patch("/update/user-info/:email", verifyToken, async (req, res) => {
-  const email = req.params.email;
-  const filter = { email };
-  const data = req.body;
+      const email = req.params.email;
+      const filter = { email };
+      const data = req.body;
 
-  try {
-    // Step 1: Find user to determine role
-    const user = await usersCollection.findOne({ email });
+      try {
+        // Step 1: Find user to determine role
+        const user = await usersCollection.findOne({ email });
 
-    if (!user) {
-      return res.status(404).send({ message: "User not found" });
-    }
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
 
-    // Step 2: Prepare the update object
-    const updatedInfo = {
-      $set: { ...data },
-    };
+        // Step 2: Prepare the update object
+        const updatedInfo = {
+          $set: { ...data },
+        };
 
-    // Step 3: Update in usersCollection
-    const userUpdateResult = await usersCollection.updateOne(filter, updatedInfo);
+        // Step 3: Update in usersCollection
+        const userUpdateResult = await usersCollection.updateOne(
+          filter,
+          updatedInfo
+        );
 
-    // Step 4: If user is student, also update in studentsCollection
-    let secondaryUpdateResult = null;
+        // Step 4: If user is student, also update in studentsCollection
+        let secondaryUpdateResult = null;
 
-    if (user.role === "student") {
-      secondaryUpdateResult = await studentsCollection.updateOne(filter, updatedInfo);
-    } else if (user.role === "faculty") {
-      secondaryUpdateResult = await facultiesCollection.updateOne(filter, updatedInfo);
-    }
-    res.send({
-      success: true,
-      userUpdate: userUpdateResult.modifiedCount,
-      secondaryUpdate: secondaryUpdateResult?.modifiedCount || 0,
+        if (user.role === "student") {
+          secondaryUpdateResult = await studentsCollection.updateOne(
+            filter,
+            updatedInfo
+          );
+        } else if (user.role === "faculty") {
+          secondaryUpdateResult = await facultiesCollection.updateOne(
+            filter,
+            updatedInfo
+          );
+        }
+        res.send({
+          success: true,
+          userUpdate: userUpdateResult.modifiedCount,
+          secondaryUpdate: secondaryUpdateResult?.modifiedCount || 0,
+        });
+      } catch (error) {
+        console.error("❌ Failed to update user info:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
-  } catch (error) {
-    console.error("❌ Failed to update user info:", error);
-    res.status(500).send({ message: "Internal server error" });
-  }
-});
-
 
     // ✅ PATCH: Update leave status (approve/decline) secured
     app.patch("/update-leave-status/:id", verifyToken, async (req, res) => {
@@ -1279,7 +1295,7 @@ async function run() {
         // Fetch Created Assignments by Quarter
         const assignmentQuery = {
           email,
-          semester: quarter, 
+          semester: quarter,
         };
 
         const assignments = await assignmentsCollection
@@ -1288,21 +1304,21 @@ async function run() {
         reportData.assignments = assignments;
 
         // Fetch Uploaded Materials by Quarter
-// Extract course IDs and titles
-const courseIds = courses.map(course => course.courseId);
-const courseTitles = courses.map(course => course.name);
+        // Extract course IDs and titles
+        const courseIds = courses.map((course) => course.courseId);
+        const courseTitles = courses.map((course) => course.name);
 
-// Fetch Uploaded Materials by Quarter (no need for the quarter check here)
-const materials = await materialsCollection
-  .find({ email })
-  .toArray();
+        // Fetch Uploaded Materials by Quarter (no need for the quarter check here)
+        const materials = await materialsCollection.find({ email }).toArray();
 
-// Filter the materials to match assigned course IDs or titles
-const filteredMaterials = materials.filter(material =>
-  courseIds.includes(material.courseId) || courseTitles.includes(material.title)
-);
+        // Filter the materials to match assigned course IDs or titles
+        const filteredMaterials = materials.filter(
+          (material) =>
+            courseIds.includes(material.courseId) ||
+            courseTitles.includes(material.title)
+        );
 
-reportData.materials = filteredMaterials;
+        reportData.materials = filteredMaterials;
 
         // Fetch Classes from Routines Collection by Quarter (using semester as filter)
         const routineQuery = {
@@ -1670,36 +1686,6 @@ reportData.materials = filteredMaterials;
         res.status(500).send({ error: "Server error" });
       }
     });
-
-    // app.get("/students-by-course/:id", async (req, res) => {
-    //   const { id } = req.params;
-
-    //   if (!id) {
-    //     console.error("❌ No course ID provided in the request.");
-    //     return res.status(400).send({ message: "Course ID is required" });
-    //   }
-
-    //   try {
-    //     const students = await studentsCollection
-    //       .find({
-    //         "courses.courseId": id,
-    //       })
-    //       .project({ name: 1, email: 1, photo: 1, department: 1, country: 1 })
-    //       .sort({ name: 1 }) // ✅ nice to keep it sorted too
-    //       .toArray();
-
-    //     if (students.length === 0) {
-    //       console.warn(`⚠️ No students enrolled for courseId: ${id}`);
-    //       return res
-    //         .status(404)
-    //         .send({ message: "No students enrolled in this course." });
-    //     }
-    //     res.send(students);
-    //   } catch (error) {
-    //     console.error("❌ Error fetching students by course:", error.message);
-    //     res.status(500).send({ error: "Internal server error" });
-    //   }
-    // });
 
     //  Get students enrolled in a specific course by course _id for courseDetails secured
     app.get("/students-by-course/:id", verifyToken, async (req, res) => {
@@ -3376,6 +3362,57 @@ reportData.materials = filteredMaterials;
       }
     );
 
+    // patch to upload the pdf notes per class routine
+    // PATCH /upload-routine-note
+app.patch(
+  "/upload-routine-note",
+  upload.single("file"),
+  async (req, res) => {
+    const { routineId, dayIndex, course, title, email } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    try {
+      const existingRoutine = await routinesCollection.findOne({
+        _id: new ObjectId(routineId),
+      });
+
+      if (!existingRoutine) {
+        return res.status(404).json({ error: "Routine not found" });
+      }
+
+      const updateResult = await routinesCollection.updateOne(
+        { _id: new ObjectId(routineId) },
+        {
+          $set: {
+            [`routines.${dayIndex}.notes`]: {
+              title,
+              uploadedBy: email,
+              course,
+              url: `/uploads/notes/${req.file.filename}`,
+              path: req.file.path, 
+              uploadedAt: new Date(),
+            },
+          },
+        }
+      );
+
+      if (updateResult.modifiedCount > 0) {
+        res.status(200).json({ message: "Note uploaded and saved." });
+      } else {
+        res
+          .status(404)
+          .json({ message: "Routine not found or not updated." });
+      }
+    } catch (err) {
+      res.status(500).json({ error: "Upload failed" });
+    }
+  }
+);
+
+
     //✅ ✅ ✅  payment routes
 
     // Create PaymentIntent API
@@ -3600,6 +3637,95 @@ reportData.materials = filteredMaterials;
         });
       }
     });
+
+    // sending mail function for the classes
+    cron.schedule("0 19 * * *", async () => {
+  console.log("📬 Starting daily class schedule email job...");
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowDay = tomorrow.toLocaleDateString("en-US", { weekday: "long" });
+
+  try {
+    const students = await studentsCollection.find().toArray();
+
+    for (const student of students) {
+      const routines = await routinesCollection.find({
+        department: student.department,
+        "routines.day": tomorrowDay,
+      }).toArray();
+
+      let scheduleItems = [];
+
+      for (const routine of routines) {
+        for (const r of routine.routines) {
+          if (
+            r.day === tomorrowDay &&
+            Array.isArray(r.studentEmails) &&
+            r.studentEmails.includes(student.email)
+          ) {
+            scheduleItems.push(`<li>${r.course} at ${r.time}</li>`);
+          }
+        }
+      }
+
+      if (scheduleItems.length > 0) {
+        const htmlList = scheduleItems.join("");
+        await sendScheduleEmail(student.email, student.name, htmlList);
+      }
+    }
+
+    console.log("✅ Class reminder emails sent.");
+  } catch (error) {
+    console.error("❌ Failed to send class schedule emails:", error);
+  }
+});
+
+
+app.get("/test-schedule-email/:email", async (req, res) => {
+  const { email } = req.params;
+
+  try {
+    const student = await studentsCollection.findOne({ email });
+
+    if (!student) {
+      return res.status(404).send("Student not found.");
+    }
+
+    // Get tomorrow's weekday name
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDay = tomorrow.toLocaleDateString("en-US", { weekday: "long" });
+
+    // Find routines that match the student's department and tomorrow's day
+    const routines = await routinesCollection.find({
+      department: student.department,
+      "routines.day": tomorrowDay,
+    }).toArray();
+
+    let scheduleItems = [];
+
+    routines.forEach((routine) => {
+      routine.routines
+        .filter((r) => r.day === tomorrowDay)
+        .forEach((r) => {
+          scheduleItems.push(`<li><strong>${r.course}</strong> at ${r.time}</li>`);
+        });
+    });
+
+    if (scheduleItems.length > 0) {
+      const htmlList = scheduleItems.join("");
+      await sendScheduleEmail(student.email, student.name, htmlList);
+      return res.send("✅ Test schedule email sent!");
+    } else {
+      return res.send("ℹ️ No classes scheduled for tomorrow.");
+    }
+  } catch (err) {
+    console.error("❌ Failed to send test email:", err);
+    return res.status(500).send("Error sending test email.");
+  }
+});
+
 
     // await client.db("admin").command({ ping: 1 });
 

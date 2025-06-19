@@ -134,7 +134,7 @@ const generatePDF = () => {
   doc.save(`Faculty_Quarterly_Report_${filterFacultyData}.pdf`);
 };
 
-
+  console.log(reportData?.assignments)
 
   return (
     <div className="border-2 border-blue-500 p-6 rounded-lg">
@@ -208,7 +208,8 @@ const generatePDF = () => {
                     return (
                       <tr key={index}>
                         <td className="border px-4 py-2">{assignment.title}</td>
-                        <td className="border px-4 py-2">{assignment.courseId}</td>
+                        <td className="border px-4 py-2">{assignment.courseCode
+}</td>
                         <td className="border px-4 py-2">{assignment.semester}</td>
                         <td className="border px-4 py-2">{status}</td>
                         <td className="border px-4 py-2">{new Date(assignment.deadline).toLocaleString()}</td>

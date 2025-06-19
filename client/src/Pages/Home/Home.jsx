@@ -71,7 +71,7 @@ const Home = () => {
           <h1 className="text-black text-4xl sm:text-3xl xs:text-2xl font-bold drop-shadow-lg max-w-[90vw]">
             {slide.heading}
           </h1>
-          <p className="text-black mt-4 drop-shadow-md sm:text-sm xs:text-xs max-w-[90vw]">
+          <p className="text-black mt-4 drop-shadow-md sm:text-sm xs:text-xs max-w-[50vw]">
             {slide.description}
           </p>
 
