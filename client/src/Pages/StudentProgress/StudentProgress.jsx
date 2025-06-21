@@ -512,13 +512,13 @@ const StudentProgress = () => {
       )}
 
       <div className="my-10">
-<StudentReportGenerator
-  email={email}
-  selectedQuarter={selectedQuarter}
-  setSelectedQuarter={setSelectedQuarter}
-  reportData={data}
-  dailyAttendanceReport={data?.dailyAttendanceReport}
-/>
+        <StudentReportGenerator
+          email={email}
+          selectedQuarter={selectedQuarter}
+          setSelectedQuarter={setSelectedQuarter}
+          reportData={data}
+          dailyAttendanceReport={data?.dailyAttendanceReport}
+        />
       </div>
     </div>
   );

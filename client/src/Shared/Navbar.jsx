@@ -8,7 +8,6 @@ import useUserRole from "../Components/Hooks/useUserRole";
 const Navbar = () => {
   const { user, userLogOut } = useAuth();
   const { data: userRole } = useUserRole();
-  console.log(user)
 
   const logoutHandler = async () => {
     try {

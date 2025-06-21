@@ -20,10 +20,7 @@ import logo from "../assets/logo.png";
 import FacultyRoutine from "../Pages/Faculty/FacultyRoutine/FacultyRoutine";
 import { FaBell } from "react-icons/fa";
 import { useNotification } from "../Components/Hooks/NotificationProvider/NotificationProvider";
-import { useFacultyNotifications } from "../Components/Hooks/NotificationProvider/useFacultyNotifications";
 import useMarkNotificationsSeen from "../Components/Hooks/NotificationProvider/useMarkNotificationsSeen";
-import { useStudentNotifications } from "../Components/Hooks/NotificationProvider/useStudentNotifications";
-import { useAdminNotifications } from "../Components/Hooks/NotificationProvider/useAdminNotifications";
 import useRoleBasedNotifications from "../Components/Hooks/NotificationProvider/useRoleBasedNotifications";
 
 const navIcons = {
@@ -74,13 +71,17 @@ const DashboardDrawer = () => {
 
   const email = user?.email;
 
-const { data: fetchedNotifications = [] } = useRoleBasedNotifications(email, userRole);
-
+  const { data: fetchedNotifications = [] } = useRoleBasedNotifications(
+    email,
+    userRole
+  );
 
   useEffect(() => {
     if (fetchedNotifications.length) {
       const sorted = [...fetchedNotifications].sort(
-        (a, b) => new Date(b.applicationDate || b.time) - new Date(a.applicationDate || a.time)
+        (a, b) =>
+          new Date(b.applicationDate || b.time) -
+          new Date(a.applicationDate || a.time)
       );
       setNotifications(sorted);
     }
@@ -88,7 +89,11 @@ const { data: fetchedNotifications = [] } = useRoleBasedNotifications(email, use
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (isOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+      if (
+        isOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -99,7 +104,13 @@ const { data: fetchedNotifications = [] } = useRoleBasedNotifications(email, use
   const logoutHandler = async () => {
     try {
       await userLogOut();
-      Swal.fire({ position: "center", icon: "success", title: "Logout Successful", showConfirmButton: false, timer: 1500 });
+      Swal.fire({
+        position: "center",
+        icon: "success",
+        title: "Logout Successful",
+        showConfirmButton: false,
+        timer: 1500,
+      });
     } catch (err) {
       console.error(err);
     }
@@ -111,11 +122,14 @@ const { data: fetchedNotifications = [] } = useRoleBasedNotifications(email, use
     if (unseenNotifications.length > 0) {
       await markSeen(unseenNotifications, "/faculty-notifications/mark-seen");
       const updated = notifications.map((n) =>
-        unseenNotifications.find((u) => u._id === n._id) ? { ...n, seen: true } : n
+        unseenNotifications.find((u) => u._id === n._id)
+          ? { ...n, seen: true }
+          : n
       );
       setNotifications(updated);
     }
   };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
@@ -233,18 +247,35 @@ const { data: fetchedNotifications = [] } = useRoleBasedNotifications(email, use
                             )}
 
                             {/* 🧑‍💼 Admin View */}
-                            {userRole === "admin" && n.type === "payment" && (
+                            {userRole === "admin" && (
                               <>
-                                <strong>💳 Payment Received</strong>
-                                <div className="text-xs">From: {n.email}</div>
-                                <div className="text-xs">
-                                  Amount:{" "}
-                                  {n.message?.match(/\$[\d.]+/)?.[0] ||
-                                    `$${n.amount}`}
-                                </div>
-                                <div className="text-[10px] text-gray-500">
-                                  Txn: {n.transactionId}
-                                </div>
+                                {n.type === "payment" && (
+                                  <>
+                                    <strong>💳 Payment Received</strong>
+                                    <div className="text-xs">
+                                      From: {n.email}
+                                    </div>
+                                    <div className="text-xs">
+                                      Amount:{" "}
+                                      {n.message?.match(/\$[\d.]+/)?.[0] ||
+                                        `$${n.amount}`}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500">
+                                      Txn: {n.transactionId}
+                                    </div>
+                                  </>
+                                )}
+
+                                {n.type === "enrollment-request" && (
+                                  <>
+                                    <strong>📥 Enrollment Request</strong>
+                                    <div className="text-xs">{n.message}</div>
+                                    <div className="text-[10px] text-gray-500">
+                                      Student: {n.studentName} ({n.studentEmail}
+                                      )
+                                    </div>
+                                  </>
+                                )}
                               </>
                             )}
 

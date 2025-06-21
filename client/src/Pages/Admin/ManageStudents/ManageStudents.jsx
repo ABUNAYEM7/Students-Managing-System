@@ -1,13 +1,42 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
-import useFetchData from "../../../Components/Hooks/useFetchData";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router";
 
 const ManageStudents = () => {
   const axiosInstance = AxiosSecure();
-  const { data: students, refetch } = useFetchData("students", "/all-students");
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchStudentsWithRequests = async () => {
+      try {
+        const { data: allStudents } = await axiosInstance.get("/all-students");
+
+        const enrichedStudents = await Promise.all(
+          allStudents.map(async (student) => {
+            try {
+              const { data: requests } = await axiosInstance.get(
+                `/enrollment-requests/${student.email}`
+              );
+              return { ...student, enrollmentRequests: requests || [] };
+            } catch {
+              return { ...student, enrollmentRequests: [] };
+            }
+          })
+        );
+
+        setStudents(enrichedStudents);
+      } catch (err) {
+        console.error("Error fetching students or enrollment requests:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudentsWithRequests();
+  }, [axiosInstance]);
 
   const deleteHandler = (student) => {
     const id = student?._id;
@@ -24,7 +53,6 @@ const ManageStudents = () => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          // Step 1: Update user role to "user"
           const updateRes = await axiosInstance.patch(
             `/update/user-info/${email}`,
             {
@@ -36,13 +64,14 @@ const ManageStudents = () => {
             updateRes?.data?.modifiedCount > 0 ||
             updateRes?.data?.matchedCount > 0
           ) {
-            // Step 2: Delete student
             const deleteRes = await axiosInstance.delete(
               `/delete-student/${id}`
             );
 
             if (deleteRes?.data?.deletedCount > 0) {
-              refetch();
+              const filtered = students.filter((s) => s._id !== id);
+              setStudents(filtered);
+
               Swal.fire({
                 title: "Deleted!",
                 text: "Student has been deleted and role reset to user.",
@@ -78,25 +107,31 @@ const ManageStudents = () => {
     navigate(`/dashboard/view-details/${email}`);
   };
 
+  const viewRequestsModal = (student) => {
+    navigate(`/dashboard/enrollment-requests/${student.email}`);
+  };
   return (
     <div className="px-4 md:px-10 py-6 min-h-screen bg-base-200">
       <h3 className="text-xl md:text-3xl font-black text-center mb-6">
         Students Management
       </h3>
 
-      {students?.length === 0 ? (
+      {loading ? (
+        <p className="text-center text-lg">Loading students...</p>
+      ) : students?.length === 0 ? (
         <h3 className="text-lg md:text-xl font-semibold text-center text-red-600">
           No Students Available
         </h3>
       ) : (
         <div className="w-full overflow-x-auto">
           <div className="inline-block min-w-full align-middle">
-            <table className="table table-zebra min-w-[700px]">
+            <table className="table table-zebra min-w-[850px]">
               <thead className="bg-base-300">
                 <tr>
                   <th className="text-sm">Name</th>
                   <th className="text-sm">Email</th>
-                  <th className="text-sm">View Details</th>
+                  <th className="text-sm">Requests</th>
+                  <th className="text-sm">View</th>
                   <th className="text-sm">Action</th>
                 </tr>
               </thead>
@@ -121,6 +156,26 @@ const ManageStudents = () => {
                     </td>
 
                     <td className="text-sm">{student.email}</td>
+
+                    <td>
+                      {student.enrollmentRequests?.filter(
+                        (r) => r.status === "pending"
+                      ).length > 0 ? (
+                        <button
+                          onClick={() => viewRequestsModal(student)}
+                          className="badge badge-warning text-[10px] px-4 py-4 cursor-pointer"
+                        >
+                          {
+                            student.enrollmentRequests.filter(
+                              (r) => r.status === "pending"
+                            ).length
+                          }{" "}
+                          Pending
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-500">None</span>
+                      )}
+                    </td>
 
                     <td>
                       <button

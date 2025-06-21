@@ -194,7 +194,7 @@ const handleDownload = async () => {
         {/* Footer */}
         <div className="flex justify-between items-center px-2 pb-2">
           <p className="text-[6.5px]">
-            <span className="font-semibold">Issued:</span> {student?.createdAt.split('T')[0] || "01/01/2025"}
+            <span className="font-semibold">Issued:</span> {student?.createdAt?.split('T')[0] || "01/01/2025"}
           </p>
           <div className="flex flex-col items-center">
             <img

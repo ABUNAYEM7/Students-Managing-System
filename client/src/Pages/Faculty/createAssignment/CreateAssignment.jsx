@@ -161,7 +161,7 @@ const CreateAssignment = () => {
         if (fileInputRef.current) fileInputRef.current.value = null;
       }
     } catch (err) {
-      console.error("Upload error:", err);
+      console.error("Upload error:-->", err);
       Swal.fire("Error", "Failed to upload assignment", "error");
     }
   };

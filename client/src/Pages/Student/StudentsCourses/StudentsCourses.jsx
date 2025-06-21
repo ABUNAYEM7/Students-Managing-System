@@ -18,8 +18,9 @@ const StudentsCourses = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [limit] = useState(6); // Courses per page
+  const [limit] = useState(6);
   const [totalCourses, setTotalCourses] = useState(0);
+  const [requestedCourseIds, setRequestedCourseIds] = useState([]);
 
   const enrolledCourseIds = student?.courses?.map((c) => c.courseId) || [];
 
@@ -44,42 +45,64 @@ const StudentsCourses = () => {
     fetchCourses();
   }, [student?.department, page, limit, axiosSecure]);
 
-  const handleEnroll = async (course) => {
-    try {
-      const res = await axiosSecure.post("/enroll-course", {
-        email: user?.email,
-        course: {
-          courseId: course._id,
-          courseName: course.name,
-          credit: course.credit,
-          semester: course.semester,
-          fee: 0,
-          paymentStatus: "unpaid",
-          enrolledAt: new Date().toISOString(),
-        },
-      });
+  
+useEffect(() => {
+  const fetchRequests = async () => {
+    if (!user?.email) return;
 
-      if (res.data?.success) {
-        Swal.fire({
-          icon: "success",
-          title: "Enrolled!",
-          text: `You have successfully enrolled in ${course.name}`,
-          timer: 1500,
-          showConfirmButton: false,
-        });
-        refetchStudent();
-      }
-    } catch (error) {
-      console.error("Enrollment error:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Enrollment Failed",
-        text: "Could not enroll in the course. Please try again.",
-      });
+    try {
+      const res = await axiosSecure.get(`/enrollment-requests/${user.email}`);
+      const pendingIds = res.data
+        .filter((r) => r.status === "pending")
+        .map((r) => r.courseId);
+      setRequestedCourseIds(pendingIds);
+    } catch (err) {
+      console.error("Error fetching enrollment requests:", err);
     }
   };
 
-  const renderCourseCard = (course, isEnrolled) => (
+  fetchRequests();
+}, [user?.email, axiosSecure]);
+
+const handleEnrollmentRequest = async (course) => {
+  try {
+    const res = await axiosSecure.post("/request-enrollment", {
+      email: user?.email,
+      courseId: course._id,
+      courseCode: course.courseId,
+      courseName: course.name,
+      studentName: student?.name,
+      studentDepartment: student?.department,
+       quarter: course.semester
+    });
+
+    if (res.data?.success) {
+      // ✅ Update state immediately
+      setRequestedCourseIds((prev) => [...prev, course._id]);
+
+      Swal.fire({
+        icon: "info",
+        title: "Request Sent",
+        text: `Your enrollment request for ${course.name} has been sent to the admin.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  } catch (error) {
+    console.error("Enrollment request error:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Request Failed",
+      text: error?.response?.data?.message || "Something went wrong. Try again.",
+    });
+  }
+};
+
+
+const renderCourseCard = (course, isEnrolled) => {
+  const isRequested = requestedCourseIds.includes(course._id);
+
+  return (
     <div
       key={course._id}
       className="card bg-white shadow-md hover:shadow-xl transition duration-300 border-t-4 border-primary mt-4"
@@ -91,7 +114,6 @@ const StudentsCourses = () => {
         <h2 className="card-title text-xl text-highlight">
           Course Code : {course.courseId}
         </h2>
-
         <p className="text-sm text-gray-700 flex items-center gap-2">
           <FaChalkboardTeacher /> Instructor: {course.facultyName || "TBD"}
         </p>
@@ -110,18 +132,27 @@ const StudentsCourses = () => {
 
         <div className="card-actions justify-end mt-4">
           <button
-            disabled={isEnrolled}
-            onClick={() => handleEnroll(course)}
-            className={`btn btn-sm ${isEnrolled ? "btn-disabled bg-gray-400" : "bg-primary text-white"}`}
+            disabled={isEnrolled || isRequested}
+            onClick={() => handleEnrollmentRequest(course)}
+            className={`btn btn-sm ${
+              isEnrolled
+                ? "btn-disabled bg-gray-400"
+                : isRequested
+                ? "bg-yellow-400 text-white"
+                : "bg-primary text-white"
+            }`}
           >
-            {isEnrolled ? "Enrolled" : "Enroll"}
+            {isEnrolled ? "Enrolled" : isRequested ? "Requested" : "Request Enroll"}
           </button>
         </div>
       </div>
     </div>
   );
+};
+
 
   const totalPages = Math.ceil(totalCourses / limit);
+  console.log(courses)
 
   return (
     <div className="min-h-screen bg-base-200 p-6">

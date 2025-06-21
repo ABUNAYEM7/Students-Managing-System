@@ -98,7 +98,8 @@ const StudentRoutine = () => {
                 {routine.department} - {routine.semester}
               </h3>
               <p className="text-sm text-green-500">
-                Week Start: {dayjs(routine.weekStartDate).format("MMMM D, YYYY")}
+                Week Start:{" "}
+                {dayjs(routine.weekStartDate).format("MMMM D, YYYY")}
               </p>
             </div>
 
@@ -109,16 +110,24 @@ const StudentRoutine = () => {
                     <th className="border p-2 whitespace-nowrap">Day</th>
                     <th className="border p-2 whitespace-nowrap">Course</th>
                     <th className="border p-2 whitespace-nowrap">Time</th>
-                    <th className="border p-2 whitespace-nowrap">Online Link</th>
+                    <th className="border p-2 whitespace-nowrap">
+                      Online Link
+                    </th>
                     <th className="border p-2 whitespace-nowrap">Notes</th>
                   </tr>
                 </thead>
                 <tbody>
                   {routine.routines.map((day, idx) => (
                     <tr key={idx}>
-                      <td className="border p-2 whitespace-nowrap">{day.day}</td>
-                      <td className="border p-2 whitespace-nowrap">{day.course || "N/A"}</td>
-                      <td className="border p-2 whitespace-nowrap">{day.time}</td>
+                      <td className="border p-2 whitespace-nowrap">
+                        {day.day}
+                      </td>
+                      <td className="border p-2 whitespace-nowrap">
+                        {day.course || "N/A"}
+                      </td>
+                      <td className="border p-2 whitespace-nowrap">
+                        {day.time}
+                      </td>
                       <td className="border p-2 whitespace-nowrap">
                         <a
                           href={day.onlineLink}
@@ -132,10 +141,10 @@ const StudentRoutine = () => {
                       <td className="border p-2 whitespace-nowrap">
                         {day.status === "completed" && day.notes?.url ? (
                           <a
-                              href={`http://localhost:3000/${day?.notes?.path?.replace(
-                            /\\/g,
-                            "/"
-                          )}`}
+                            href={`http://localhost:3000/${day?.notes?.path?.replace(
+                              /\\/g,
+                              "/"
+                            )}`}
                             download
                             className="text-green-600 underline font-semibold"
                           >

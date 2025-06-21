@@ -15,8 +15,7 @@ const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const cron = require("node-cron");
-const sendScheduleEmail = require("./utils/sendScheduleEmail"); 
-
+const sendScheduleEmail = require("./utils/sendScheduleEmail");
 
 // middleware
 app.use(express.json());
@@ -25,6 +24,7 @@ app.use(cookieParser());
 const allowedOrigins = [
   "http://localhost:5173",
   "https://populi.lordlandca.us",
+  "https://populi.kingsinternationalinstitute.com",
 ];
 
 app.use(
@@ -65,7 +65,6 @@ const verifyAdmin = (req, res, next) => {
 cron.schedule("0 7 * * *", () => {
   console.log("⏰ Sending class schedule emails...");
 });
-
 
 // mongodb url
 const uri = `mongodb+srv://${process.env.VITE_USER}:${process.env.VITE_PASS}@cluster404.ppsob.mongodb.net/?retryWrites=true&w=majority`;
@@ -170,6 +169,9 @@ async function run() {
       .db("academi_core")
       .collection("notification");
     const paymentsCollection = client.db("academi_core").collection("payments");
+    const enrollmentRequestsCollection = client
+      .db("academi_core")
+      .collection("enrollmentRequests");
 
     // save new user data in db
     app.post("/users", async (req, res) => {
@@ -2647,6 +2649,140 @@ async function run() {
       }
     });
 
+    // get enrollment requests
+    app.get("/enrollment-requests/:email", verifyToken, async (req, res) => {
+      const { email } = req.params;
+      const { quarter } = req.query;
+
+      try {
+        const filter = { email };
+        if (quarter) filter.quarter = quarter;
+
+        const requests = await enrollmentRequestsCollection
+          .find(filter)
+          .project({
+            courseId: 1,
+            courseName: 1,
+            status: 1,
+            requestedAt: 1,
+            quarter: 1,
+          })
+          .sort({ requestedAt: -1 })
+          .toArray();
+        res.send(requests);
+      } catch (err) {
+        console.error("Error fetching enrollment requests:", err);
+        res.status(500).send({ message: "Failed to fetch requests" });
+      }
+    });
+
+    //  enrollment request for the courses
+    // app.post("/request-enrollment", verifyToken, async (req, res) => {
+    //   const {
+    //     email,
+    //     courseId,
+    //     courseCode,
+    //     courseName,
+    //     studentName,
+    //     studentDepartment,
+    //   } = req.body;
+
+    //   // Validation
+    //   if (!email || !courseId || !courseCode || !courseName || !studentName || !studentDepartment) {
+    //     return res.status(400).send({ message: "Missing required fields" });
+    //   }
+
+    //   // Prevent duplicate requests
+    //   const existing = await enrollmentRequestsCollection.findOne({ email, courseId });
+    //   if (existing) {
+    //     return res.status(409).send({ message: "Already requested" });
+    //   }
+
+    //   // Save request
+    //   await enrollmentRequestsCollection.insertOne({
+    //     email,
+    //     courseId,
+    //     courseCode,
+    //     courseName,
+    //     studentName,
+    //     studentDepartment,
+    //     status: "pending",
+    //     requestedAt: new Date(),
+    //   });
+
+    //   // 🔔 Create Admin Notification
+    //   const adminNotification = {
+    //     type: "enrollment-request",
+    //     role: "admin",
+    //     email: "academicore4@gmail.com",
+    //     studentEmail: email,
+    //     studentName,
+    //     courseId,
+    //     courseName,
+    //     message: `📥 ${studentName} has requested to enroll in ${courseName}`,
+    //     applicationDate: new Date(),
+    //     seen: false,
+    //   };
+
+    //   const result = await notificationCollection.insertOne(adminNotification);
+    // console.log("Inserted into notificationCollection ✅", result.insertedId);
+
+    //   // Optional: emit via Socket.IO if you're using real-time
+    //   io.to("admin-room").emit("admin-notification", adminNotification);
+
+    //   res.send({ success: true, message: "Enrollment request sent" });
+    // });
+
+    // POST: Send enrollment request
+    app.post("/request-enrollment", verifyToken, async (req, res) => {
+      const {
+        email,
+        courseId,
+        courseCode,
+        courseName,
+        studentName,
+        studentDepartment,
+        quarter,
+      } = req.body;
+
+      // Basic validation
+      if (
+        !email ||
+        !courseId ||
+        !courseName ||
+        !studentName ||
+        !studentDepartment ||
+        !courseCode ||
+        !quarter
+      ) {
+        return res.status(400).send({ message: "Missing required fields" });
+      }
+
+      // Check for duplicate request
+      const existing = await enrollmentRequestsCollection.findOne({
+        email,
+        courseId,
+      });
+      if (existing) {
+        return res.status(409).send({ message: "Already requested" });
+      }
+
+      // Save request directly
+      await enrollmentRequestsCollection.insertOne({
+        email,
+        courseId,
+        courseCode,
+        courseName,
+        studentName,
+        studentDepartment,
+        quarter,
+        status: "pending",
+        requestedAt: new Date(),
+      });
+
+      res.send({ success: true, message: "Enrollment request sent" });
+    });
+
     //✅ ✅ ✅  notifications routes
 
     // ✅ Save new course and notify assigned faculty
@@ -2729,8 +2865,10 @@ async function run() {
       try {
         const { email, course } = req.body;
 
-        // 🔐 Allow only the logged-in student to enroll themselves
-        if (req.user.email !== email || req.user.role !== "student") {
+        if (
+          (req.user.role === "student" && req.user.email !== email) ||
+          (req.user.role !== "student" && req.user.role !== "admin")
+        ) {
           return res.status(403).send({
             success: false,
             message: "Forbidden: Students can only enroll themselves",
@@ -2743,7 +2881,6 @@ async function run() {
             .send({ success: false, message: "Missing required fields." });
         }
 
-        // ✅ Fetch student info
         const user = await usersCollection.findOne({ email });
         const studentName = user?.name || course.studentName || "Unknown";
         const studentPhoto =
@@ -2766,8 +2903,8 @@ async function run() {
               courseName: course.courseName,
               credit: course.credit,
               semester: course.semester,
-              fee: course.fee || 0, // ✅ safe fallback to 0 if not provided
-              paymentStatus: course.paymentStatus || "unpaid", // ✅ safe fallback
+              fee: course.fee || 0,
+              paymentStatus: course.paymentStatus || "unpaid",
               enrolledAt: new Date(course.enrolledAt || Date.now()),
             },
           },
@@ -2779,45 +2916,28 @@ async function run() {
         const result = await studentsCollection.updateOne(filter, update, {
           upsert: true,
         });
-        // ✅ Find course by _id (parsed from string)
+
         let actualCourse = null;
         if (ObjectId.isValid(course.courseId)) {
           actualCourse = await courseCollection.findOne({
             _id: new ObjectId(course.courseId),
           });
-        } else {
-          if (process.env.NODE_ENV === "development") {
-            console.log("❌ Invalid ObjectId:", course.courseId);
-          }
         }
 
         if (actualCourse?.facultyEmail) {
-          // ✅ Store notification in DB
           const notification = {
             type: "student-enrolled",
             facultyEmail: actualCourse.facultyEmail,
-            email, // student email
-            courseId: actualCourse._id.toString(), // for clarity
+            email,
+            courseId: actualCourse._id.toString(),
             courseName: actualCourse.name,
             applicationDate: new Date(),
             reason: `👨‍🎓 ${studentName} enrolled in ${actualCourse.name}`,
             seen: false,
           };
 
-          if (process.env.NODE_ENV === "development") {
-            console.log("🔔 Creating notification:", notification);
-          }
-
           await notificationCollection.insertOne(notification);
           io.to("faculty-room").emit("faculty-notification", notification);
-
-          if (process.env.NODE_ENV === "development") {
-            ("📢 Notification emitted to faculty room.");
-          }
-        } else {
-          if (process.env.NODE_ENV === "development") {
-            console.log("⚠️ No faculty email found for course:", actualCourse);
-          }
         }
 
         res.send({ success: true, result });
@@ -2965,6 +3085,35 @@ async function run() {
       }
     });
 
+    // patch enrollments status
+    app.patch(
+      "/enrollment-requests/:email/:courseId",
+      verifyToken,
+      async (req, res) => {
+        const { email, courseId } = req.params;
+        const { status } = req.body;
+
+        if (!status || !["approved", "declined"].includes(status)) {
+          return res
+            .status(400)
+            .send({ success: false, message: "Invalid status value." });
+        }
+
+        const result = await enrollmentRequestsCollection.updateOne(
+          { email, courseId },
+          { $set: { status, updatedAt: new Date() } }
+        );
+
+        if (result.matchedCount === 0) {
+          return res
+            .status(404)
+            .send({ success: false, message: "Enrollment request not found." });
+        }
+
+        res.send({ success: true, result });
+      }
+    );
+
     // ✅ PATCH: Mark faculty notifications as seen
     app.patch("/faculty-notifications/mark-seen", async (req, res) => {
       const { notificationIds } = req.body;
@@ -3045,7 +3194,7 @@ async function run() {
     app.get("/admin-notifications", async (req, res) => {
       try {
         const notifications = await notificationCollection
-          .find({ type: "payment" }) // only payment-related notifications
+          .find({ role: "admin" })
           .sort({ applicationDate: -1 })
           .toArray();
 
@@ -3364,54 +3513,53 @@ async function run() {
 
     // patch to upload the pdf notes per class routine
     // PATCH /upload-routine-note
-app.patch(
-  "/upload-routine-note",
-  upload.single("file"),
-  async (req, res) => {
-    const { routineId, dayIndex, course, title, email } = req.body;
+    app.patch(
+      "/upload-routine-note",
+      upload.single("file"),
+      async (req, res) => {
+        const { routineId, dayIndex, course, title, email } = req.body;
 
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-
-    try {
-      const existingRoutine = await routinesCollection.findOne({
-        _id: new ObjectId(routineId),
-      });
-
-      if (!existingRoutine) {
-        return res.status(404).json({ error: "Routine not found" });
-      }
-
-      const updateResult = await routinesCollection.updateOne(
-        { _id: new ObjectId(routineId) },
-        {
-          $set: {
-            [`routines.${dayIndex}.notes`]: {
-              title,
-              uploadedBy: email,
-              course,
-              url: `/uploads/notes/${req.file.filename}`,
-              path: req.file.path, 
-              uploadedAt: new Date(),
-            },
-          },
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
         }
-      );
 
-      if (updateResult.modifiedCount > 0) {
-        res.status(200).json({ message: "Note uploaded and saved." });
-      } else {
-        res
-          .status(404)
-          .json({ message: "Routine not found or not updated." });
+        try {
+          const existingRoutine = await routinesCollection.findOne({
+            _id: new ObjectId(routineId),
+          });
+
+          if (!existingRoutine) {
+            return res.status(404).json({ error: "Routine not found" });
+          }
+
+          const updateResult = await routinesCollection.updateOne(
+            { _id: new ObjectId(routineId) },
+            {
+              $set: {
+                [`routines.${dayIndex}.notes`]: {
+                  title,
+                  uploadedBy: email,
+                  course,
+                  url: `/uploads/notes/${req.file.filename}`,
+                  path: req.file.path,
+                  uploadedAt: new Date(),
+                },
+              },
+            }
+          );
+
+          if (updateResult.modifiedCount > 0) {
+            res.status(200).json({ message: "Note uploaded and saved." });
+          } else {
+            res
+              .status(404)
+              .json({ message: "Routine not found or not updated." });
+          }
+        } catch (err) {
+          res.status(500).json({ error: "Upload failed" });
+        }
       }
-    } catch (err) {
-      res.status(500).json({ error: "Upload failed" });
-    }
-  }
-);
-
+    );
 
     //✅ ✅ ✅  payment routes
 
@@ -3640,92 +3788,100 @@ app.patch(
 
     // sending mail function for the classes
     cron.schedule("0 19 * * *", async () => {
-  console.log("📬 Starting daily class schedule email job...");
+      console.log("📬 Starting daily class schedule email job...");
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowDay = tomorrow.toLocaleDateString("en-US", { weekday: "long" });
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowDay = tomorrow.toLocaleDateString("en-US", {
+        weekday: "long",
+      });
 
-  try {
-    const students = await studentsCollection.find().toArray();
+      try {
+        const students = await studentsCollection.find().toArray();
 
-    for (const student of students) {
-      const routines = await routinesCollection.find({
-        department: student.department,
-        "routines.day": tomorrowDay,
-      }).toArray();
+        for (const student of students) {
+          const routines = await routinesCollection
+            .find({
+              department: student.department,
+              "routines.day": tomorrowDay,
+            })
+            .toArray();
 
-      let scheduleItems = [];
+          let scheduleItems = [];
 
-      for (const routine of routines) {
-        for (const r of routine.routines) {
-          if (
-            r.day === tomorrowDay &&
-            Array.isArray(r.studentEmails) &&
-            r.studentEmails.includes(student.email)
-          ) {
-            scheduleItems.push(`<li>${r.course} at ${r.time}</li>`);
+          for (const routine of routines) {
+            for (const r of routine.routines) {
+              if (
+                r.day === tomorrowDay &&
+                Array.isArray(r.studentEmails) &&
+                r.studentEmails.includes(student.email)
+              ) {
+                scheduleItems.push(`<li>${r.course} at ${r.time}</li>`);
+              }
+            }
+          }
+
+          if (scheduleItems.length > 0) {
+            const htmlList = scheduleItems.join("");
+            await sendScheduleEmail(student.email, student.name, htmlList);
           }
         }
+
+        console.log("✅ Class reminder emails sent.");
+      } catch (error) {
+        console.error("❌ Failed to send class schedule emails:", error);
       }
-
-      if (scheduleItems.length > 0) {
-        const htmlList = scheduleItems.join("");
-        await sendScheduleEmail(student.email, student.name, htmlList);
-      }
-    }
-
-    console.log("✅ Class reminder emails sent.");
-  } catch (error) {
-    console.error("❌ Failed to send class schedule emails:", error);
-  }
-});
-
-
-app.get("/test-schedule-email/:email", async (req, res) => {
-  const { email } = req.params;
-
-  try {
-    const student = await studentsCollection.findOne({ email });
-
-    if (!student) {
-      return res.status(404).send("Student not found.");
-    }
-
-    // Get tomorrow's weekday name
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDay = tomorrow.toLocaleDateString("en-US", { weekday: "long" });
-
-    // Find routines that match the student's department and tomorrow's day
-    const routines = await routinesCollection.find({
-      department: student.department,
-      "routines.day": tomorrowDay,
-    }).toArray();
-
-    let scheduleItems = [];
-
-    routines.forEach((routine) => {
-      routine.routines
-        .filter((r) => r.day === tomorrowDay)
-        .forEach((r) => {
-          scheduleItems.push(`<li><strong>${r.course}</strong> at ${r.time}</li>`);
-        });
     });
 
-    if (scheduleItems.length > 0) {
-      const htmlList = scheduleItems.join("");
-      await sendScheduleEmail(student.email, student.name, htmlList);
-      return res.send("✅ Test schedule email sent!");
-    } else {
-      return res.send("ℹ️ No classes scheduled for tomorrow.");
-    }
-  } catch (err) {
-    console.error("❌ Failed to send test email:", err);
-    return res.status(500).send("Error sending test email.");
-  }
-});
+    app.get("/test-schedule-email/:email", async (req, res) => {
+      const { email } = req.params;
 
+      try {
+        const student = await studentsCollection.findOne({ email });
+
+        if (!student) {
+          return res.status(404).send("Student not found.");
+        }
+
+        // Get tomorrow's weekday name
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowDay = tomorrow.toLocaleDateString("en-US", {
+          weekday: "long",
+        });
+
+        // Find routines that match the student's department and tomorrow's day
+        const routines = await routinesCollection
+          .find({
+            department: student.department,
+            "routines.day": tomorrowDay,
+          })
+          .toArray();
+
+        let scheduleItems = [];
+
+        routines.forEach((routine) => {
+          routine.routines
+            .filter((r) => r.day === tomorrowDay)
+            .forEach((r) => {
+              scheduleItems.push(
+                `<li><strong>${r.course}</strong> at ${r.time}</li>`
+              );
+            });
+        });
+
+        if (scheduleItems.length > 0) {
+          const htmlList = scheduleItems.join("");
+          await sendScheduleEmail(student.email, student.name, htmlList);
+          return res.send("✅ Test schedule email sent!");
+        } else {
+          return res.send("ℹ️ No classes scheduled for tomorrow.");
+        }
+      } catch (err) {
+        console.error("❌ Failed to send test email:", err);
+        return res.status(500).send("Error sending test email.");
+      }
+    });
 
     // await client.db("admin").command({ ping: 1 });
 
