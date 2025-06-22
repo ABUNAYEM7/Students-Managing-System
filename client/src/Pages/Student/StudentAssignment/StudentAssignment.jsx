@@ -10,6 +10,7 @@ const StudentAssignment = () => {
   const axiosInstance = AxiosSecure();
   const [submissionFiles, setSubmissionFiles] = useState({});
   const [comments, setComments] = useState({});
+  const [submitting, setSubmitting] = useState({});
 
   const {
     data: assignments = [],
@@ -32,6 +33,9 @@ const StudentAssignment = () => {
     const file = submissionFiles[assignmentId];
     if (!file) return alert("Please select a file first.");
 
+    // Disable the button for this assignment
+    setSubmitting((prev) => ({ ...prev, [assignmentId]: true }));
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("assignmentId", assignmentId);
@@ -48,12 +52,12 @@ const StudentAssignment = () => {
           showConfirmButton: false,
           timer: 1500,
         });
-        refetch();
+        refetch(); // ✅ refresh submitted state
       }
     } catch (err) {
-      if (import.meta.env.DEV) {
-        console.log(err);
-      }
+      console.error("Submission error:", err);
+      // Optional: re-enable on failure
+      setSubmitting((prev) => ({ ...prev, [assignmentId]: false }));
     }
   };
 
@@ -125,7 +129,7 @@ const StudentAssignment = () => {
 
               <a
                 className="btn btn-outline btn-sm mt-3"
-                href={`http://localhost:3000/${item.path.replace(/\\/g, "/")}`}
+                href={item.firebaseUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -152,9 +156,11 @@ const StudentAssignment = () => {
                     <button
                       className="btn bg-highlight text-white mt-3"
                       onClick={() => handleSubmit(item._id)}
-                      disabled={deadlinePassed}
+                      disabled={deadlinePassed || submitting[item._id]}
                     >
-                      Submit Assignment
+                      {submitting[item._id]
+                        ? "Submitting..."
+                        : "Submit Assignment"}
                     </button>
                   </div>
                 </div>
@@ -162,10 +168,7 @@ const StudentAssignment = () => {
                 <div className="flex items-center justify-center">
                   <a
                     className="btn btn-success text-white mt-4"
-                    href={`http://localhost:3000/${item.submission.path.replace(
-                      /\\/g,
-                      "/"
-                    )}`}
+                    href={item?.firebaseUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

@@ -12,6 +12,7 @@ const Materials = () => {
     `${user?.email}`,
     `/materials/${user?.email}`
   );
+
   // deleteHandler
   const deleteHandler = (id) => {
     Swal.fire({
@@ -37,6 +38,8 @@ const Materials = () => {
     });
   };
 
+  console.log(data?.materials);
+
   return (
     <div>
       <div className="mt-3 p-2 md:p-4 flex items-center justify-between">
@@ -61,19 +64,16 @@ const Materials = () => {
             </tr>
           </thead>
           <tbody>
-            {data?.length > 0 ? (
-              data.map((material, i) => (
+            {data?.materials?.length > 0 ? (
+              data.materials.map((material, i) => (
                 <tr key={material._id}>
                   <td>{i + 1}</td>
                   <td>{material.courseId}</td>
                   <td>{material.title}</td>
                   <td>
-                    {material?.path ? (
+                    {material?.firebaseUrl ? (
                       <a
-                        href={`http://localhost:3000/${material.path.replace(
-                          /\\/g,
-                          "/"
-                        )}`}
+                        href={material.firebaseUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 underline"

@@ -62,10 +62,7 @@ const AssignmentDetails = () => {
 
         <div className="mt-4">
           <a
-            href={`http://localhost:3000/${assignment?.path?.replace(
-              /\\/g,
-              "/"
-            )}`}
+           href={assignment?.firebaseUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="btn bg-orange-600 text-white w-full"
@@ -98,10 +95,7 @@ const AssignmentDetails = () => {
                     <td>{new Date(s.uploadedAt).toLocaleString()}</td>
                     <td>
                       <a
-                        href={`http://localhost:3000/${s.path.replace(
-                          /\\/g,
-                          "/"
-                        )}`}
+                        href={s?.firebaseUrl}
                         className="text-blue-600 underline"
                         target="_blank"
                         rel="noopener noreferrer"

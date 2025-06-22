@@ -28,6 +28,7 @@ const AddMaterials = () => {
 
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [departmentCourses, setDepartmentCourses] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false); // ✅ added
   const [formData, setFormData] = useState({
     title: "",
     courseId: "",
@@ -90,6 +91,8 @@ const AddMaterials = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true); // ✅ disable on submit
+
     const form = new FormData();
     form.append("title", formData.title);
     form.append("courseId", formData.courseId);
@@ -111,6 +114,8 @@ const AddMaterials = () => {
     } catch (err) {
       console.error("Submit failed:", err);
       Swal.fire("Error!", "Something went wrong.", "error");
+    } finally {
+      setIsSubmitting(false); // ✅ re-enable after request
     }
   };
 
@@ -211,8 +216,18 @@ const AddMaterials = () => {
           />
         </div>
 
-        <button type="submit" className="btn btn-primary w-full">
-          {id ? "Update Material" : "Upload Material"}
+        <button
+          type="submit"
+          className="btn btn-primary w-full"
+          disabled={isSubmitting} // ✅ apply disable
+        >
+          {isSubmitting
+            ? id
+              ? "Updating..."
+              : "Uploading..."
+            : id
+            ? "Update Material"
+            : "Upload Material"}
         </button>
       </form>
     </div>

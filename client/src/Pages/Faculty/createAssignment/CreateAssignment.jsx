@@ -24,6 +24,7 @@ const CreateAssignment = () => {
   });
   const [allCourses, setAllCourses] = useState([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -75,6 +76,7 @@ const CreateAssignment = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     const { courseId, title, instructions, file, deadline, semester } =
       formData;
@@ -87,6 +89,7 @@ const CreateAssignment = () => {
       !semester
     ) {
       setError("All fields are required including the deadline and semester.");
+      setLoading(false);
       return;
     }
 
@@ -94,6 +97,7 @@ const CreateAssignment = () => {
     const now = new Date();
     if (deadlineDate < now) {
       setError("Deadline must be a future date and time.");
+      setLoading(false);
       return;
     }
 
@@ -103,6 +107,7 @@ const CreateAssignment = () => {
 
     if (!selectedCourse) {
       setError("Selected course not found.");
+      setLoading(false);
       return;
     }
 
@@ -133,6 +138,7 @@ const CreateAssignment = () => {
             showConfirmButton: false,
             timer: 1500,
           });
+          setLoading(false);
           return navigate("/dashboard/assignment");
         }
       }
@@ -286,8 +292,12 @@ const CreateAssignment = () => {
             </label>
           )}
 
-          <button type="submit" className="btn btn-primary w-full">
-            Submit Assignment
+          <button
+            type="submit"
+            className="btn btn-primary w-full"
+            disabled={loading}
+          >
+            {loading ? "Submitting..." : "Create Assignment"}
           </button>
         </form>
       </div>

@@ -16,6 +16,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const cron = require("node-cron");
 const sendScheduleEmail = require("./utils/sendScheduleEmail");
+const bucket = require("./Firebase/firebaseAdmin");
 
 // middleware
 app.use(express.json());
@@ -3206,227 +3207,330 @@ async function run() {
     });
 
     //✅ ✅ ✅  upload pdf procedures
-    const storage = multer.diskStorage({
-      destination: function (req, file, cb) {
-        cb(null, "./files");
-      },
-      filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now();
-        cb(null, uniqueSuffix + file.originalname);
-      },
-    });
+    const storage = multer.memoryStorage();
 
     const upload = multer({
-      storage,
+      storage: multer.memoryStorage(),
       fileFilter: (req, file, cb) => {
         if (file.mimetype !== "application/pdf") {
           return cb(new Error("Only PDFs allowed"), false);
         }
         cb(null, true);
       },
-      limits: { fileSize: 10 * 1024 * 1024 },
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
     });
 
-    // save the file to db
-    app.post("/upload-file", upload.single("file"), async (req, res) => {
-      try {
-        const { courseId, title, email, department } = req.body; // ✅ include department
-        const fileInfo = req.file;
+    // upload materials 
+app.post("/upload-file", upload.single("file"), async (req, res) => {
+  try {
+    console.log("📥 /upload-file route hit");
 
-        const material = {
-          courseId,
-          title,
-          email,
-          department, // ✅ save department
-          filename: fileInfo.filename,
-          originalname: fileInfo.originalname,
-          path: fileInfo.path,
-          size: fileInfo.size,
-          mimetype: fileInfo.mimetype,
-          uploadedAt: new Date().toISOString(),
-        };
+    const { courseId, title, email, department } = req.body;
+    const file = req.file;
 
-        const result = await materialsCollection.insertOne(material);
-        res.send(result);
-      } catch (err) {
-        console.error("❌ Upload failed:", err);
-        res.status(500).send({ message: "Upload failed" });
-      }
+    console.log("🧾 Received fields:", { courseId, title, email, department });
+    console.log("📎 Received file info:", file);
+
+    if (!file) {
+      return res.status(400).send({ message: "No file uploaded" });
+    }
+
+    if (!file.buffer) {
+      return res.status(400).send({ message: "File buffer missing" });
+    }
+
+    const uniqueFileName = `${Date.now()}-${file.originalname}`;
+    const blob = bucket.file(uniqueFileName);
+    const blobStream = blob.createWriteStream({
+      metadata: {
+        contentType: file.mimetype,
+      },
     });
+
+    blobStream.on("error", (err) => {
+      console.error("❌ Firebase upload failed:", err);
+      return res.status(500).send({ message: "Firebase upload failed" });
+    });
+
+    blobStream.on("finish", async () => {
+      console.log("✅ Firebase upload finished");
+
+      // ✅ Make the uploaded file publicly accessible
+      await blob.makePublic();
+
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+      console.log("🌐 File accessible at:", publicUrl);
+
+      const material = {
+        courseId,
+        title,
+        email,
+        department,
+        filename: uniqueFileName,
+        originalname: file.originalname,
+        size: file.size,
+        mimetype: file.mimetype,
+        uploadedAt: new Date().toISOString(),
+        firebaseUrl: publicUrl,
+      };
+
+      const result = await materialsCollection.insertOne(material);
+      console.log("📦 Material saved to DB:", result.insertedId);
+
+      res.send({
+        message: "Uploaded to Firebase and saved to DB",
+        firebaseUrl: publicUrl,
+        result,
+      });
+    });
+
+    blobStream.end(file.buffer); // ✅ Start Firebase upload
+  } catch (err) {
+    console.error("❌ Upload failed:", err);
+    res.status(500).send({ message: "Upload failed" });
+  }
+});
+
+
 
     // upload assignment
-    app.post(
-      "/upload-assignment",
-      verifyToken,
-      upload.single("file"),
-      async (req, res) => {
-        try {
-          const {
+app.post(
+  "/upload-assignment",
+  verifyToken,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const {
+        courseId,
+        courseCode,
+        title,
+        instructions,
+        email,
+        deadline,
+        semester,
+      } = req.body;
+      const file = req.file;
+
+      // ✅ Role check
+      if (req.user.role !== "faculty") {
+        return res.status(403).send({
+          message: "Forbidden: Only faculty can upload assignments",
+        });
+      }
+
+      // ✅ Course check
+      const course = await courseCollection.findOne({
+        _id: new ObjectId(courseId),
+        facultyEmail: email,
+      });
+
+      if (!course) {
+        return res.status(403).send({
+          message: "Forbidden: You are not assigned to this course",
+        });
+      }
+
+      if (!file) {
+        return res.status(400).send({ message: "No file uploaded" });
+      }
+
+      if (!file.buffer) {
+        return res.status(400).send({ message: "File buffer missing" });
+      }
+
+      // ✅ Upload to Firebase Storage
+      const uniqueFileName = `${Date.now()}-${file.originalname}`;
+      const blob = bucket.file(uniqueFileName);
+      const blobStream = blob.createWriteStream({
+        metadata: { contentType: file.mimetype },
+      });
+
+      blobStream.on("error", (err) => {
+        console.error("❌ Firebase upload error:", err);
+        return res.status(500).send({ message: "Upload to Firebase failed" });
+      });
+
+      blobStream.on("finish", async () => {
+  // ✅ Make the file public
+  await blob.makePublic();
+
+  const firebaseUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+
+        const assignment = {
+          courseId,
+          courseCode,
+          semester,
+          title,
+          instructions,
+          email: req.user.email,
+          deadline,
+          originalname: file.originalname,
+          filename: uniqueFileName,
+          size: file.size,
+          mimetype: file.mimetype,
+          uploadedAt: new Date().toISOString(),
+          firebaseUrl, // ✅ Added field (optional use in frontend)
+        };
+
+        const result = await assignmentsCollection.insertOne(assignment);
+
+        const students = await studentsCollection
+          .find({ department: course.department })
+          .toArray();
+
+        const now = new Date();
+        for (const student of students) {
+          const notification = {
+            type: "assignment",
+            email: student.email,
             courseId,
-            courseCode,
+            courseName: course.name,
             title,
-            instructions,
-            email,
-            deadline,
-            semester,
-          } = req.body;
-          const fileInfo = req.file;
-
-          // ✅ Ensure only faculty can upload
-          if (req.user.role !== "faculty") {
-            return res.status(403).send({
-              message: "Forbidden: Only faculty can upload assignments",
-            });
-          }
-
-          // ✅ Check course assignment
-          const course = await courseCollection.findOne({
-            _id: new ObjectId(courseId),
-            facultyEmail: email,
-          });
-
-          if (!course) {
-            return res.status(403).send({
-              message: "Forbidden: You are not assigned to this course",
-            });
-          }
-
-          const assignment = {
-            courseId,
-            courseCode,
-            semester,
-            title,
-            instructions,
-            email: req.user.email,
-            deadline,
-            filename: fileInfo.filename,
-            originalname: fileInfo.originalname,
-            path: fileInfo.path,
-            size: fileInfo.size,
-            mimetype: fileInfo.mimetype,
-            uploadedAt: new Date().toISOString(),
+            message: `📚 New assignment posted for ${course.name}`,
+            time: now,
+            seen: false,
           };
 
-          const result = await assignmentsCollection.insertOne(assignment);
-
-          // ✅ Get all students in that department
-          const students = await studentsCollection
-            .find({ department: course.department })
-            .toArray();
-          const now = new Date();
-
-          // ✅ Emit & Save notification for each student
-          for (const student of students) {
-            const notification = {
-              type: "assignment",
-              email: student.email,
-              courseId,
-              courseName: course.name,
-              title,
-              message: `📚 New assignment posted for ${course.name}`,
-              time: now,
-              seen: false,
-            };
-
-            io.to(student.email).emit("student-notification", notification);
-            await notificationCollection.insertOne(notification);
-          }
-
-          res.send(result);
-        } catch (err) {
-          console.error("❌ Upload failed", err);
-          res.status(500).send({ message: "Upload failed" });
+          io.to(student.email).emit("student-notification", notification);
+          await notificationCollection.insertOne(notification);
         }
-      }
-    );
+
+        // ✅ Keep old response format
+        res.send(result);
+      });
+
+      blobStream.end(file.buffer);
+    } catch (err) {
+      console.error("❌ Upload failed", err);
+      res.status(500).send({ message: "Upload failed" });
+    }
+  }
+);
 
     // assignment-submission
-    app.post(
-      "/assignment-submission",
-      verifyToken,
-      upload.single("file"),
-      async (req, res) => {
-        const { assignmentId, email, comments } = req.body;
-        const fileInfo = req.file;
+app.post(
+  "/assignment-submission",
+  verifyToken,
+  upload.single("file"),
+  async (req, res) => {
+    const { assignmentId, email, comments } = req.body;
+    const file = req.file;
 
-        // 🔐 Ensure only the logged-in student can submit
-        if (req.user.role !== "student" || req.user.email !== email) {
-          return res.status(403).send({
-            message:
-              "Forbidden: Only the logged-in student can submit assignments",
-          });
-        }
+    // 🔐 Ensure only the logged-in student can submit
+    if (req.user.role !== "student" || req.user.email !== email) {
+      return res.status(403).send({
+        message: "Forbidden: Only the logged-in student can submit assignments",
+      });
+    }
+
+    if (!file || !file.buffer) {
+      return res.status(400).send({ message: "No valid file uploaded" });
+    }
+
+    try {
+      // 🔥 Upload to Firebase Storage
+      const uniqueFileName = `${Date.now()}-${file.originalname}`;
+      const blob = bucket.file(uniqueFileName);
+      const blobStream = blob.createWriteStream({
+        metadata: { contentType: file.mimetype },
+      });
+
+      blobStream.on("error", (err) => {
+        console.error("❌ Firebase upload error:", err);
+        return res.status(500).send({ message: "Upload to Firebase failed" });
+      });
+
+      blobStream.on("finish", async () => {
+        // Make the file public
+        await blob.makePublic();
+        const firebaseUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
 
         const subAssignment = {
           assignmentId,
           email,
           comments,
-          filename: fileInfo.filename,
-          originalname: fileInfo.originalname,
-          path: fileInfo.path,
-          size: fileInfo.size,
-          mimetype: fileInfo.mimetype,
+          filename: uniqueFileName,
+          originalname: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype,
           uploadedAt: new Date().toISOString(),
+          firebaseUrl,
         };
 
         const result = await subAssignmentsCollection.insertOne(subAssignment);
         res.send(result);
-      }
-    );
+      });
+
+      blobStream.end(file.buffer);
+    } catch (err) {
+      console.error("❌ Submission upload failed:", err);
+      res.status(500).send({ message: "Assignment submission failed" });
+    }
+  }
+);
+
 
     // update material
-    app.patch(
-      "/update-material/:id",
-      verifyToken,
-      upload.single("file"),
-      async (req, res) => {
-        try {
-          const { id } = req.params;
+app.patch(
+  "/update-material/:id",
+  verifyToken,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-          if (!ObjectId.isValid(id)) {
-            return res.status(400).send({ message: "Invalid ID" });
-          }
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid ID" });
+      }
 
-          const existing = await materialsCollection.findOne({
-            _id: new ObjectId(id),
-          });
+      const existing = await materialsCollection.findOne({
+        _id: new ObjectId(id),
+      });
 
-          if (!existing) {
-            return res.status(404).send({ message: "Material not found" });
-          }
+      if (!existing) {
+        return res.status(404).send({ message: "Material not found" });
+      }
 
-          // 🔐 Only the original uploader (faculty) or admin can update
-          const isAuthorized =
-            req.user.role === "admin" || req.user.email === existing.email;
+      // 🔐 Only the original uploader (faculty) or admin can update
+      const isAuthorized =
+        req.user.role === "admin" || req.user.email === existing.email;
 
-          if (!isAuthorized) {
-            return res.status(403).send({
-              message: "Forbidden: Not authorized to update material",
-            });
-          }
+      if (!isAuthorized) {
+        return res.status(403).send({
+          message: "Forbidden: Not authorized to update material",
+        });
+      }
 
-          const { title, courseId, email } = req.body;
+      const { title, courseId, email } = req.body;
 
-          const updateFields = {
-            title: title || existing.title,
-            courseId: courseId || existing.courseId,
-            email: email || existing.email,
-            updatedAt: new Date().toISOString(),
-          };
+      const updateFields = {
+        title: title || existing.title,
+        courseId: courseId || existing.courseId,
+        email: email || existing.email,
+        updatedAt: new Date().toISOString(),
+      };
 
-          if (req.file) {
-            updateFields.filename = req.file.filename;
-            updateFields.originalname = req.file.originalname;
-            updateFields.path = req.file.path;
-            updateFields.size = req.file.size;
-            updateFields.mimetype = req.file.mimetype;
-          } else {
-            updateFields.filename = existing.filename;
-            updateFields.originalname = existing.originalname;
-            updateFields.path = existing.path;
-            updateFields.size = existing.size;
-            updateFields.mimetype = existing.mimetype;
-          }
+      if (req.file && req.file.buffer) {
+        const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
+        const blob = bucket.file(uniqueFileName);
+        const blobStream = blob.createWriteStream({
+          metadata: { contentType: req.file.mimetype },
+        });
+
+        blobStream.on("error", (err) => {
+          console.error("❌ Firebase upload error:", err);
+          return res.status(500).send({ message: "Upload to Firebase failed" });
+        });
+
+        blobStream.on("finish", async () => {
+          await blob.makePublic();
+          const firebaseUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+
+          updateFields.filename = uniqueFileName;
+          updateFields.originalname = req.file.originalname;
+          updateFields.size = req.file.size;
+          updateFields.mimetype = req.file.mimetype;
+          updateFields.firebaseUrl = firebaseUrl;
 
           const result = await materialsCollection.updateOne(
             { _id: new ObjectId(id) },
@@ -3434,67 +3538,97 @@ async function run() {
           );
 
           res.send(result);
-        } catch (err) {
-          console.error(err);
-          res.status(500).send({ message: "Update failed" });
-        }
+        });
+
+        blobStream.end(req.file.buffer);
+      } else {
+        // No new file uploaded, use existing file info
+        updateFields.filename = existing.filename;
+        updateFields.originalname = existing.originalname;
+        updateFields.path = existing.path;
+        updateFields.size = existing.size;
+        updateFields.mimetype = existing.mimetype;
+        updateFields.firebaseUrl = existing.firebaseUrl;
+
+        const result = await materialsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updateFields }
+        );
+
+        res.send(result);
       }
-    );
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({ message: "Update failed" });
+    }
+  }
+);
+
 
     // update assignment
-    app.patch(
-      "/update-assignment/:id",
-      verifyToken,
-      upload.single("file"),
-      async (req, res) => {
-        try {
-          const { id } = req.params;
+app.patch(
+  "/update-assignment/:id",
+  verifyToken,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-          if (!ObjectId.isValid(id)) {
-            return res.status(400).send({ message: "Invalid ID" });
-          }
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid ID" });
+      }
 
-          const existing = await assignmentsCollection.findOne({
-            _id: new ObjectId(id),
-          });
+      const existing = await assignmentsCollection.findOne({
+        _id: new ObjectId(id),
+      });
 
-          if (!existing) {
-            return res.status(404).send({ message: "Assignment not found" });
-          }
+      if (!existing) {
+        return res.status(404).send({ message: "Assignment not found" });
+      }
 
-          // 🔐 Allow only the assignment creator or admin
-          const isAuthorized =
-            req.user.role === "admin" || req.user.email === existing.email;
+      // 🔐 Allow only the assignment creator or admin
+      const isAuthorized =
+        req.user.role === "admin" || req.user.email === existing.email;
 
-          if (!isAuthorized) {
-            return res.status(403).send({
-              message: "Forbidden: Not authorized to update assignment",
-            });
-          }
+      if (!isAuthorized) {
+        return res.status(403).send({
+          message: "Forbidden: Not authorized to update assignment",
+        });
+      }
 
-          const { title, courseId, instructions, email } = req.body;
+      const { title, courseId, instructions, email, deadline, semester } = req.body;
 
-          const updateFields = {
-            title: title || existing.title,
-            courseId: courseId || existing.courseId,
-            instructions: instructions || existing.instructions,
-            email: email || existing.email,
-            updatedAt: new Date().toISOString(),
-          };
+      const updateFields = {
+        title: title || existing.title,
+        courseId: courseId || existing.courseId,
+        instructions: instructions || existing.instructions,
+        email: email || existing.email,
+        deadline: deadline || existing.deadline,
+        semester: semester || existing.semester,
+        updatedAt: new Date().toISOString(),
+      };
 
-          if (req.file) {
-            updateFields.filename = req.file.filename;
-            updateFields.originalname = req.file.originalname;
-            updateFields.path = req.file.path;
-            updateFields.size = req.file.size;
-            updateFields.mimetype = req.file.mimetype;
-          } else {
-            updateFields.filename = existing.filename;
-            updateFields.originalname = existing.originalname;
-            updateFields.path = existing.path;
-            updateFields.size = existing.size;
-            updateFields.mimetype = existing.mimetype;
-          }
+      if (req.file && req.file.buffer) {
+        const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
+        const blob = bucket.file(uniqueFileName);
+        const blobStream = blob.createWriteStream({
+          metadata: { contentType: req.file.mimetype },
+        });
+
+        blobStream.on("error", (err) => {
+          console.error("❌ Firebase upload error:", err);
+          return res.status(500).send({ message: "Upload to Firebase failed" });
+        });
+
+        blobStream.on("finish", async () => {
+          await blob.makePublic();
+          const firebaseUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+
+          updateFields.filename = uniqueFileName;
+          updateFields.originalname = req.file.originalname;
+          updateFields.size = req.file.size;
+          updateFields.mimetype = req.file.mimetype;
+          updateFields.firebaseUrl = firebaseUrl;
 
           const result = await assignmentsCollection.updateOne(
             { _id: new ObjectId(id) },
@@ -3502,64 +3636,104 @@ async function run() {
           );
 
           res.send(result);
-        } catch (err) {
-          if (process.env.NODE_ENV === "development") {
-            console.error("❌ Assignment update failed:", err);
-          }
-          res.status(500).send({ message: "Update failed" });
-        }
+        });
+
+        blobStream.end(req.file.buffer);
+      } else {
+        // No file uploaded, update without file info
+        updateFields.filename = existing.filename;
+        updateFields.originalname = existing.originalname;
+        updateFields.path = existing.path;
+        updateFields.size = existing.size;
+        updateFields.mimetype = existing.mimetype;
+        updateFields.firebaseUrl = existing.firebaseUrl;
+
+        const result = await assignmentsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updateFields }
+        );
+
+        res.send(result);
       }
-    );
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("❌ Assignment update failed:", err);
+      }
+      res.status(500).send({ message: "Update failed" });
+    }
+  }
+);
+
 
     // patch to upload the pdf notes per class routine
     // PATCH /upload-routine-note
-    app.patch(
-      "/upload-routine-note",
-      upload.single("file"),
-      async (req, res) => {
-        const { routineId, dayIndex, course, title, email } = req.body;
+app.patch(
+  "/upload-routine-note",
+  upload.single("file"),
+  async (req, res) => {
+    const { routineId, dayIndex, course, title, email } = req.body;
 
-        if (!req.file) {
-          return res.status(400).json({ error: "No file uploaded" });
-        }
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
-        try {
-          const existingRoutine = await routinesCollection.findOne({
-            _id: new ObjectId(routineId),
-          });
+    try {
+      const existingRoutine = await routinesCollection.findOne({
+        _id: new ObjectId(routineId),
+      });
 
-          if (!existingRoutine) {
-            return res.status(404).json({ error: "Routine not found" });
-          }
-
-          const updateResult = await routinesCollection.updateOne(
-            { _id: new ObjectId(routineId) },
-            {
-              $set: {
-                [`routines.${dayIndex}.notes`]: {
-                  title,
-                  uploadedBy: email,
-                  course,
-                  url: `/uploads/notes/${req.file.filename}`,
-                  path: req.file.path,
-                  uploadedAt: new Date(),
-                },
-              },
-            }
-          );
-
-          if (updateResult.modifiedCount > 0) {
-            res.status(200).json({ message: "Note uploaded and saved." });
-          } else {
-            res
-              .status(404)
-              .json({ message: "Routine not found or not updated." });
-          }
-        } catch (err) {
-          res.status(500).json({ error: "Upload failed" });
-        }
+      if (!existingRoutine) {
+        return res.status(404).json({ error: "Routine not found" });
       }
-    );
+
+      const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
+      const blob = bucket.file(uniqueFileName);
+      const blobStream = blob.createWriteStream({
+        metadata: { contentType: req.file.mimetype },
+      });
+
+      blobStream.on("error", (err) => {
+        console.error("❌ Firebase upload error:", err);
+        return res.status(500).json({ error: "Upload to Firebase failed" });
+      });
+
+      blobStream.on("finish", async () => {
+        await blob.makePublic();
+        const firebaseUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+
+        const updateResult = await routinesCollection.updateOne(
+          { _id: new ObjectId(routineId) },
+          {
+            $set: {
+              [`routines.${dayIndex}.notes`]: {
+                title,
+                uploadedBy: email,
+                course,
+                url: firebaseUrl,
+                path: uniqueFileName,
+                uploadedAt: new Date(),
+              },
+            },
+          }
+        );
+
+        if (updateResult.modifiedCount > 0) {
+          res.status(200).json({ message: "Note uploaded and saved." });
+        } else {
+          res
+            .status(404)
+            .json({ message: "Routine not found or not updated." });
+        }
+      });
+
+      blobStream.end(req.file.buffer);
+    } catch (err) {
+      console.error("❌ Routine upload failed:", err);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  }
+);
+
 
     //✅ ✅ ✅  payment routes
 
