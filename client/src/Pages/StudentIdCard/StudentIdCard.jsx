@@ -161,7 +161,7 @@ const handleDownload = async () => {
         <div className="px-2 py-1 mt-1 text-[7px] text-gray-700 space-y-[2px]">
           <p><span className="font-semibold">ID No:</span> {student?.studentId || "N/A"}</p>
           <p><span className="font-semibold">Phone:</span> {`${student?.countryCode || ""} ${student?.contactNumber || "N/A"}`}</p>
-          <p><span className="font-semibold">Email:</span> {student?.email || "N/A"}</p>
+          <p><span className="font-normal text-[6px]">Email:</span> {student?.email || "N/A"}</p>
           <p><span className="font-semibold">Blood:</span> {student?.bloodGroup || "N/A"}</p>
         </div>
 

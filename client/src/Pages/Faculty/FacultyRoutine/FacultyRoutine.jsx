@@ -103,6 +103,7 @@ const FacultyRoutine = () => {
       Swal.fire("Error", "❌ Upload failed", "error");
     }
   };
+
   return (
     <div className="p-4">
       <h2 className="text-xl font-semibold text-center mb-6">
@@ -272,10 +273,7 @@ const FacultyRoutine = () => {
                                 !editStates[`${routine._id}_${idx}`] ? (
                                   <div className="flex items-center gap-2">
                                     <a
-                                      href={`http://localhost:3000/${dayRoutine?.notes?.path?.replace(
-                                        /\\/g,
-                                        "/"
-                                      )}`}
+                                      href={dayRoutine?.notes?.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-blue-600 underline"
