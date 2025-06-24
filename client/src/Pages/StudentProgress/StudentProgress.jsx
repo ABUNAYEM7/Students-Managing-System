@@ -307,7 +307,7 @@ const StudentProgress = () => {
                   <td className="p-2">
                     {a.submittedFile ? (
                       <a
-                        href={`http://localhost:3000/${a.submittedFile.replace(
+                        href={`https://students-managing-system.onrender.com/${a.submittedFile.replace(
                           /\\/g,
                           "/"
                         )}`}

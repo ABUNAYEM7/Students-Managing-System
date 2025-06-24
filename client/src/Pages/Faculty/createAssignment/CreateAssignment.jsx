@@ -170,6 +170,7 @@ const CreateAssignment = () => {
       console.error("Upload error:-->", err);
       Swal.fire("Error", "Failed to upload assignment", "error");
     }
+    setLoading(false);
   };
 
   return (
@@ -265,7 +266,7 @@ const CreateAssignment = () => {
             <div className="mb-2 text-sm text-gray-600">
               Current File:{" "}
               <a
-                href={`http://localhost:3000/${data?.path?.replace(
+                href={`https://students-managing-system.onrender.com/${data?.path?.replace(
                   /\\/g,
                   "/"
                 )}`}

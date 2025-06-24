@@ -84,11 +84,7 @@ const FacultyRoutine = () => {
     formData.append("email", email);
 
     try {
-      const res = await axiosInstance.patch("/upload-routine-note", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const res = await axiosInstance.patch("/upload-routine-note", formData);
 
       if (res.data?.message) {
         Swal.fire("Success", "📄 Notes uploaded successfully!", "success");

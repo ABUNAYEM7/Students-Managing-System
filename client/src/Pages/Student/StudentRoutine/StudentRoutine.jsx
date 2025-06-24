@@ -141,7 +141,7 @@ const StudentRoutine = () => {
                       <td className="border p-2 whitespace-nowrap">
                         {day.status === "completed" && day.notes?.url ? (
                           <a
-                            href={`http://localhost:3000/${day?.notes?.path?.replace(
+                            href={`https://students-managing-system.onrender.com/${day?.notes?.path?.replace(
                               /\\/g,
                               "/"
                             )}`}
