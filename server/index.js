@@ -1510,11 +1510,24 @@ async function run() {
     });
 
     // get all students secured
-    app.get("/all-students", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await studentsCollection.find({}).toArray();
-      res.send(result);
-    });
+app.get("/all-students", verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const { name } = req.query;
 
+    let filter = {};
+
+    if (name && typeof name === "string" && name.trim() !== "") {
+      filter.name = { $regex: name.trim(), $options: "i" };
+    }
+
+    const students = await studentsCollection.find(filter).toArray();
+    
+    res.send(students);
+  } catch (error) {
+    console.error("❌ Error fetching students:", error);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
     // get students stats
     // ✅ GET: Student dashboard state (attendance %, grade %, enrollment %)
     app.get(
@@ -2625,30 +2638,45 @@ async function run() {
 
     // get student course outline
     // GET course distribution by department
-    app.get("/course-distribution/:department", async (req, res) => {
-      const { department } = req.params;
+// ✅ Safely fetch course outline by department name
+app.get("/course-distribution/:department", async (req, res) => {
+  const { department } = req.params;
 
-      if (!department) {
-        return res.status(400).send({ message: "Department is required" });
-      }
+  if (!department) {
+    return res.status(400).send({ message: "Department is required" });
+  }
 
-      try {
-        const courseData = await courseDistributionCollection.findOne({
-          program: department,
-        });
+  // ✅ Normalize department names (handles casing, extra spaces, unicode)
+  const normalize = (str) =>
+    str
+      .normalize("NFKC")           // Normalize unicode formatting
+      .replace(/\u00A0/g, " ")     // Replace non-breaking spaces
+      .replace(/\s+/g, " ")        // Collapse multiple spaces
+      .trim()                      // Remove leading/trailing spaces
+      .toLowerCase();              // Make comparison case-insensitive
 
-        if (!courseData) {
-          return res.status(404).send({ message: "Program not found" });
-        }
+  try {
+    // ✅ Fetch all course outlines
+    const allPrograms = await courseDistributionCollection.find().toArray();
 
-        res.send(courseData);
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("❌ Error fetching course distribution:", error);
-        }
-        res.status(500).send({ message: "Internal server error" });
-      }
-    });
+    // ✅ Try matching normalized department name
+    const matched = allPrograms.find(
+      (p) => normalize(p.program) === normalize(department)
+    );
+
+    if (!matched) {
+      console.log("❌ Normalized not found for:", department);
+      return res.status(404).send({ message: "Program not found" });
+    }
+
+    // ✅ Return the matching course outline
+    res.send(matched);
+  } catch (error) {
+    console.error("❌ Error fetching course distribution:", error);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
 
     // get enrollment requests
     app.get("/enrollment-requests/:email", verifyToken, async (req, res) => {
@@ -3298,9 +3326,12 @@ async function run() {
 
     // upload assignment
     app.post(
-      "/upload-assignment",verifyToken,upload.single("file"),async (req, res) => {
+      "/upload-assignment",
+      verifyToken,
+      upload.single("file"),
+      async (req, res) => {
         try {
-          console.log('upload trigger')
+          console.log("upload trigger");
           const {
             courseId,
             courseCode,

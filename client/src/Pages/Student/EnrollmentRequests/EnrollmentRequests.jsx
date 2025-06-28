@@ -8,7 +8,7 @@ const EnrollmentRequests = () => {
   const { email } = useParams();
   const [requests, setRequests] = useState([]);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
-  const [quarter, setQuarter] = useState("Quarter-1");
+  const [quarter, setQuarter] = useState("");
 
   const quarters = Array.from({ length: 12 }, (_, i) => `Quarter-${i + 1}`);
 
@@ -96,7 +96,6 @@ const EnrollmentRequests = () => {
   const enrolledByQuarter = enrolledCourses.filter(
     (c) => c.semester === quarter
   );
-
   return (
     <div className="px-6 py-6">
       {/* Pending Requests Section */}
@@ -160,6 +159,9 @@ const EnrollmentRequests = () => {
           onChange={(e) => setQuarter(e.target.value)}
           className="select select-bordered w-full max-w-xs"
         >
+          <option value="" disabled>
+            Select Quarter
+          </option>
           {quarters.map((qtr) => (
             <option key={qtr} value={qtr}>
               {qtr}
@@ -168,11 +170,15 @@ const EnrollmentRequests = () => {
         </select>
       </div>
 
-      {enrolledByQuarter.length === 0 ? (
-        <p className="text-center text-gray-500">
-          No enrolled courses found for {quarter}.
-        </p>
-      ) : (
+{quarter === "" ? (
+  <p className="text-center text-gray-500">
+    Please select a quarter to see enrollment.
+  </p>
+) : enrolledByQuarter.length === 0 ? (
+  <p className="text-center text-gray-500">
+    No enrolled courses found for {quarter}.
+  </p>
+) : (
         <div className="overflow-x-auto">
           <table className="table table-zebra w-full">
             <thead>
@@ -210,7 +216,7 @@ const EnrollmentRequests = () => {
           </table>
         </div>
       )}
-    </div>
+  </div>
   );
 };
 

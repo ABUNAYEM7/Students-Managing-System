@@ -89,7 +89,7 @@ const Navbar = () => {
           </ul>
         </div>
         <Link to={"/"}>
-          <img className="w-20 h-20 rounded-full" src={logo} alt="logo" />
+          <img className="w-[70px] h-[70px] rounded-full" src={logo} alt="logo" />
         </Link>
       </div>
 

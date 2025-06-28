@@ -249,30 +249,54 @@ const DashboardDrawer = () => {
                             {/* 🧑‍💼 Admin View */}
                             {userRole === "admin" && (
                               <>
+                                {/* 💳 Payment Notification */}
                                 {n.type === "payment" && (
                                   <>
                                     <strong>💳 Payment Received</strong>
                                     <div className="text-xs">
-                                      From: {n.email}
+                                      From:{" "}
+                                      {n.email || n.userEmail || "Unknown"}
                                     </div>
                                     <div className="text-xs">
                                       Amount:{" "}
                                       {n.message?.match(/\$[\d.]+/)?.[0] ||
-                                        `$${n.amount}`}
+                                        `$${n.amount || "N/A"}`}
                                     </div>
                                     <div className="text-[10px] text-gray-500">
-                                      Txn: {n.transactionId}
+                                      Txn: {n.transactionId || "N/A"}
                                     </div>
                                   </>
                                 )}
 
+                                {/* 📥 Enrollment Request Notification */}
                                 {n.type === "enrollment-request" && (
                                   <>
                                     <strong>📥 Enrollment Request</strong>
-                                    <div className="text-xs">{n.message}</div>
+                                    <div className="text-xs">
+                                      {n.message ||
+                                        `${
+                                          n.studentName || "Unknown"
+                                        } has requested enrollment.`}
+                                    </div>
                                     <div className="text-[10px] text-gray-500">
-                                      Student: {n.studentName} ({n.studentEmail}
-                                      )
+                                      Student: {n.studentName || "N/A"} (
+                                      {n.studentEmail || "N/A"})
+                                    </div>
+                                  </>
+                                )}
+
+                                {/* 🧩 Fallback for unknown notification types */}
+                                {!["payment", "enrollment-request"].includes(
+                                  n.type
+                                ) && (
+                                  <>
+                                    <strong>🔔 Notification</strong>
+                                    <div className="text-xs text-gray-500">
+                                      Type: {n.type || "unknown"}
+                                    </div>
+                                    <div className="text-xs">
+                                      {n.message ||
+                                        "No additional information."}
                                     </div>
                                   </>
                                 )}

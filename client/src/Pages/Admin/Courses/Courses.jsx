@@ -4,29 +4,31 @@ import Swal from "sweetalert2";
 import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 import { Link, useNavigate } from "react-router";
 
-const BachelorProgram = [
-  "Bachelor of Science in Business Administration",
-  "Bachelor of Science in Civil Engineering",
-  "Bachelor of Science in Computer Science",
-  "Bachelor of Science in Public",
-  "Bachelor of Science in Information System Management",
-];
+  const BachelorProgram = [
+    "Bachelor of Science in Business Administration",
+    "Bachelor of Science in Civil Engineering",
+    "Bachelor of Science in Computer Science",
+    "Bachelor of Science in Information System Management",
+    "Bachelor of Hospitality and Tourism Management",
+  ];
 
-const Masters = [
-  "Master of Public Health",
-  "Master of Science in Civil Engineering",
-  "Master of Science in Business Administration",
-  "Master of Science in Computer Science Engineering",
-];
+  const Masters = [
+    "Master of Health and Social Care Management",
+    "Master of Science in Civil Engineering",
+    "Master of Science in Business Administration",
+    "Masters of Science in Information System Management",
+    "Master of Hospitality and Tourism Management",
+  ];
 
-const Doctorate = [
-  "Doctor of Business Management",
-  "Doctor of Public Health",
-  "Doctor of Science in Computer Science",
-  "Doctor of Management",
-];
+  const Doctorate = [
+    "Doctor of Business Management",
+    "Doctor of Health and Social Care Management",
+    "Doctor of Science in Computer Science",
+    "Doctor of Management",
+    "Doctor of Hospitality and Tourism Management",
+  ];
 
-const Associate = ["English as a Second Language"];
+  const Associate = ["English as a Second Language"];
 
 const Courses = () => {
   const [selectedDepartment, setSelectedDepartment] = useState("");

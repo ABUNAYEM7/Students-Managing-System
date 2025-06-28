@@ -10,19 +10,22 @@ const AddMaterials = () => {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const [departments] = useState([
+const [departments] = useState([
     "Bachelor of Science in Business Administration",
     "Bachelor of Science in Civil Engineering",
     "Bachelor of Science in Computer Science",
     "Bachelor of Science in Information System Management",
-    "Master of Public Health",
+    "Bachelor of Hospitality and Tourism Management",
+    "Master of Health and Social Care Management",
     "Master of Science in Civil Engineering",
     "Master of Science in Business Administration",
-    "Master of Science in Computer Science Engineering",
+    "Masters of Science in Information System Management",
+    "Master of Hospitality and Tourism Management",
     "Doctor of Business Management",
-    "Doctor of Public Health",
+    "Doctor of Health and Social Care Management",
     "Doctor of Science in Computer Science",
     "Doctor of Management",
+    "Doctor of Hospitality and Tourism Management",
     "English as a Second Language",
   ]);
 

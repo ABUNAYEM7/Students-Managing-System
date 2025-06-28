@@ -152,7 +152,6 @@ const renderCourseCard = (course, isEnrolled) => {
 
 
   const totalPages = Math.ceil(totalCourses / limit);
-  console.log(courses)
 
   return (
     <div className="min-h-screen bg-base-200 p-6">

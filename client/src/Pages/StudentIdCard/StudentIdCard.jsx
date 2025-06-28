@@ -133,11 +133,11 @@ const handleDownload = async () => {
         {/* Header */}
         <div className="bg-[#baf2d1] flex items-center gap-1 p-1">
           <img
-            src="https://i.ibb.co/Kp4jTptL/image-copy-18.png"
+            src="https://i.ibb.co/4RhNKpj4/images.png"
             alt="logo"
             className="w-6 h-6 rounded-full border border-white"
           />
-          <h1 className="text-[9px] text-black font-semibold">Lordland Univ.</h1>
+          <h1 className="text-[8px] text-black font-semibold">Kings International Institute</h1>
         </div>
 
         {/* Photo */}
@@ -161,7 +161,7 @@ const handleDownload = async () => {
         <div className="px-2 py-1 mt-1 text-[7px] text-gray-700 space-y-[2px]">
           <p><span className="font-semibold">ID No:</span> {student?.studentId || "N/A"}</p>
           <p><span className="font-semibold">Phone:</span> {`${student?.countryCode || ""} ${student?.contactNumber || "N/A"}`}</p>
-          <p><span className="font-normal text-[6px]">Email:</span> {student?.email || "N/A"}</p>
+          <p className="font-normal text-[5px]"><span className="font-normal text-[8px]">Email:</span> {student?.email || "N/A"}</p>
           <p><span className="font-semibold">Blood:</span> {student?.bloodGroup || "N/A"}</p>
         </div>
 
@@ -176,16 +176,16 @@ const handleDownload = async () => {
         {/* Header */}
         <div className="bg-[#baf2d1] flex items-center gap-1 p-1">
           <img
-            src="https://i.ibb.co/Kp4jTptL/image-copy-18.png"
+            src="https://i.ibb.co/4RhNKpj4/images.png"
             alt="logo"
             className="w-6 h-6 rounded-full border border-white"
           />
-          <h1 className="text-[9px] text-black font-semibold">Lordland Univ.</h1>
+          <h1 className="text-[8px] text-black font-semibold">Kings International Institute</h1>
         </div>
 
         {/* Terms */}
         <div className="px-2 mt-1 text-[6.5px] text-gray-700 space-y-[2px]">
-          <p>This card remains the property of Lordland University.</p>
+          <p>This card remains the property of King's International University.</p>
           <p>Non-transferable; show upon request.</p>
           <p>Loss should be reported to the admin immediately.</p>
           <p>Forgery or misuse will lead to disciplinary action.</p>

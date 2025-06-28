@@ -75,7 +75,7 @@ const StudentDashboardHome = () => {
     fetchDashboardStats();
   }, [user, axiosInstance]);
 
-  const programFolders = [
+const programFolders = [
     {
       name: "Bachelor of Science in Business Administration",
       link: "https://drive.google.com/drive/folders/1KPU32Ly-5YGZdq_B0HAbfnSUkUhOGy-w",
@@ -89,7 +89,7 @@ const StudentDashboardHome = () => {
         "https://drive.google.com/drive/folders/19SxxfqEQmMmrH1NQmwv3nhLBnnxvCcDX", // allBooks_BSc Civil
     },
     {
-      name: "Bachelor of Science in Information Systems",
+      name: "Bachelor of Science in Information System Management",
       link: "https://drive.google.com/drive/folders/1J7o9r934AUUBHm-JJ2PREXhj7-wj5Us8",
       bookLinks:
         "https://drive.google.com/drive/folders/18Y7memRBRpAZcxJQrczyt2SHmG8croQD", // allBooks_BScIS
@@ -101,7 +101,7 @@ const StudentDashboardHome = () => {
         "https://drive.google.com/drive/folders/1I63u2mDWOkDGwQe8gicFWxaGpEcMnqlp", // allBooks_BSCS
     },
     {
-      name: "Bachelor of Science in Public Health",
+      name: "Bachelor of Health and Social Care Management",
       link: "https://drive.google.com/drive/folders/1_RlAq1jke91E9w8wzRVLXnf_jZmBqjWr",
       bookLinks:
         "https://drive.google.com/drive/folders/1qpcXpjchE_z1ajqnDFJCpP8Vsjcahsj7", // allBooks_BSPH
@@ -119,7 +119,7 @@ const StudentDashboardHome = () => {
         "https://drive.google.com/drive/folders/1JERaU9in1R9lmUk4elL0CUmNxfftAKhC", // allBooks_Doctor of Management
     },
     {
-      name: "Doctor of Public Health",
+      name: "Doctor of Health and Social Care Management",
       link: "https://drive.google.com/drive/folders/1z23Q7ip8IBXzaU01FAs26xufvPd4yBCA",
       bookLinks:
         "https://drive.google.com/drive/folders/1tszARKATc3JSm6ZPb7mo4P4ICkF0j4OO", // allBooks_DrPH
@@ -137,7 +137,7 @@ const StudentDashboardHome = () => {
         "https://drive.google.com/drive/folders/11dLO-aMWd_9zHL7gYk2TuI_S8gPE7whS", // allBooks_ESL
     },
     {
-      name: "Master of Public Health",
+      name: "Master of Health and Social Care Management",
       link: "https://drive.google.com/drive/folders/1M2vaH4lmBQxj8B59AqksFFo7bNebTzQr",
       bookLinks:
         "https://drive.google.com/drive/folders/1zdk6GWAd0NgO8TqS61ptKElZClDxjr0S", // allBooks_MPH
@@ -172,6 +172,7 @@ const StudentDashboardHome = () => {
   }
 };
 
+// console.log(courseOutline)
 
   return (
     <div className="p-4 mt-6">
@@ -276,7 +277,7 @@ const StudentDashboardHome = () => {
                           <td>{idx + 1}</td>
                           <td>{course.code || "N/A"}</td>
                           <td>{course.name || course.title}</td>
-                          <td>{course.credits || "-"}</td>
+                          <td>{course.credits ||course.units || "-"}</td>
                         </tr>
                       ))}
                     </tbody>

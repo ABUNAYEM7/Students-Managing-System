@@ -45,7 +45,7 @@ const StudentRoutine = () => {
 
     fetchStudentRoutine();
   }, [user?.email, filteredMonth]);
-
+  // console.log(routines)
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold text-center mb-6">
@@ -141,10 +141,7 @@ const StudentRoutine = () => {
                       <td className="border p-2 whitespace-nowrap">
                         {day.status === "completed" && day.notes?.url ? (
                           <a
-                            href={`https://students-managing-system.onrender.com/${day?.notes?.path?.replace(
-                              /\\/g,
-                              "/"
-                            )}`}
+                            href={day?.notes?.url}
                             download
                             className="text-green-600 underline font-semibold"
                           >

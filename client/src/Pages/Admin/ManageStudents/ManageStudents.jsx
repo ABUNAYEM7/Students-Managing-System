@@ -7,12 +7,26 @@ const ManageStudents = () => {
   const axiosInstance = AxiosSecure();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const navigate = useNavigate();
+
+  // Debounce search input
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm]);
 
   useEffect(() => {
     const fetchStudentsWithRequests = async () => {
+      setLoading(true);
       try {
-        const { data: allStudents } = await axiosInstance.get("/all-students");
+        const { data: allStudents } = await axiosInstance.get("/all-students", {
+          params: debouncedSearchTerm ? { name: debouncedSearchTerm } : {},
+        });
 
         const enrichedStudents = await Promise.all(
           allStudents.map(async (student) => {
@@ -36,7 +50,7 @@ const ManageStudents = () => {
     };
 
     fetchStudentsWithRequests();
-  }, [axiosInstance]);
+  }, [axiosInstance, debouncedSearchTerm]);
 
   const deleteHandler = (student) => {
     const id = student?._id;
@@ -110,11 +124,23 @@ const ManageStudents = () => {
   const viewRequestsModal = (student) => {
     navigate(`/dashboard/enrollment-requests/${student.email}`);
   };
+
   return (
     <div className="px-4 md:px-10 py-6 min-h-screen bg-base-200">
       <h3 className="text-xl md:text-3xl font-black text-center mb-6">
         Students Management
       </h3>
+
+      {/* Centered search bar */}
+      <div className="mb-6 flex justify-center">
+        <input
+          type="text"
+          placeholder="Search by name..."
+          className="input input-bordered w-full max-w-xs"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
 
       {loading ? (
         <p className="text-center text-lg">Loading students...</p>
@@ -124,81 +150,79 @@ const ManageStudents = () => {
         </h3>
       ) : (
         <div className="w-full overflow-x-auto">
-          <div className="inline-block min-w-full align-middle">
-            <table className="table table-zebra min-w-[850px]">
-              <thead className="bg-base-300">
-                <tr>
-                  <th className="text-sm">Name</th>
-                  <th className="text-sm">Email</th>
-                  <th className="text-sm">Requests</th>
-                  <th className="text-sm">View</th>
-                  <th className="text-sm">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students?.map((student) => (
-                  <tr key={student._id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="avatar">
-                          <div className="mask mask-squircle w-10 h-10">
-                            <img
-                              referrerPolicy="no-referrer"
-                              src={student.photo}
-                              alt={student.name}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-semibold">{student.name}</div>
+          <table className="table table-zebra w-full">
+            <thead className="bg-base-300">
+              <tr>
+                <th className="text-sm">Name</th>
+                <th className="text-sm">Email</th>
+                <th className="text-sm">Requests</th>
+                <th className="text-sm">View</th>
+                <th className="text-sm">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {students?.map((student) => (
+                <tr key={student._id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="avatar">
+                        <div className="mask mask-squircle w-10 h-10">
+                          <img
+                            referrerPolicy="no-referrer"
+                            src={student.photo}
+                            alt={student.name}
+                          />
                         </div>
                       </div>
-                    </td>
+                      <div>
+                        <div className="font-semibold">{student.name}</div>
+                      </div>
+                    </div>
+                  </td>
 
-                    <td className="text-sm">{student.email}</td>
+                  <td className="text-sm">{student.email}</td>
 
-                    <td>
-                      {student.enrollmentRequests?.filter(
-                        (r) => r.status === "pending"
-                      ).length > 0 ? (
-                        <button
-                          onClick={() => viewRequestsModal(student)}
-                          className="badge badge-warning text-[10px] px-4 py-4 cursor-pointer"
-                        >
-                          {
-                            student.enrollmentRequests.filter(
-                              (r) => r.status === "pending"
-                            ).length
-                          }{" "}
-                          Pending
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-500">None</span>
-                      )}
-                    </td>
-
-                    <td>
+                  <td>
+                    {student.enrollmentRequests?.filter(
+                      (r) => r.status === "pending"
+                    ).length > 0 ? (
                       <button
-                        onClick={() => viewDetails(student?.email)}
-                        className="btn btn-sm bg-prime text-white"
+                        onClick={() => viewRequestsModal(student)}
+                        className="badge badge-warning text-[10px] px-4 py-4 cursor-pointer"
                       >
-                        View Details
+                        {
+                          student.enrollmentRequests.filter(
+                            (r) => r.status === "pending"
+                          ).length
+                        }{" "}
+                        Pending
                       </button>
-                    </td>
+                    ) : (
+                      <span className="text-xs text-gray-500">None</span>
+                    )}
+                  </td>
 
-                    <td>
-                      <button
-                        onClick={() => deleteHandler(student)}
-                        className="btn btn-sm btn-error text-white"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  <td>
+                    <button
+                      onClick={() => viewDetails(student?.email)}
+                      className="btn btn-sm bg-prime text-white"
+                    >
+                      View Details
+                    </button>
+                  </td>
+
+                  <td>
+                    <button
+                      onClick={() => deleteHandler(student)}
+                      className="btn btn-sm btn-error text-white"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

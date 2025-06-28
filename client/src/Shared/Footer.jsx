@@ -9,9 +9,8 @@ const Footer = () => {
         className="w-16 h-16 rounded-full"
         src={logo} alt="logo" />
         <h3 className="text-xl md:text-2xl ">
-          Students Management System
+          King's International Institute
         </h3>
-        <p className="text-lg">Providing reliable tech since 1992</p>
       </aside>
       <nav>
         <h6 className="footer-title">Services</h6>
