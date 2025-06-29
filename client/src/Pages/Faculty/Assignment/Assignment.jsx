@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import useFetchData from "../../../Components/Hooks/useFetchData";
 import useAuth from "../../../Components/Hooks/useAuth";
@@ -7,12 +7,20 @@ import AxiosSecure from "../../../Components/Hooks/AxiosSecure";
 
 const Assignment = () => {
   const { user } = useAuth();
-  const axiosInstance = AxiosSecure()
+  const axiosInstance = AxiosSecure();
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
   const { data, refetch } = useFetchData(
     `${user?.email}`,
-    `/assignments/${user?.email}`
+    `/assignments/${user?.email}?page=${page}&limit=${limit}`
   );
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
+  // ✅ Refetch when page or limit changes
+  useEffect(() => {
+    refetch();
+  }, [page, limit, refetch]);
 
   // deleteHandler
   const deleteHandler = (id) => {
@@ -40,9 +48,9 @@ const Assignment = () => {
   };
 
   // detailsHandler
-  const detailsHandler = (id)=>{
-    navigate(`/dashboard/assignment-details/${id}`)
-  }
+  const detailsHandler = (id) => {
+    navigate(`/dashboard/assignment-details/${id}`);
+  };
 
   return (
     <div>
@@ -73,14 +81,16 @@ const Assignment = () => {
             {data?.assignments?.length > 0 ? (
               data?.assignments?.map((assignment, i) => (
                 <tr key={assignment._id}>
-                  <td>{i + 1}</td>
+                  <td>{(page - 1) * limit + i + 1}</td>
                   <td>{assignment.courseId}</td>
                   <td>{assignment.title}</td>
                   <td>
                     <button
-                    className="text-blue-600 underline cursor-pointer"
-                    onClick={()=>detailsHandler(assignment._id)}
-                    >View Details</button>
+                      className="text-blue-600 underline cursor-pointer"
+                      onClick={() => detailsHandler(assignment._id)}
+                    >
+                      View Details
+                    </button>
                   </td>
                   <td>
                     <Link
@@ -110,6 +120,33 @@ const Assignment = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {data?.total > limit && (
+        <div className="flex items-center justify-center gap-3 mt-4">
+          <button
+            className="btn btn-sm"
+            onClick={() => {
+              if (page > 1) setPage(page - 1);
+            }}
+            disabled={page === 1}
+          >
+            Previous
+          </button>
+          <span className="text-sm font-medium">
+            Page {page} of {Math.ceil(data?.total / limit)}
+          </span>
+          <button
+            className="btn btn-sm"
+            onClick={() => {
+              if (page < Math.ceil(data?.total / limit)) setPage(page + 1);
+            }}
+            disabled={page >= Math.ceil(data?.total / limit)}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -1510,24 +1510,24 @@ async function run() {
     });
 
     // get all students secured
-app.get("/all-students", verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const { name } = req.query;
+    app.get("/all-students", verifyToken, verifyAdmin, async (req, res) => {
+      try {
+        const { name } = req.query;
 
-    let filter = {};
+        let filter = {};
 
-    if (name && typeof name === "string" && name.trim() !== "") {
-      filter.name = { $regex: name.trim(), $options: "i" };
-    }
+        if (name && typeof name === "string" && name.trim() !== "") {
+          filter.name = { $regex: name.trim(), $options: "i" };
+        }
 
-    const students = await studentsCollection.find(filter).toArray();
-    
-    res.send(students);
-  } catch (error) {
-    console.error("❌ Error fetching students:", error);
-    res.status(500).send({ message: "Internal server error" });
-  }
-});
+        const students = await studentsCollection.find(filter).toArray();
+
+        res.send(students);
+      } catch (error) {
+        console.error("❌ Error fetching students:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
     // get students stats
     // ✅ GET: Student dashboard state (attendance %, grade %, enrollment %)
     app.get(
@@ -1895,103 +1895,109 @@ app.get("/all-students", verifyToken, verifyAdmin, async (req, res) => {
     });
 
     // ✅  get real courseId but still named as 'courseId' secured
-    app.get("/assignments/:email", verifyToken, async (req, res) => {
-      const { email } = req.params;
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
-      const skip = (page - 1) * limit;
+app.get("/assignments/:email", verifyToken, async (req, res) => {
+  const { email } = req.params;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
 
-      const isAdmin = req.user.role === "admin";
-      const isSameFaculty = req.user.email === email;
-      const isStudent = req.user.role === "student";
+  const isAdmin = req.user.role === "admin";
+  const isSameFaculty = req.user.email === email;
+  const isStudent = req.user.role === "student";
 
-      if (!isAdmin && !isSameFaculty && !isStudent) {
-        return res.status(403).send({ message: "Forbidden: Access denied" });
+  if (!isAdmin && !isSameFaculty && !isStudent) {
+    return res.status(403).send({ message: "Forbidden: Access denied" });
+  }
+
+  try {
+    // Step 1: If student, get department
+    let studentDepartment = null;
+    if (isStudent) {
+      const student = await studentsCollection.findOne({ email: req.user.email });
+      if (!student) {
+        return res.status(404).send({ message: "Student not found" });
       }
+      studentDepartment = student.department;
+    }
 
-      try {
-        // First fetch all assignments (filtered by email)
-        const allAssignments = await assignmentsCollection
-          .aggregate([
+    // Step 2: Build main aggregation pipeline
+    const pipeline = [
+      { $match: { email } },
+      {
+        $lookup: {
+          from: "courses",
+          let: { assignmentCourseId: { $toObjectId: "$courseId" } },
+          pipeline: [
             {
-              $match: { email },
-            },
-            {
-              $lookup: {
-                from: "courses",
-                let: { assignmentCourseId: { $toObjectId: "$courseId" } },
-                pipeline: [
-                  {
-                    $match: {
-                      $expr: {
-                        $eq: ["$_id", "$$assignmentCourseId"],
-                      },
-                    },
-                  },
-                  {
-                    $project: {
-                      _id: 0,
-                      courseId: 1,
-                      name: 1,
-                      department: 1,
-                    },
-                  },
-                ],
-                as: "courseInfo",
-              },
-            },
-            {
-              $unwind: {
-                path: "$courseInfo",
-                preserveNullAndEmptyArrays: true,
+              $match: {
+                $expr: { $eq: ["$_id", "$$assignmentCourseId"] },
               },
             },
             {
               $project: {
-                assignmentId: "$_id",
-                courseId: "$courseInfo.courseId",
-                courseName: "$courseInfo.name",
-                courseDepartment: "$courseInfo.department",
-                title: 1,
-                email: 1,
-                deadline: 1,
-                semester: 1,
-                uploadedAt: 1,
-                filename: 1,
-                path: 1,
-                instructions: 1,
+                _id: 0,
+                courseId: 1,
+                name: 1,
+                department: 1,
               },
             },
-          ])
-          .toArray();
+          ],
+          as: "courseInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$courseInfo",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          assignmentId: "$_id",
+          courseId: "$courseInfo.courseId",
+          courseName: "$courseInfo.name",
+          courseDepartment: "$courseInfo.department",
+          title: 1,
+          email: 1,
+          deadline: 1,
+          semester: 1,
+          uploadedAt: 1,
+          filename: 1,
+          path: 1,
+          instructions: 1,
+        },
+      },
+    ];
 
-        let filteredAssignments = allAssignments;
+    // Step 3: If student, filter by department after projection
+    if (isStudent) {
+      pipeline.push({
+        $match: {
+          courseDepartment: studentDepartment,
+        },
+      });
+    }
 
-        if (isStudent) {
-          const student = await studentsCollection.findOne({
-            email: req.user.email,
-          });
-          if (!student) {
-            return res.status(404).send({ message: "Student not found" });
-          }
+    // Step 4: Clone the pipeline to count total
+    const totalPipeline = [...pipeline, { $count: "total" }];
+    const totalResult = await assignmentsCollection.aggregate(totalPipeline).toArray();
+    const total = totalResult[0]?.total || 0;
 
-          filteredAssignments = allAssignments.filter(
-            (a) => a.courseDepartment === student.department
-          );
-        }
+    // Step 5: Apply pagination
+    pipeline.push({ $skip: skip }, { $limit: limit });
 
-        const total = filteredAssignments.length;
-        const paginated = filteredAssignments.slice(skip, skip + limit);
+    const paginatedAssignments = await assignmentsCollection.aggregate(pipeline).toArray();
 
-        res.send({
-          total,
-          assignments: paginated,
-        });
-      } catch (error) {
-        console.error("❌ Error fetching assignments:", error);
-        res.status(500).send({ error: "Failed to fetch assignments" });
-      }
+    res.send({
+      total,
+      assignments: paginatedAssignments,
     });
+  } catch (error) {
+    console.error("❌ Error fetching assignments:", error);
+    res.status(500).send({ error: "Failed to fetch assignments" });
+  }
+});
+
 
     // get all assignment with the status secured
     app.get("/students-assignment/:email", verifyToken, async (req, res) => {
@@ -2638,45 +2644,44 @@ app.get("/all-students", verifyToken, verifyAdmin, async (req, res) => {
 
     // get student course outline
     // GET course distribution by department
-// ✅ Safely fetch course outline by department name
-app.get("/course-distribution/:department", async (req, res) => {
-  const { department } = req.params;
+    // ✅ Safely fetch course outline by department name
+    app.get("/course-distribution/:department", async (req, res) => {
+      const { department } = req.params;
 
-  if (!department) {
-    return res.status(400).send({ message: "Department is required" });
-  }
+      if (!department) {
+        return res.status(400).send({ message: "Department is required" });
+      }
 
-  // ✅ Normalize department names (handles casing, extra spaces, unicode)
-  const normalize = (str) =>
-    str
-      .normalize("NFKC")           // Normalize unicode formatting
-      .replace(/\u00A0/g, " ")     // Replace non-breaking spaces
-      .replace(/\s+/g, " ")        // Collapse multiple spaces
-      .trim()                      // Remove leading/trailing spaces
-      .toLowerCase();              // Make comparison case-insensitive
+      // ✅ Normalize department names (handles casing, extra spaces, unicode)
+      const normalize = (str) =>
+        str
+          .normalize("NFKC") // Normalize unicode formatting
+          .replace(/\u00A0/g, " ") // Replace non-breaking spaces
+          .replace(/\s+/g, " ") // Collapse multiple spaces
+          .trim() // Remove leading/trailing spaces
+          .toLowerCase(); // Make comparison case-insensitive
 
-  try {
-    // ✅ Fetch all course outlines
-    const allPrograms = await courseDistributionCollection.find().toArray();
+      try {
+        // ✅ Fetch all course outlines
+        const allPrograms = await courseDistributionCollection.find().toArray();
 
-    // ✅ Try matching normalized department name
-    const matched = allPrograms.find(
-      (p) => normalize(p.program) === normalize(department)
-    );
+        // ✅ Try matching normalized department name
+        const matched = allPrograms.find(
+          (p) => normalize(p.program) === normalize(department)
+        );
 
-    if (!matched) {
-      console.log("❌ Normalized not found for:", department);
-      return res.status(404).send({ message: "Program not found" });
-    }
+        if (!matched) {
+          console.log("❌ Normalized not found for:", department);
+          return res.status(404).send({ message: "Program not found" });
+        }
 
-    // ✅ Return the matching course outline
-    res.send(matched);
-  } catch (error) {
-    console.error("❌ Error fetching course distribution:", error);
-    res.status(500).send({ message: "Internal server error" });
-  }
-});
-
+        // ✅ Return the matching course outline
+        res.send(matched);
+      } catch (error) {
+        console.error("❌ Error fetching course distribution:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
 
     // get enrollment requests
     app.get("/enrollment-requests/:email", verifyToken, async (req, res) => {
@@ -3926,26 +3931,24 @@ app.get("/course-distribution/:department", async (req, res) => {
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET, {
-          expiresIn: "1d",
+          expiresIn: "7d",
         });
 
         // for production
-        // res
-        // .cookie("token", token, {
-        //   httpOnly: true,
-        //   secure: process.env.NODE_ENV === "production",
-        //   sameSite: "none",
-        //   maxAge: 1 * 24 * 60 * 60 * 1000,
-        // })
-
+        res.cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "none",
+          maxAge: 7 * 24 * 60 * 60 * 1000, 
+        })
         // for dev
-        res
-          .cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production" ? true : false,
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            maxAge: 24 * 60 * 60 * 1000,
-          })
+        // res
+        //   .cookie("token", token, {
+        //     httpOnly: true,
+        //     secure: process.env.NODE_ENV === "production" ? true : false,
+        //     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        //     maxAge: 24 * 60 * 60 * 1000,
+        //   })
 
           .send({ success: true });
       } catch (error) {
