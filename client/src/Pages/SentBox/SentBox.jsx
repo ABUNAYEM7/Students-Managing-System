@@ -37,7 +37,7 @@ const SentBox = () => {
         </div>
         <button
           onClick={() => navigate('/dashboard/send-message')}
-          className="md:btn btn-sm bg-prime text-black shadow-sm hover:shadow-md transition"
+          className="md:btn btn-sm p-2 bg-prime text-black shadow-sm hover:shadow-md transition"
         >
           Send New Message
         </button>

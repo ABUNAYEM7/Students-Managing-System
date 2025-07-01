@@ -5,8 +5,7 @@ import { MdMessage } from "react-icons/md";
 import useUserRole from "../Hooks/useUserRole";
 import AxiosSecure from "../Hooks/AxiosSecure";
 import Swal from "sweetalert2";
-import { useParams } from "react-router";
-import { useNavigate } from "react-router";
+import { useParams, useNavigate } from "react-router";
 
 const SendMessage = () => {
   const { user } = useAuth();
@@ -52,15 +51,17 @@ const SendMessage = () => {
     }
   }, [id, axiosInstance]);
 
-  // Load recipients if not in reply mode
+  // Load recipients based on selected role
   useEffect(() => {
     if (selectedRole && !isReplyMode) {
       axiosInstance
         .get(`/all-users?role=${selectedRole}`)
         .then((res) => {
-          setRecipients(res.data);
+          const userList = res?.data?.users || [];
+          setRecipients(userList);
+
           if (sendToAll) {
-            const allOptions = res.data.map((r) => ({
+            const allOptions = userList.map((r) => ({
               label: `${r.name} (${r.email})`,
               value: r.email,
             }));
@@ -71,7 +72,6 @@ const SendMessage = () => {
     }
   }, [selectedRole, sendToAll, axiosInstance, isReplyMode]);
 
-//   handleSubmit
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (selectedRecipients.length === 0) {
@@ -101,7 +101,7 @@ const SendMessage = () => {
       Swal.fire("Error", "Something went wrong", "error");
     }
   };
-  console.log('recipients -->',recipients,'reply mode -->',isReplyMode,'send to all-->',sendToAll)
+
   return (
     <div className="max-w-3xl mx-auto mt-12 bg-gradient-to-tr from-white to-blue-50 shadow-2xl rounded-2xl p-10 border border-prime">
       <div className="flex items-center justify-center mb-8">
@@ -190,14 +190,16 @@ const SendMessage = () => {
           </div>
         )}
 
-        {!isReplyMode && !sendToAll && recipients?.users?.length > 0 && (
+        {!isReplyMode && recipients.length > 0 && (
           <div>
             <label className="label">
-              <span className="label-text">Select Recipients</span>
+              <span className="label-text">
+                Select Recipients {sendToAll && "(All pre-selected, you can remove any)"}
+              </span>
             </label>
             <Select
               isMulti
-              options={recipients?.users?.map((r) => ({
+              options={recipients.map((r) => ({
                 label: `${r.name} (${r.email})`,
                 value: r.email,
               }))}

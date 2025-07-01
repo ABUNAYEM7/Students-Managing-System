@@ -266,7 +266,7 @@ const CreateAssignment = () => {
             <div className="mb-2 text-sm text-gray-600">
               Current File:{" "}
               <a
-                href={`https://students-managing-system.onrender.com/${data?.path?.replace(
+                href={`http://localhost:3000/${data?.path?.replace(
                   /\\/g,
                   "/"
                 )}`}

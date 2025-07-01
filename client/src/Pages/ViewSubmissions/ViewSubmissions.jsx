@@ -101,7 +101,7 @@ const ViewSubmissions = () => {
                   <td className="p-3 border">
                     {sub.path ? (
                       <a
-                        href={`https://students-managing-system.onrender.com/${sub.path.replace(
+                        href={`http://localhost:3000/${sub.path.replace(
                           /\\/g,
                           "/"
                         )}`}

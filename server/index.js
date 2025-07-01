@@ -1895,109 +1895,114 @@ async function run() {
     });
 
     // ✅  get real courseId but still named as 'courseId' secured
-app.get("/assignments/:email", verifyToken, async (req, res) => {
-  const { email } = req.params;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
+    app.get("/assignments/:email", verifyToken, async (req, res) => {
+      const { email } = req.params;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
 
-  const isAdmin = req.user.role === "admin";
-  const isSameFaculty = req.user.email === email;
-  const isStudent = req.user.role === "student";
+      const isAdmin = req.user.role === "admin";
+      const isSameFaculty = req.user.email === email;
+      const isStudent = req.user.role === "student";
 
-  if (!isAdmin && !isSameFaculty && !isStudent) {
-    return res.status(403).send({ message: "Forbidden: Access denied" });
-  }
-
-  try {
-    // Step 1: If student, get department
-    let studentDepartment = null;
-    if (isStudent) {
-      const student = await studentsCollection.findOne({ email: req.user.email });
-      if (!student) {
-        return res.status(404).send({ message: "Student not found" });
+      if (!isAdmin && !isSameFaculty && !isStudent) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
       }
-      studentDepartment = student.department;
-    }
 
-    // Step 2: Build main aggregation pipeline
-    const pipeline = [
-      { $match: { email } },
-      {
-        $lookup: {
-          from: "courses",
-          let: { assignmentCourseId: { $toObjectId: "$courseId" } },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ["$_id", "$$assignmentCourseId"] },
-              },
+      try {
+        // Step 1: If student, get department
+        let studentDepartment = null;
+        if (isStudent) {
+          const student = await studentsCollection.findOne({
+            email: req.user.email,
+          });
+          if (!student) {
+            return res.status(404).send({ message: "Student not found" });
+          }
+          studentDepartment = student.department;
+        }
+
+        // Step 2: Build main aggregation pipeline
+        const pipeline = [
+          { $match: { email } },
+          {
+            $lookup: {
+              from: "courses",
+              let: { assignmentCourseId: { $toObjectId: "$courseId" } },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: { $eq: ["$_id", "$$assignmentCourseId"] },
+                  },
+                },
+                {
+                  $project: {
+                    _id: 0,
+                    courseId: 1,
+                    name: 1,
+                    department: 1,
+                  },
+                },
+              ],
+              as: "courseInfo",
             },
-            {
-              $project: {
-                _id: 0,
-                courseId: 1,
-                name: 1,
-                department: 1,
-              },
+          },
+          {
+            $unwind: {
+              path: "$courseInfo",
+              preserveNullAndEmptyArrays: true,
             },
-          ],
-          as: "courseInfo",
-        },
-      },
-      {
-        $unwind: {
-          path: "$courseInfo",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $project: {
-          assignmentId: "$_id",
-          courseId: "$courseInfo.courseId",
-          courseName: "$courseInfo.name",
-          courseDepartment: "$courseInfo.department",
-          title: 1,
-          email: 1,
-          deadline: 1,
-          semester: 1,
-          uploadedAt: 1,
-          filename: 1,
-          path: 1,
-          instructions: 1,
-        },
-      },
-    ];
+          },
+          {
+            $project: {
+              assignmentId: "$_id",
+              courseId: "$courseInfo.courseId",
+              courseName: "$courseInfo.name",
+              courseDepartment: "$courseInfo.department",
+              title: 1,
+              email: 1,
+              deadline: 1,
+              semester: 1,
+              uploadedAt: 1,
+              filename: 1,
+              path: 1,
+              instructions: 1,
+            },
+          },
+        ];
 
-    // Step 3: If student, filter by department after projection
-    if (isStudent) {
-      pipeline.push({
-        $match: {
-          courseDepartment: studentDepartment,
-        },
-      });
-    }
+        // Step 3: If student, filter by department after projection
+        if (isStudent) {
+          pipeline.push({
+            $match: {
+              courseDepartment: studentDepartment,
+            },
+          });
+        }
 
-    // Step 4: Clone the pipeline to count total
-    const totalPipeline = [...pipeline, { $count: "total" }];
-    const totalResult = await assignmentsCollection.aggregate(totalPipeline).toArray();
-    const total = totalResult[0]?.total || 0;
+        // Step 4: Clone the pipeline to count total
+        const totalPipeline = [...pipeline, { $count: "total" }];
+        const totalResult = await assignmentsCollection
+          .aggregate(totalPipeline)
+          .toArray();
+        const total = totalResult[0]?.total || 0;
 
-    // Step 5: Apply pagination
-    pipeline.push({ $skip: skip }, { $limit: limit });
+        // Step 5: Apply pagination
+        pipeline.push({ $skip: skip }, { $limit: limit });
 
-    const paginatedAssignments = await assignmentsCollection.aggregate(pipeline).toArray();
+        const paginatedAssignments = await assignmentsCollection
+          .aggregate(pipeline)
+          .toArray();
 
-    res.send({
-      total,
-      assignments: paginatedAssignments,
+        res.send({
+          total,
+          assignments: paginatedAssignments,
+        });
+      } catch (error) {
+        console.error("❌ Error fetching assignments:", error);
+        res.status(500).send({ error: "Failed to fetch assignments" });
+      }
     });
-  } catch (error) {
-    console.error("❌ Error fetching assignments:", error);
-    res.status(500).send({ error: "Failed to fetch assignments" });
-  }
-});
-
 
     // get all assignment with the status secured
     app.get("/students-assignment/:email", verifyToken, async (req, res) => {
@@ -3803,6 +3808,272 @@ app.get("/assignments/:email", verifyToken, async (req, res) => {
       }
     );
 
+    // ✅ PATCH: Upload assignment file per class routine
+    app.patch(
+      "/upload-student-classAssignment",
+      upload.single("file"),
+      async (req, res) => {
+        const { routineId, dayIndex, email, name } = req.body;
+
+        if (!req.file || !req.file.buffer) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        if (!ObjectId.isValid(routineId)) {
+          return res.status(400).json({ error: "Invalid routine ID" });
+        }
+
+        try {
+          const routine = await routinesCollection.findOne({
+            _id: new ObjectId(routineId),
+          });
+
+          if (!routine) {
+            return res.status(404).json({ error: "Routine not found" });
+          }
+
+          const index = parseInt(dayIndex);
+          if (isNaN(index) || index < 0 || index >= routine.routines.length) {
+            return res.status(400).json({ error: "Invalid day index" });
+          }
+
+          const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
+          const blob = bucket.file(uniqueFileName);
+          const blobStream = blob.createWriteStream({
+            metadata: { contentType: req.file.mimetype },
+          });
+
+          blobStream.on("error", (err) => {
+            console.error("❌ Firebase upload error:", err);
+            return res.status(500).json({ error: "Upload to Firebase failed" });
+          });
+
+          blobStream.on("finish", async () => {
+            try {
+              await blob.makePublic();
+            } catch (err) {
+              console.error("❌ Failed to make file public:", err);
+              return res
+                .status(500)
+                .json({ error: "Failed to make file public" });
+            }
+
+            const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+            const subAssignment = {
+              studentName: name,
+              studentEmail: email,
+              fileUrl,
+              path: uniqueFileName,
+              submittedAt: new Date(),
+            };
+
+            const updateResult = await routinesCollection.updateOne(
+              { _id: new ObjectId(routineId) },
+              {
+                $push: {
+                  [`routines.${index}.subAssignments`]: subAssignment,
+                },
+              }
+            );
+
+            if (updateResult.modifiedCount > 0) {
+              res.status(200).json({
+                message: "Student assignment submitted successfully.",
+              });
+            } else {
+              res
+                .status(500)
+                .json({ message: "Failed to save student assignment." });
+            }
+          });
+
+          blobStream.end(req.file.buffer);
+        } catch (err) {
+          console.error("❌ Error uploading student assignment:", err);
+          res.status(500).json({ error: "Internal Server Error" });
+        }
+      }
+    );
+
+    // edit assignment file per class in the routine
+    app.patch(
+  "/routine/edit-assignment",
+  upload.single("file"),
+  async (req, res) => {
+    const { routineId, dayIndex, email, name, course, title } = req.body;
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    if (!ObjectId.isValid(routineId)) {
+      return res.status(400).json({ error: "Invalid routine ID" });
+    }
+
+    try {
+      const routine = await routinesCollection.findOne({
+        _id: new ObjectId(routineId),
+      });
+
+      if (!routine) {
+        return res.status(404).json({ error: "Routine not found" });
+      }
+
+      const index = parseInt(dayIndex);
+      if (isNaN(index) || index < 0 || index >= routine.routines.length) {
+        return res.status(400).json({ error: "Invalid day index" });
+      }
+
+      const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
+      const blob = bucket.file(uniqueFileName);
+      const blobStream = blob.createWriteStream({
+        metadata: { contentType: req.file.mimetype },
+      });
+
+      blobStream.on("error", (err) => {
+        console.error("❌ Firebase upload error:", err);
+        return res.status(500).json({ error: "Upload to Firebase failed" });
+      });
+
+      blobStream.on("finish", async () => {
+        try {
+          await blob.makePublic();
+        } catch (err) {
+          console.error("❌ Failed to make file public:", err);
+          return res
+            .status(500)
+            .json({ error: "Failed to make file public" });
+        }
+
+        const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+        const updatedAssignment = {
+          title: title || `Class Assignment for ${routine.routines[index].day}`,
+          uploadedBy: name,
+          facultyEmail: email,
+          course: course || routine.routines[index].course,
+          url: fileUrl,
+          path: uniqueFileName,
+          uploadedAt: new Date(),
+        };
+
+        const updateResult = await routinesCollection.updateOne(
+          { _id: new ObjectId(routineId) },
+          {
+            $set: {
+              [`routines.${index}.assignment`]: updatedAssignment,
+            },
+          }
+        );
+
+        if (updateResult.modifiedCount > 0) {
+          res.status(200).json({
+            message: "Assignment updated successfully.",
+          });
+        } else {
+          res.status(500).json({ message: "Failed to update assignment." });
+        }
+      });
+
+      blobStream.end(req.file.buffer);
+    } catch (err) {
+      console.error("❌ Error updating assignment:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+
+    // upload student class assignment in routinesCollection
+app.patch(
+  "/routine/upload-assignment",
+  upload.single("file"),
+  async (req, res) => {
+    const { routineId, dayIndex, email, name, course, title } = req.body;
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    if (!ObjectId.isValid(routineId)) {
+      return res.status(400).json({ error: "Invalid routine ID" });
+    }
+
+    try {
+      const routine = await routinesCollection.findOne({
+        _id: new ObjectId(routineId),
+      });
+
+      if (!routine) {
+        return res.status(404).json({ error: "Routine not found" });
+      }
+
+      const index = parseInt(dayIndex);
+      if (isNaN(index) || index < 0 || index >= routine.routines.length) {
+        return res.status(400).json({ error: "Invalid day index" });
+      }
+
+      const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
+      const blob = bucket.file(uniqueFileName);
+      const blobStream = blob.createWriteStream({
+        metadata: { contentType: req.file.mimetype },
+      });
+
+      blobStream.on("error", (err) => {
+        console.error("❌ Firebase upload error:", err);
+        return res.status(500).json({ error: "Upload to Firebase failed" });
+      });
+
+      blobStream.on("finish", async () => {
+        try {
+          await blob.makePublic();
+        } catch (err) {
+          console.error("❌ Failed to make file public:", err);
+          return res
+            .status(500)
+            .json({ error: "Failed to make file public" });
+        }
+
+        const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+
+        const assignment = {
+          title: title || `Class Assignment for ${routine.routines[index].day}`,
+          uploadedBy: email,
+          course: course || routine.routines[index].course || "",
+          url: fileUrl,
+          path: uniqueFileName,
+          uploadedAt: new Date(),
+        };
+
+        const updateResult = await routinesCollection.updateOne(
+          { _id: new ObjectId(routineId) },
+          {
+            $set: {
+              [`routines.${index}.assignment`]: assignment,
+            },
+          }
+        );
+
+        if (updateResult.modifiedCount > 0) {
+          res.status(200).json({
+            message: "Assignment uploaded successfully.",
+          });
+        } else {
+          res.status(500).json({
+            message: "Failed to upload assignment.",
+          });
+        }
+      });
+
+      blobStream.end(req.file.buffer);
+    } catch (err) {
+      console.error("❌ Error uploading assignment:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+
+
     //✅ ✅ ✅  payment routes
 
     // Create PaymentIntent API
@@ -3939,7 +4210,7 @@ app.get("/assignments/:email", verifyToken, async (req, res) => {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "none",
-          maxAge: 7 * 24 * 60 * 60 * 1000, 
+          maxAge: 7 * 24 * 60 * 60 * 1000,
         })
         // for dev
         // res

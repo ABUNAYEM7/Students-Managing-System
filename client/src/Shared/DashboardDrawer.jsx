@@ -133,7 +133,7 @@ const DashboardDrawer = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
-      <div className="navbar bg-base-300 flex items-center justify-between px-4 fixed top-0 left-0 w-full z-50 ">
+      <div className="navbar bg-base-300 flex flex-wrap items-center justify-between px-4 fixed top-0 left-0 w-full z-50 min-w-0">
         <div className="space-x-2 flex items-center">
           <button onClick={toggleDrawer}>
             {isOpen ? <FaBars size={25} /> : <FaChartBar size={25} />}

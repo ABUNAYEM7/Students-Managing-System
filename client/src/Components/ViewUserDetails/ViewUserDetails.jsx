@@ -391,7 +391,7 @@ const ViewUserDetails = () => {
                     <td>
                       {assignment.path ? (
                         <a
-                          href={`https://students-managing-system.onrender.com/${assignment?.path?.replace(
+                          href={`http://localhost:3000/${assignment?.path?.replace(
                             /\\/g,
                             "/"
                           )}`}
@@ -482,7 +482,7 @@ const ViewUserDetails = () => {
                     <td>
                       {material.path ? (
                         <a
-                          href={`https://students-managing-system.onrender.com/${material.path.replace(
+                          href={`http://localhost:3000/${material.path.replace(
                             /\\/g,
                             "/"
                           )}`}
@@ -498,7 +498,7 @@ const ViewUserDetails = () => {
                     </td>
                     <td className="flex gap-2">
                       <a
-                        href={`https://students-managing-system.onrender.com/${material.path.replace(
+                        href={`http://localhost:3000/${material.path.replace(
                           /\\/g,
                           "/"
                         )}`}

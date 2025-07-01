@@ -46,8 +46,8 @@ const Fee = () => {
   };
 
   const totalPages = Math.ceil(totalCourses / limit);
-
-  return (
+  console.log(courses)
+  return (  
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6 space-y-8">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl">
         <h1 className="text-3xl font-bold text-center mb-6 text-highlight">
