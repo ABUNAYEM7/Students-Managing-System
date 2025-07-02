@@ -108,7 +108,7 @@ const StudentRoutine = () => {
     }
   };
 
-  console.log(routines)
+  // console.log(routines)
 
   return (
     <div className="p-3">

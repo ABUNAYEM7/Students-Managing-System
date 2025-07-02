@@ -70,7 +70,7 @@ const StudentsMaterials = () => {
                   <td className="px-4 py-2 border">{material.email}</td>
                   <td className="px-4 py-2 border">
                     <a
-                      href={`http://localhost:3000/files/${material.filename.replace(
+                      href={`https://students-managing-system.onrender.com/files/${material.filename.replace(
                         /\\/g,
                         "/"
                       )}`}

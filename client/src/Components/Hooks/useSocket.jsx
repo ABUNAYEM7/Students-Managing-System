@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
 // 👇 Configure the socket connection
-const socket = io("http://localhost:3000", {
+const socket = io("https://students-managing-system.onrender.com", {
   transports: ["polling", "websocket"],
   reconnection: true,
   reconnectionAttempts: 5,
