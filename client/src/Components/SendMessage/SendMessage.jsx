@@ -23,8 +23,9 @@ const SendMessage = () => {
   const [selectedRecipients, setSelectedRecipients] = useState([]);
   const [sendToAll, setSendToAll] = useState(false);
   const [isReplyMode, setIsReplyMode] = useState(false);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // ✅ new state
 
-  // Setup dynamic roles
   useEffect(() => {
     if (userRole === "admin") {
       setRoleOptions(["faculty", "student"]);
@@ -35,7 +36,6 @@ const SendMessage = () => {
     }
   }, [userRole]);
 
-  // If in reply mode, fetch the original message
   useEffect(() => {
     if (id) {
       setIsReplyMode(true);
@@ -51,7 +51,6 @@ const SendMessage = () => {
     }
   }, [id, axiosInstance]);
 
-  // Load recipients based on selected role
   useEffect(() => {
     if (selectedRole && !isReplyMode) {
       axiosInstance
@@ -79,19 +78,24 @@ const SendMessage = () => {
       return;
     }
 
-    const messageData = {
-      name: user?.displayName,
-      email: user?.email,
-      subject,
-      description,
-      recipients: selectedRecipients.map((r) => r.value),
-      recipientRole: selectedRole,
-      senders: [user?.email],
-      replyTo: id || null,
-    };
-
+    setIsSubmitting(true); // ✅ disable button
     try {
-      const res = await axiosInstance.post("/send-message", messageData);
+      const formData = new FormData();
+      formData.append("name", user?.displayName);
+      formData.append("email", user?.email);
+      formData.append("subject", subject);
+      formData.append("description", description);
+      formData.append("recipientRole", selectedRole);
+      formData.append("replyTo", id || "");
+      selectedRecipients.forEach((r) => formData.append("recipients", r.value));
+      if (pdfFile) formData.append("file", pdfFile);
+
+      const res = await axiosInstance.post("/send-message", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       if (res.data?.insertedId) {
         Swal.fire("Success", "Message sent successfully", "success");
         navigate("/dashboard/message");
@@ -99,6 +103,8 @@ const SendMessage = () => {
     } catch (err) {
       console.error("Message send failed", err);
       Swal.fire("Error", "Something went wrong", "error");
+    } finally {
+      setIsSubmitting(false); // ✅ re-enable button
     }
   };
 
@@ -258,9 +264,28 @@ const SendMessage = () => {
           />
         </div>
 
+        <div>
+          <label className="label">
+            <span className="label-text">Attach PDF (optional)</span>
+          </label>
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => setPdfFile(e.target.files[0])}
+            className="file-input file-input-bordered w-full"
+          />
+        </div>
+
         <div className="text-center">
-          <button className="btn bg-prime text-white px-10 tracking-wide shadow-lg hover:scale-105 transition-all duration-200 ease-in-out">
-            <MdMessage className="mr-2 text-lg" /> {isReplyMode ? "Reply" : "Send Message"}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`btn bg-prime text-white px-10 tracking-wide shadow-lg transition-all duration-200 ease-in-out ${
+              isSubmitting ? "opacity-60 cursor-not-allowed" : "hover:scale-105"
+            }`}
+          >
+            <MdMessage className="mr-2 text-lg" />{" "}
+            {isReplyMode ? "Reply" : isSubmitting ? "Sending..." : "Send Message"}
           </button>
         </div>
       </form>

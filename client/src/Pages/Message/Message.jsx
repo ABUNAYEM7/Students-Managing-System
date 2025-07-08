@@ -43,6 +43,7 @@ const Message = () => {
             message: msg.description,
             date: new Date(msg.createdAt).toLocaleDateString(),
             replyTo: msg.replyTo || null,
+            attachment: msg.attachment || null,
           }));
           setMessages(formatted);
           setTotalMessages(res.data.total);
@@ -110,7 +111,7 @@ const Message = () => {
         </div>
         <button
           onClick={handleSendNew}
-          className="btn  bg-prime text-black shadow-sm hover:shadow-md transition -ml-5"
+          className="btn bg-prime text-black shadow-sm hover:shadow-md transition -ml-5"
         >
           Send New Message
         </button>
@@ -182,6 +183,19 @@ const Message = () => {
 
                         <div className="mb-3 text-gray-800 leading-relaxed">
                           <strong>Message:</strong> {msg.message}
+                          {msg.attachment?.path && (
+                            <div className="mt-3 text-sm">
+                              <strong>Attachment:</strong>{" "}
+                              <a
+                                href={msg.attachment.path}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline"
+                              >
+                                📎 {msg.attachment.filename}
+                              </a>
+                            </div>
+                          )}
                         </div>
 
                         {replies[msg.id]?.length > 0 && (

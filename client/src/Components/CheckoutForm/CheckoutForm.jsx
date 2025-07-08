@@ -9,6 +9,8 @@ const CheckoutForm = ({
   studentEmail,
   courseId,
   courseName,
+  isManual = false,
+  manualPaymentId = null,
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -100,25 +102,32 @@ const CheckoutForm = ({
             userName: billingDetails.name,
             userEmail: billingDetails.email,
             phone: billingDetails.phone,
-            courseId: billingDetails.courseId,
-            courseName: billingDetails.courseName,
+            courseId: isManual ? null : billingDetails.courseId,
+            courseName: isManual ? null : billingDetails.courseName,
             amount: billingDetails.amount,
             status: "paid",
             date: new Date().toISOString(),
           });
 
-          await axiosInstance.patch(
-            `/update-student-course-payment-status/${studentEmail}`,
-            {
-              courseId: billingDetails.courseId,
-            }
-          );
+          if (isManual && manualPaymentId) {
+            await axiosInstance.patch(
+              `/update-manual-payment-status/${manualPaymentId}`,
+              { status: "paid" }
+            );
+          } else {
+            await axiosInstance.patch(
+              `/update-student-course-payment-status/${studentEmail}`,
+              { courseId: billingDetails.courseId }
+            );
+          }
 
           refetch();
           setMessage("🎉 Payment Successful! Thank you!");
           cardElement.clear();
         } catch (err) {
-          console.error("❌ Error saving payment to DB:", err);
+          if (import.meta.env.DEV) {
+            console.error("❌ Error saving payment to DB:", err);
+          }
           setMessage("Payment processed, but saving failed. Contact admin.");
         }
       } else if (confirmResult.error) {
@@ -137,9 +146,7 @@ const CheckoutForm = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Full Name
-        </label>
+        <label className="block text-sm font-medium text-gray-700">Full Name</label>
         <input
           type="text"
           className="input input-bordered w-full mt-1 bg-gray-100"
@@ -159,9 +166,7 @@ const CheckoutForm = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Phone Number
-        </label>
+        <label className="block text-sm font-medium text-gray-700">Phone Number</label>
         <input
           type="tel"
           className="input input-bordered w-full mt-1"
@@ -175,9 +180,7 @@ const CheckoutForm = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Amount (USD)
-        </label>
+        <label className="block text-sm font-medium text-gray-700">Amount (USD)</label>
         <input
           type="number"
           className="input input-bordered w-full mt-1 bg-gray-100"
@@ -187,9 +190,7 @@ const CheckoutForm = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Card Details
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Card Details</label>
         <div className="p-4 border rounded-lg">
           <CardElement />
         </div>

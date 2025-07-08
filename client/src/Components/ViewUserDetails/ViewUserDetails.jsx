@@ -5,6 +5,7 @@ import { FaArrowLeft } from "react-icons/fa";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import GenerateFacultyReport from "../../Pages/Faculty/GenerateFacultyReport/GenerateFacultyReport";
+import ManualStudentPaymentForm from "../../Pages/Admin/ManualStudentPaymentForm/ManualStudentPaymentForm";
 
 const ViewUserDetails = () => {
   const { email } = useParams();
@@ -32,6 +33,7 @@ const ViewUserDetails = () => {
   const [materialsPage, setMaterialsPage] = useState(1);
   const [materialsLimit] = useState(10); // or any number you prefer
   const [totalFacultyMaterials, setTotalFacultyMaterials] = useState(0);
+  const [manualPayments, setManualPayments] = useState([]);
 
   useEffect(() => {
     const fetchUserAndDetails = async () => {
@@ -66,6 +68,12 @@ const ViewUserDetails = () => {
           const studentRes = await axiosInstance.get(
             `/student-full-details/${email}?page=${studentPage}&limit=${studentLimit}`
           );
+
+          const paymentHistoryRes = await axiosInstance.get(
+            `/payment-history/${email}`
+          );
+          setManualPayments(paymentHistoryRes.data?.history || []);
+
           const initialFees = {};
           (studentRes?.data?.student?.courses || []).forEach((course, idx) => {
             initialFees[idx] = course?.fee || 0;
@@ -161,7 +169,6 @@ const ViewUserDetails = () => {
       },
     });
   };
-
   return (
     <div className="max-w-6xl mx-auto p-8 bg-base-100 shadow-xl rounded-3xl border border-gray-300 mt-10">
       <div className="flex justify-between items-center mb-6">
@@ -552,106 +559,160 @@ const ViewUserDetails = () => {
 
       {/* Student Enrolled Courses Table */}
       {user?.role === "student" && studentCourses?.length > 0 && (
-        <div className="mt-10">
-          <h3 className="text-2xl font-semibold mb-4">
-            Enrolled Course Details
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="table table-zebra w-full">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Course Name</th>
-                  <th>Credit</th>
-                  <th>Semester</th>
-                  <th>Enrollment Date</th>
-                  <th>Payment Status</th>
-                  <th>Assigned Fee</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {studentCourses.map((course, index) => (
-                  <tr key={course?.courseId || index}>
-                    <td>{(studentPage - 1) * studentLimit + index + 1}</td>
-                    <td>{course?.courseName || "N/A"}</td>
-                    <td>{course?.credit || "N/A"}</td>
-                    <td>{course?.semester || "N/A"}</td>
-                    <td>
-                      {course?.enrolledAt
-                        ? dayjs(course.enrolledAt).format("DD MMM YYYY")
-                        : "N/A"}
-                    </td>
-                    <td>
-                      <span className="badge badge-warning">
-                        {course?.paymentStatus || "Unpaid"}
-                      </span>
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        className="input input-bordered input-sm w-24"
-                        value={feeInputs[index]}
-                        disabled={!(editingIndex === index)}
-                        onChange={(e) =>
-                          setFeeInputs((prev) => ({
-                            ...prev,
-                            [index]: e.target.value,
-                          }))
-                        }
-                        min="0"
-                      />
-                    </td>
-                    <td className="flex gap-2">
-                      {editingIndex === index ? (
-                        <button
-                          className="btn btn-sm btn-success"
-                          onClick={() => handleSaveFee(index, course)}
-                        >
-                          Save
-                        </button>
-                      ) : (
-                        <button
-                          className="btn btn-sm btn-accent"
-                          onClick={() => setEditingIndex(index)}
-                          disabled={course?.paymentStatus === "paid"}
-                        >
-                          Edit
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <>
+          <div className="mt-10">
+            <ManualStudentPaymentForm
+              email={user?.email}
+              studentId={extraDetails?.studentId}
+              name={user?.name}
+            />
           </div>
+          <div className="mt-10">
+            <h3 className="text-2xl font-semibold mb-4">
+              Enrolled Course Details
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="table table-zebra w-full">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Course Name</th>
+                    <th>Credit</th>
+                    <th>Semester</th>
+                    <th>Enrollment Date</th>
+                    <th>Payment Status</th>
+                    <th>Assigned Fee</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentCourses.map((course, index) => (
+                    <tr key={course?._id || index}>
+                      <td>{(studentPage - 1) * studentLimit + index + 1}</td>
+                      <td>{course?.courseName || "N/A"}</td>
+                      <td>{course?.credit || "N/A"}</td>
+                      <td>{course?.semester || "N/A"}</td>
+                      <td>
+                        {course?.enrolledAt
+                          ? dayjs(course.enrolledAt).format("DD MMM YYYY")
+                          : "N/A"}
+                      </td>
+                      <td>
+                        <span className="badge badge-warning">
+                          {course?.paymentStatus || "Unpaid"}
+                        </span>
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          className="input input-bordered input-sm w-24"
+                          value={feeInputs[index]}
+                          disabled={!(editingIndex === index)}
+                          onChange={(e) =>
+                            setFeeInputs((prev) => ({
+                              ...prev,
+                              [index]: e.target.value,
+                            }))
+                          }
+                          min="0"
+                        />
+                      </td>
+                      <td className="flex gap-2">
+                        {editingIndex === index ? (
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={() => handleSaveFee(index, course)}
+                          >
+                            Save
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-sm btn-accent"
+                            onClick={() => setEditingIndex(index)}
+                            disabled={course?.paymentStatus === "paid"}
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          {/* Pagination outside the table */}
-          {totalStudentCourses > studentLimit && (
-            <div className="flex justify-center items-center gap-4 mt-4">
-              <button
-                className="btn btn-sm"
-                disabled={studentPage === 1}
-                onClick={() => setStudentPage((prev) => Math.max(prev - 1, 1))}
-              >
-                Previous
-              </button>
-              <span className="font-medium">
-                Page {studentPage} of{" "}
-                {Math.ceil(totalStudentCourses / studentLimit)}
-              </span>
-              <button
-                className="btn btn-sm"
-                disabled={
-                  studentPage >= Math.ceil(totalStudentCourses / studentLimit)
-                }
-                onClick={() => setStudentPage((prev) => prev + 1)}
-              >
-                Next
-              </button>
+            {/* Pagination outside the table */}
+            {totalStudentCourses > studentLimit && (
+              <div className="flex justify-center items-center gap-4 mt-4">
+                <button
+                  className="btn btn-sm"
+                  disabled={studentPage === 1}
+                  onClick={() =>
+                    setStudentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                >
+                  Previous
+                </button>
+                <span className="font-medium">
+                  Page {studentPage} of{" "}
+                  {Math.ceil(totalStudentCourses / studentLimit)}
+                </span>
+                <button
+                  className="btn btn-sm"
+                  disabled={
+                    studentPage >= Math.ceil(totalStudentCourses / studentLimit)
+                  }
+                  onClick={() => setStudentPage((prev) => prev + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+          {manualPayments.length > 0 && (
+            <div className="mt-10">
+              <h3 className="text-2xl font-semibold mb-4">
+                Other Payments (Manual Entry)
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="table table-zebra w-full">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Subject</th>
+                      <th>Amount ($)</th>
+                      <th>Status</th>
+                      <th>Recorded By</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {manualPayments.map((payment, idx) => (
+                      <tr key={payment._id || idx}>
+                        <td>{idx + 1}</td>
+                        <td>{payment.subject}</td>
+                        <td>{payment.amount}</td>
+                        <td>
+                          <span
+                            className={`badge ${
+                              payment.status === "paid"
+                                ? "badge-success"
+                                : "badge-warning"
+                            }`}
+                          >
+                            {payment.status}
+                          </span>
+                        </td>
+                        <td>{payment.recordedBy || "N/A"}</td>
+                        <td>{dayjs(payment.date).format("DD MMM YYYY")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

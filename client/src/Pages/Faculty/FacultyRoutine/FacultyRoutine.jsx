@@ -441,94 +441,104 @@ const FacultyRoutine = () => {
                             </td>
                           <td className="border p-2 space-y-2">
   {dayRoutine.status === "completed" ? (
-    <>
-      {dayRoutine.assignment?.url &&
-      !editAssignmentStates[`${routine._id}_${idx}`] ? (
-        <div className="flex items-center gap-2">
-          <a
-            href={dayRoutine?.assignment?.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-green-700 underline"
-          >
-            📌 Assignment
-          </a>
-          <button
-            type="button"
-            className="btn btn-xs btn-warning"
-            onClick={() =>
-              setEditAssignmentStates((prev) => ({
-                ...prev,
-                [`${routine._id}_${idx}`]: true,
-              }))
-            }
-          >
-            Edit
-          </button>
-        </div>
-      ) : (
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(e) =>
-            editAssignmentStates[`${routine._id}_${idx}`]
-              ? handleAssignmentEditUpload(
-                  e,
-                  routine._id,
-                  idx,
-                  dayRoutine.course,
-                  dayRoutine.day
-                )
-              : handleAssignmentUpload(
-                  e,
-                  routine._id,
-                  idx,
-                  dayRoutine.course,
-                  dayRoutine.day
-                )
+<>
+  {dayRoutine.assignment?.url &&
+  !editAssignmentStates[`${routine._id}_${idx}`] ? (
+    <div className="flex items-center gap-2">
+      <a
+        href={dayRoutine?.assignment?.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-green-700 underline"
+      >
+        📌 Assignment
+      </a>
+      {/* ✅ Show Edit only if no submissions exist */}
+      {(!dayRoutine.subAssignments || dayRoutine.subAssignments.length === 0) && (
+        <button
+          type="button"
+          className="btn btn-xs btn-warning"
+          onClick={() =>
+            setEditAssignmentStates((prev) => ({
+              ...prev,
+              [`${routine._id}_${idx}`]: true,
+            }))
           }
         >
-          <input
-            type="file"
-            name="assignment"
-            accept=".pdf"
-            ref={(el) => {
-              if (el)
-                assignmentInputRefs.current[`${routine._id}_${idx}`] = el;
-            }}
-            className="file-input file-input-sm file-input-bordered file-input-success"
-          />
-          <button
-            type="submit"
-            className="btn btn-sm bg-green-300 text-black hover:bg-green-500 hover:text-white"
-            disabled={uploadingAssignments[`${routine._id}_${idx}`]}
-          >
-            {uploadingAssignments[`${routine._id}_${idx}`]
-              ? "Uploading..."
-              : "Upload"}
-          </button>
-        </form>
+          Edit
+        </button>
       )}
+    </div>
+  ) : (
+    // ✅ Upload/Edit form allowed only if no student has submitted
+    (!dayRoutine.subAssignments || dayRoutine.subAssignments.length === 0) ? (
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(e) =>
+          editAssignmentStates[`${routine._id}_${idx}`]
+            ? handleAssignmentEditUpload(
+                e,
+                routine._id,
+                idx,
+                dayRoutine.course,
+                dayRoutine.day
+              )
+            : handleAssignmentUpload(
+                e,
+                routine._id,
+                idx,
+                dayRoutine.course,
+                dayRoutine.day
+              )
+        }
+      >
+        <input
+          type="file"
+          name="assignment"
+          accept=".pdf"
+          ref={(el) => {
+            if (el)
+              assignmentInputRefs.current[`${routine._id}_${idx}`] = el;
+          }}
+          className="file-input file-input-sm file-input-bordered file-input-success"
+        />
+        <button
+          type="submit"
+          className="btn btn-sm bg-green-300 text-black hover:bg-green-500 hover:text-white"
+          disabled={uploadingAssignments[`${routine._id}_${idx}`]}
+        >
+          {uploadingAssignments[`${routine._id}_${idx}`]
+            ? "Uploading..."
+            : "Upload"}
+        </button>
+      </form>
+    ) : (
+      <p className="text-sm italic text-gray-400">
+        Cannot edit – student submissions exist
+      </p>
+    )
+  )}
 
-      {dayRoutine.assignment?.url && (
-        <div className="pt-2">
-          <button
-            type="button"
-            className="btn btn-xs btn-outline btn-info"
-            onClick={() =>
-              setExpandedRows((prev) => ({
-                ...prev,
-                [`${routine._id}_${idx}`]:
-                  !prev[`${routine._id}_${idx}`],
-              }))
-            }
-          >
-            {expandedRows[`${routine._id}_${idx}`]
-              ? "Hide Submissions"
-              : "Submissions"}
-          </button>
-        </div>
-      )}
-    </>
+  {dayRoutine.assignment?.url && (
+    <div className="pt-2">
+      <button
+        type="button"
+        className="btn btn-xs btn-outline btn-info"
+        onClick={() =>
+          setExpandedRows((prev) => ({
+            ...prev,
+            [`${routine._id}_${idx}`]: !prev[`${routine._id}_${idx}`],
+          }))
+        }
+      >
+        {expandedRows[`${routine._id}_${idx}`]
+          ? "Hide Submissions"
+          : "Submissions"}
+      </button>
+    </div>
+  )}
+</>
+
   ) : (
     <span className="text-sm text-gray-400 italic">
       Not available

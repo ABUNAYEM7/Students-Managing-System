@@ -19,25 +19,37 @@ const PaymentPage = () => {
   const location = useLocation();
   const course = location.state?.course;
 
+  // Redirect if no course/payment item passed
   if (!course) {
     navigate("/dashboard/fee");
     return null;
   }
 
+  // Determine if this is a manual payment (by checking `type`)
+  const isManual = course?.type === "manual";
+
+  // Title: course name for course fee, subject for manual payment
+  const title = course?.courseName || course?.subject || "Payment";
+
+  // Amount to be paid
+  const amount = course?.fee || course?.amount || 0;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
       <div className="max-w-xl w-full bg-white shadow-md rounded-lg p-6">
         <h2 className="text-2xl font-bold text-center mb-6 text-highlight">
-          Complete Payment for {course.courseName}
+          Complete Payment for {title}
         </h2>
 
         <Elements stripe={stripePromise}>
           <CheckoutForm
             refetch={refetch}
-            amount={course.fee}
+            amount={amount}
             studentEmail={email}
-            courseId={course.courseId}
-            courseName={course.courseName}
+            courseId={isManual ? null : course?.courseId}
+            courseName={title}
+            isManual={isManual}
+            manualPaymentId={isManual ? course?._id : null}
           />
         </Elements>
 

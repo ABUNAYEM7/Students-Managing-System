@@ -365,49 +365,6 @@ async function run() {
       }
     );
 
-    // ✅ POST: Send & store message
-    app.post("/send-message", async (req, res) => {
-      const {
-        name,
-        email,
-        subject,
-        description,
-        recipients,
-        recipientRole,
-        replyTo, // ✅ capture replyTo from frontend
-      } = req.body;
-
-      if (
-        !name ||
-        !email ||
-        !subject ||
-        !description ||
-        !recipients?.length ||
-        !recipientRole
-      ) {
-        return res.status(400).send({ message: "Missing required fields" });
-      }
-
-      try {
-        const message = {
-          name,
-          email, // sender email
-          subject,
-          description,
-          recipients,
-          recipientRole,
-          sender: email,
-          replyTo: replyTo || null, // ✅ include replyTo if present
-          createdAt: new Date().toISOString(),
-        };
-
-        const result = await messageCollection.insertOne(message);
-        res.send({ success: true, insertedId: result.insertedId });
-      } catch (err) {
-        console.error("❌ Failed to send message:", err);
-        res.status(500).send({ message: "Internal server error" });
-      }
-    });
 
     // update user role secured
     app.patch(
@@ -639,6 +596,106 @@ async function run() {
     );
 
     //✅✅✅✅ payment update fee amount patch route
+
+    // upload manuall payment history
+    app.post("/manual-payment-entry", async (req, res) => {
+      try {
+        const { studentId, email, name, subject, amount, status, recordedBy } =
+          req.body;
+
+        // Validate required fields
+        if (
+          !studentId ||
+          !email ||
+          !name ||
+          !subject ||
+          !amount ||
+          !status ||
+          !recordedBy
+        ) {
+          return res.status(400).send({ error: "All fields are required." });
+        }
+
+        // Prepare the payment document
+        const paymentData = {
+          userName: name,
+          userEmail: email,
+          studentId,
+          subject,
+          amount,
+          status,
+          type: "manual",
+          recordedBy,
+          transactionId: null,
+          date: new Date(),
+        };
+
+        // Insert into DB
+        const result = await paymentsCollection.insertOne(paymentData);
+
+        // Respond
+        res.send({
+          insertedId: result.insertedId,
+          message: "Manual payment recorded successfully.",
+          payment: paymentData,
+        });
+      } catch (error) {
+        console.error("Error inserting manual payment:", error);
+        res.status(500).send({
+          error: "Failed to insert manual payment record.",
+          message: error.message,
+        });
+      }
+    });
+
+    // patch route for the manual payment system
+    app.patch("/update-manual-payment-status/:id", async (req, res) => {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!id || !status) {
+        return res.status(400).send({ error: "ID and status are required." });
+      }
+
+      try {
+        const result = await paymentsCollection.updateOne(
+          { _id: new ObjectId(id), type: "manual" },
+          { $set: { status } }
+        );
+        res.send({ modifiedCount: result.modifiedCount });
+      } catch (error) {
+        if (process.env.NODE_ENV === "production") {
+          console.error("Update error:", error.message);
+        }
+        res.status(500).send({ error: "Failed to update manual payment." });
+      }
+    });
+
+    // get specific student payment history
+    // ✅ Get all payment history for a student
+    app.get("/payment-history/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+
+        if (!email) {
+          return res.status(400).send({ error: "Email is required." });
+        }
+
+        const history = await paymentsCollection
+          .find({ userEmail: email })
+          .sort({ date: -1 }) // optional: show latest first
+          .toArray();
+
+        res.send({ history });
+      } catch (error) {
+        if (process.env.NODE_ENV === "production") {
+          console.error("Failed to fetch payment history:", error.message);
+        }
+        res
+          .status(500)
+          .send({ error: "Server error fetching payment history." });
+      }
+    });
 
     // ✅ PATCH: Update student course fee secured
     app.patch(
@@ -3334,6 +3391,93 @@ async function run() {
       }
     });
 
+        // ✅ POST: Send & store message
+app.post("/send-message", upload.single("file"), async (req, res) => {
+  const {
+    name,
+    email,
+    subject,
+    description,
+    recipientRole,
+    replyTo,
+  } = req.body;
+
+  let recipients = req.body.recipients;
+  if (!recipients) recipients = [];
+  if (typeof recipients === "string") recipients = [recipients];
+
+  if (
+    !name ||
+    !email ||
+    !subject ||
+    !description ||
+    !recipients?.length ||
+    !recipientRole
+  ) {
+    return res.status(400).send({ message: "Missing required fields" });
+  }
+
+  const message = {
+    name,
+    email,
+    subject,
+    description,
+    recipients,
+    recipientRole,
+    sender: email,
+    replyTo: replyTo || null,
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    // ✅ If a file was uploaded, store it in Firebase Storage
+    if (req.file && req.file.buffer) {
+      const { getStorage } = require("firebase-admin/storage");
+      const bucket = getStorage().bucket();
+
+      const uniqueFileName = `messages/${Date.now()}-${req.file.originalname}`;
+      const blob = bucket.file(uniqueFileName);
+
+      const stream = blob.createWriteStream({
+        metadata: {
+          contentType: req.file.mimetype,
+        },
+      });
+
+      stream.end(req.file.buffer);
+
+      await new Promise((resolve, reject) => {
+        stream.on("finish", async () => {
+          try {
+            await blob.makePublic(); // ✅ Make file publicly accessible
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        });
+        stream.on("error", reject);
+      });
+
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${encodeURIComponent(uniqueFileName)}`;
+
+      message.attachment = {
+        filename: req.file.originalname,
+        path: publicUrl,
+        mimetype: req.file.mimetype,
+      };
+    }
+
+    const result = await messageCollection.insertOne(message);
+    res.send({ success: true, insertedId: result.insertedId });
+  } catch (err) {
+    console.error("❌ Message send failed:", err);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+
+
+
     // upload assignment
     app.post(
       "/upload-assignment",
@@ -3897,182 +4041,181 @@ async function run() {
 
     // edit assignment file per class in the routine
     app.patch(
-  "/routine/edit-assignment",
-  upload.single("file"),
-  async (req, res) => {
-    const { routineId, dayIndex, email, name, course, title } = req.body;
+      "/routine/edit-assignment",
+      upload.single("file"),
+      async (req, res) => {
+        const { routineId, dayIndex, email, name, course, title } = req.body;
 
-    if (!req.file || !req.file.buffer) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+        if (!req.file || !req.file.buffer) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
 
-    if (!ObjectId.isValid(routineId)) {
-      return res.status(400).json({ error: "Invalid routine ID" });
-    }
+        if (!ObjectId.isValid(routineId)) {
+          return res.status(400).json({ error: "Invalid routine ID" });
+        }
 
-    try {
-      const routine = await routinesCollection.findOne({
-        _id: new ObjectId(routineId),
-      });
-
-      if (!routine) {
-        return res.status(404).json({ error: "Routine not found" });
-      }
-
-      const index = parseInt(dayIndex);
-      if (isNaN(index) || index < 0 || index >= routine.routines.length) {
-        return res.status(400).json({ error: "Invalid day index" });
-      }
-
-      const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
-      const blob = bucket.file(uniqueFileName);
-      const blobStream = blob.createWriteStream({
-        metadata: { contentType: req.file.mimetype },
-      });
-
-      blobStream.on("error", (err) => {
-        console.error("❌ Firebase upload error:", err);
-        return res.status(500).json({ error: "Upload to Firebase failed" });
-      });
-
-      blobStream.on("finish", async () => {
         try {
-          await blob.makePublic();
-        } catch (err) {
-          console.error("❌ Failed to make file public:", err);
-          return res
-            .status(500)
-            .json({ error: "Failed to make file public" });
-        }
-
-        const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-        const updatedAssignment = {
-          title: title || `Class Assignment for ${routine.routines[index].day}`,
-          uploadedBy: name,
-          facultyEmail: email,
-          course: course || routine.routines[index].course,
-          url: fileUrl,
-          path: uniqueFileName,
-          uploadedAt: new Date(),
-        };
-
-        const updateResult = await routinesCollection.updateOne(
-          { _id: new ObjectId(routineId) },
-          {
-            $set: {
-              [`routines.${index}.assignment`]: updatedAssignment,
-            },
-          }
-        );
-
-        if (updateResult.modifiedCount > 0) {
-          res.status(200).json({
-            message: "Assignment updated successfully.",
+          const routine = await routinesCollection.findOne({
+            _id: new ObjectId(routineId),
           });
-        } else {
-          res.status(500).json({ message: "Failed to update assignment." });
+
+          if (!routine) {
+            return res.status(404).json({ error: "Routine not found" });
+          }
+
+          const index = parseInt(dayIndex);
+          if (isNaN(index) || index < 0 || index >= routine.routines.length) {
+            return res.status(400).json({ error: "Invalid day index" });
+          }
+
+          const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
+          const blob = bucket.file(uniqueFileName);
+          const blobStream = blob.createWriteStream({
+            metadata: { contentType: req.file.mimetype },
+          });
+
+          blobStream.on("error", (err) => {
+            console.error("❌ Firebase upload error:", err);
+            return res.status(500).json({ error: "Upload to Firebase failed" });
+          });
+
+          blobStream.on("finish", async () => {
+            try {
+              await blob.makePublic();
+            } catch (err) {
+              console.error("❌ Failed to make file public:", err);
+              return res
+                .status(500)
+                .json({ error: "Failed to make file public" });
+            }
+
+            const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+            const updatedAssignment = {
+              title:
+                title || `Class Assignment for ${routine.routines[index].day}`,
+              uploadedBy: name,
+              facultyEmail: email,
+              course: course || routine.routines[index].course,
+              url: fileUrl,
+              path: uniqueFileName,
+              uploadedAt: new Date(),
+            };
+
+            const updateResult = await routinesCollection.updateOne(
+              { _id: new ObjectId(routineId) },
+              {
+                $set: {
+                  [`routines.${index}.assignment`]: updatedAssignment,
+                },
+              }
+            );
+
+            if (updateResult.modifiedCount > 0) {
+              res.status(200).json({
+                message: "Assignment updated successfully.",
+              });
+            } else {
+              res.status(500).json({ message: "Failed to update assignment." });
+            }
+          });
+
+          blobStream.end(req.file.buffer);
+        } catch (err) {
+          console.error("❌ Error updating assignment:", err);
+          res.status(500).json({ error: "Internal Server Error" });
         }
-      });
-
-      blobStream.end(req.file.buffer);
-    } catch (err) {
-      console.error("❌ Error updating assignment:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  }
-);
-
+      }
+    );
 
     // upload student class assignment in routinesCollection
-app.patch(
-  "/routine/upload-assignment",
-  upload.single("file"),
-  async (req, res) => {
-    const { routineId, dayIndex, email, name, course, title } = req.body;
+    app.patch(
+      "/routine/upload-assignment",
+      upload.single("file"),
+      async (req, res) => {
+        const { routineId, dayIndex, email, name, course, title } = req.body;
 
-    if (!req.file || !req.file.buffer) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+        if (!req.file || !req.file.buffer) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
 
-    if (!ObjectId.isValid(routineId)) {
-      return res.status(400).json({ error: "Invalid routine ID" });
-    }
+        if (!ObjectId.isValid(routineId)) {
+          return res.status(400).json({ error: "Invalid routine ID" });
+        }
 
-    try {
-      const routine = await routinesCollection.findOne({
-        _id: new ObjectId(routineId),
-      });
-
-      if (!routine) {
-        return res.status(404).json({ error: "Routine not found" });
-      }
-
-      const index = parseInt(dayIndex);
-      if (isNaN(index) || index < 0 || index >= routine.routines.length) {
-        return res.status(400).json({ error: "Invalid day index" });
-      }
-
-      const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
-      const blob = bucket.file(uniqueFileName);
-      const blobStream = blob.createWriteStream({
-        metadata: { contentType: req.file.mimetype },
-      });
-
-      blobStream.on("error", (err) => {
-        console.error("❌ Firebase upload error:", err);
-        return res.status(500).json({ error: "Upload to Firebase failed" });
-      });
-
-      blobStream.on("finish", async () => {
         try {
-          await blob.makePublic();
-        } catch (err) {
-          console.error("❌ Failed to make file public:", err);
-          return res
-            .status(500)
-            .json({ error: "Failed to make file public" });
-        }
+          const routine = await routinesCollection.findOne({
+            _id: new ObjectId(routineId),
+          });
 
-        const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-
-        const assignment = {
-          title: title || `Class Assignment for ${routine.routines[index].day}`,
-          uploadedBy: email,
-          course: course || routine.routines[index].course || "",
-          url: fileUrl,
-          path: uniqueFileName,
-          uploadedAt: new Date(),
-        };
-
-        const updateResult = await routinesCollection.updateOne(
-          { _id: new ObjectId(routineId) },
-          {
-            $set: {
-              [`routines.${index}.assignment`]: assignment,
-            },
+          if (!routine) {
+            return res.status(404).json({ error: "Routine not found" });
           }
-        );
 
-        if (updateResult.modifiedCount > 0) {
-          res.status(200).json({
-            message: "Assignment uploaded successfully.",
+          const index = parseInt(dayIndex);
+          if (isNaN(index) || index < 0 || index >= routine.routines.length) {
+            return res.status(400).json({ error: "Invalid day index" });
+          }
+
+          const uniqueFileName = `${Date.now()}-${req.file.originalname}`;
+          const blob = bucket.file(uniqueFileName);
+          const blobStream = blob.createWriteStream({
+            metadata: { contentType: req.file.mimetype },
           });
-        } else {
-          res.status(500).json({
-            message: "Failed to upload assignment.",
+
+          blobStream.on("error", (err) => {
+            console.error("❌ Firebase upload error:", err);
+            return res.status(500).json({ error: "Upload to Firebase failed" });
           });
+
+          blobStream.on("finish", async () => {
+            try {
+              await blob.makePublic();
+            } catch (err) {
+              console.error("❌ Failed to make file public:", err);
+              return res
+                .status(500)
+                .json({ error: "Failed to make file public" });
+            }
+
+            const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+
+            const assignment = {
+              title:
+                title || `Class Assignment for ${routine.routines[index].day}`,
+              uploadedBy: email,
+              course: course || routine.routines[index].course || "",
+              url: fileUrl,
+              path: uniqueFileName,
+              uploadedAt: new Date(),
+            };
+
+            const updateResult = await routinesCollection.updateOne(
+              { _id: new ObjectId(routineId) },
+              {
+                $set: {
+                  [`routines.${index}.assignment`]: assignment,
+                },
+              }
+            );
+
+            if (updateResult.modifiedCount > 0) {
+              res.status(200).json({
+                message: "Assignment uploaded successfully.",
+              });
+            } else {
+              res.status(500).json({
+                message: "Failed to upload assignment.",
+              });
+            }
+          });
+
+          blobStream.end(req.file.buffer);
+        } catch (err) {
+          console.error("❌ Error uploading assignment:", err);
+          res.status(500).json({ error: "Internal Server Error" });
         }
-      });
-
-      blobStream.end(req.file.buffer);
-    } catch (err) {
-      console.error("❌ Error uploading assignment:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  }
-);
-
-
+      }
+    );
 
     //✅ ✅ ✅  payment routes
 
@@ -4206,20 +4349,20 @@ app.patch(
         });
 
         // for production
-        // res.cookie("token", token, {
-        //   httpOnly: true,
-        //   secure: process.env.NODE_ENV === "production",
-        //   sameSite: "none",
-        //   maxAge: 7 * 24 * 60 * 60 * 1000,
-        // })
-        // for dev
-        res
-          .cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production" ? true : false,
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            maxAge: 24 * 60 * 60 * 1000,
-          })
+        res.cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "none",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        })
+        // for dev....
+        // res
+        //   .cookie("token", token, {
+        //     httpOnly: true,
+        //     secure: process.env.NODE_ENV === "production" ? true : false,
+        //     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        //     maxAge: 24 * 60 * 60 * 1000,
+        //   })
 
           .send({ success: true });
       } catch (error) {
