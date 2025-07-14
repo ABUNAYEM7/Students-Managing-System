@@ -2389,30 +2389,34 @@ async function run() {
     });
 
     // Get specific student grade with optional semester filter
-    app.get("/student-result/:email", verifyToken, async (req, res) => {
-      const { email } = req.params;
-      const { semester } = req.query;
+app.get("/student-result/:email", verifyToken, async (req, res) => {
+  const { email } = req.params;
+  const { semester } = req.query;
 
-      // 🔐 Only the student themself can access
-      if (req.user.email !== email) {
-        return res.status(403).send({ message: "Forbidden: Access denied" });
-      }
+  // 🔐 Ensure the authenticated student can access only their own results
+  if (req.user.email !== email) {
+    return res.status(403).send({ message: "Forbidden: Access denied" });
+  }
 
-      try {
-        let filter = { studentEmail: email };
-        if (semester) {
-          filter.semester = semester;
-        }
+  try {
+    let filter = { studentEmail: email };
 
-        const result = await gradesCollection.findOne(filter);
-        res.send(result);
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("❌ Error fetching student result:", error);
-        }
-        res.status(500).send({ message: "Internal server error" });
-      }
-    });
+    if (semester) {
+      filter.semester = semester;
+      const result = await gradesCollection.findOne(filter);
+      return res.send(result || { message: "No result found for this semester" });
+    }
+
+    const results = await gradesCollection.find(filter).toArray();
+    res.send(results);
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("❌ Error fetching student result:", error);
+    }
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
 
     // GET: All weekly routines sorted by months secured
     app.get("/all/weekly-routines", verifyToken, async (req, res) => {

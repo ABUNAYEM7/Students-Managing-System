@@ -5,6 +5,7 @@ import useAuth from "../../../Components/Hooks/useAuth";
 
 const Grade = () => {
   const semesterOptions = [
+    "All",
     "Quarter-1",
     "Quarter-2",
     "Quarter-3",
@@ -16,26 +17,35 @@ const Grade = () => {
     "Quarter-9",
     "Quarter-10",
     "Quarter-11",
-    "Quarter-11",
+    "Quarter-12",
     "Quarter-13",
     "Quarter-14",
     "Quarter-15",
     "Quarter-16",
   ];
-  const [selectedSemester, setSelectedSemester] = useState(semesterOptions[1]);
+
+  const [selectedSemester, setSelectedSemester] = useState(() => {
+    return localStorage.getItem("selectedSemester") || "Quarter-1";
+  });
   const { user } = useAuth();
 
-  // Updated: added semester inside the key
-  const { data: dbGrades, refetch } = useFetchData(
-    `${user?.email}-${selectedSemester}`,
-    `/student-result/${user?.email}?semester=${encodeURIComponent(
-      selectedSemester
-    )}`
-  );
+  const isAll = selectedSemester === "All";
+  const cacheKey = isAll
+    ? `${user?.email}-all`
+    : `${user?.email}-${selectedSemester}`;
+  const endpoint = isAll
+    ? `/student-result/${user?.email}`
+    : `/student-result/${user?.email}?semester=${encodeURIComponent(
+        selectedSemester
+      )}`;
 
-  const currentSemesterData =
-    dbGrades?.semester === selectedSemester ? dbGrades : null;
-  const grades = currentSemesterData?.grades ?? [];
+  const { data: dbGrades, refetch } = useFetchData(cacheKey, endpoint);
+
+  const grades = isAll
+    ? Array.isArray(dbGrades)
+      ? dbGrades.flatMap((entry) => entry?.grades || [])
+      : []
+    : dbGrades?.grades ?? [];
 
   const average = grades.length
     ? (
@@ -64,7 +74,9 @@ const Grade = () => {
             className="select select-bordered"
             value={selectedSemester}
             onChange={(e) => {
-              setSelectedSemester(e.target.value);
+              const value = e.target.value;
+              setSelectedSemester(value);
+              localStorage.setItem("selectedSemester", value);
               setTimeout(() => refetch(), 0);
             }}
           >
@@ -83,7 +95,10 @@ const Grade = () => {
             </div>
             <div className="stat-title">Average Point</div>
             <div className="stat-value text-orange-600">{average}</div>
-            <div className="stat-desc">For {selectedSemester}</div>
+            <div className="stat-desc">
+              For{" "}
+              {selectedSemester === "All" ? "All Quarters" : selectedSemester}
+            </div>
           </div>
         </div>
 
@@ -93,6 +108,7 @@ const Grade = () => {
               <tr>
                 <th>Course Code</th>
                 <th>Course Name</th>
+                <th>Quarter</th>
                 <th>Point</th>
                 <th>Grade</th>
               </tr>
@@ -103,17 +119,22 @@ const Grade = () => {
                   <tr key={index}>
                     <td>{item?.courseCode}</td>
                     <td>{item?.courseName}</td>
+                    <td>{item?.semester}</td>
                     <td>{(item?.point ?? 0).toFixed(2)}</td>
                     <td className="flex items-center gap-2">
-                      <FaStar className="text-yellow-500" />{" "}
+                      <FaStar className="text-yellow-500" />
                       {getGradeLetter(item?.point ?? 0)}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3" className="text-center text-gray-500 py-4">
-                    No grades available for this Quarter.
+                  <td colSpan="4" className="text-center text-gray-500 py-4">
+                    No grades available for{" "}
+                    {selectedSemester === "All"
+                      ? "any quarter"
+                      : selectedSemester}
+                    .
                   </td>
                 </tr>
               )}
