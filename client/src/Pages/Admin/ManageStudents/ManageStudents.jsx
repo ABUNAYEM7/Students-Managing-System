@@ -52,70 +52,70 @@ const ManageStudents = () => {
     fetchStudentsWithRequests();
   }, [axiosInstance, debouncedSearchTerm]);
 
-  const deleteHandler = (student) => {
-    const id = student?._id;
-    const email = student?.email;
+const deleteHandler = (student) => {
+  const id = student?._id;
+  const email = student?.email;
 
-    Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          const updateRes = await axiosInstance.patch(
-            `/update/user-info/${email}`,
-            {
-              role: "user",
-            }
+  Swal.fire({
+    title: "Are you sure?",
+    text: "You won't be able to revert this!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Yes, delete it!",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        const updateRes = await axiosInstance.patch(
+          `/update/user-info/${encodeURIComponent(email)}`,
+          {
+            role: "user",
+          }
+        );
+
+        if (
+          updateRes?.data?.userUpdate > 0 ||
+          updateRes?.data?.secondaryUpdate > 0
+        ) {
+          const deleteRes = await axiosInstance.delete(
+            `/delete-student/${id}`
           );
 
-          if (
-            updateRes?.data?.modifiedCount > 0 ||
-            updateRes?.data?.matchedCount > 0
-          ) {
-            const deleteRes = await axiosInstance.delete(
-              `/delete-student/${id}`
-            );
+          if (deleteRes?.data?.deletedCount > 0) {
+            const filtered = students.filter((s) => s._id !== id);
+            setStudents(filtered);
 
-            if (deleteRes?.data?.deletedCount > 0) {
-              const filtered = students.filter((s) => s._id !== id);
-              setStudents(filtered);
-
-              Swal.fire({
-                title: "Deleted!",
-                text: "Student has been deleted and role reset to user.",
-                icon: "success",
-              });
-            } else {
-              Swal.fire({
-                title: "Failed!",
-                text: "Role updated but student deletion failed.",
-                icon: "error",
-              });
-            }
+            Swal.fire({
+              title: "Deleted!",
+              text: "Student has been deleted and role reset to user.",
+              icon: "success",
+            });
           } else {
             Swal.fire({
               title: "Failed!",
-              text: "Failed to update user role.",
+              text: "Role updated but student deletion failed.",
               icon: "error",
             });
           }
-        } catch (error) {
-          console.error("❌ Error during deletion process:", error);
+        } else {
           Swal.fire({
-            title: "Error",
-            text: "Something went wrong during the deletion process.",
+            title: "Failed!",
+            text: "Failed to update user role.",
             icon: "error",
           });
         }
+      } catch (error) {
+        Swal.fire({
+          title: "Error",
+          text: "Something went wrong during the deletion process.",
+          icon: "error",
+        });
       }
-    });
-  };
+    }
+  });
+};
+
 
   const viewDetails = (email) => {
     navigate(`/dashboard/view-details/${email}`);

@@ -24,7 +24,7 @@ app.use(cookieParser());
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://populi.lordlandca.us",
+  // "https://populi.lordlandca.us",
   "https://populi.kingsinternationalinstitute.com",
 ];
 
@@ -365,7 +365,6 @@ async function run() {
       }
     );
 
-
     // update user role secured
     app.patch(
       "/update/user-role/:id",
@@ -403,30 +402,27 @@ async function run() {
 
     // // update user information secured old new
     app.patch("/update/user-info/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const filter = { email };
-      const data = req.body;
-
       try {
-        // Step 1: Find user to determine role
+        const rawParam = req.params.email;
+        const email = decodeURIComponent(rawParam || "");
+        const filter = { email };
+        const data = req.body;
+
         const user = await usersCollection.findOne({ email });
 
         if (!user) {
-          return res.status(404).send({ message: "User not found" });
+          return res.status(404).json({ message: "User not found" });
         }
 
-        // Step 2: Prepare the update object
         const updatedInfo = {
           $set: { ...data },
         };
 
-        // Step 3: Update in usersCollection
         const userUpdateResult = await usersCollection.updateOne(
           filter,
           updatedInfo
         );
 
-        // Step 4: If user is student, also update in studentsCollection
         let secondaryUpdateResult = null;
 
         if (user.role === "student") {
@@ -440,14 +436,14 @@ async function run() {
             updatedInfo
           );
         }
-        res.send({
+
+        res.status(200).json({
           success: true,
           userUpdate: userUpdateResult.modifiedCount,
           secondaryUpdate: secondaryUpdateResult?.modifiedCount || 0,
         });
       } catch (error) {
-        console.error("❌ Failed to update user info:", error);
-        res.status(500).send({ message: "Internal server error" });
+        res.status(500).json({ message: "Internal server error" });
       }
     });
 
@@ -2389,34 +2385,35 @@ async function run() {
     });
 
     // Get specific student grade with optional semester filter
-app.get("/student-result/:email", verifyToken, async (req, res) => {
-  const { email } = req.params;
-  const { semester } = req.query;
+    app.get("/student-result/:email", verifyToken, async (req, res) => {
+      const { email } = req.params;
+      const { semester } = req.query;
 
-  // 🔐 Ensure the authenticated student can access only their own results
-  if (req.user.email !== email) {
-    return res.status(403).send({ message: "Forbidden: Access denied" });
-  }
+      // 🔐 Ensure the authenticated student can access only their own results
+      if (req.user.email !== email) {
+        return res.status(403).send({ message: "Forbidden: Access denied" });
+      }
 
-  try {
-    let filter = { studentEmail: email };
+      try {
+        let filter = { studentEmail: email };
 
-    if (semester) {
-      filter.semester = semester;
-      const result = await gradesCollection.findOne(filter);
-      return res.send(result || { message: "No result found for this semester" });
-    }
+        if (semester) {
+          filter.semester = semester;
+          const result = await gradesCollection.findOne(filter);
+          return res.send(
+            result || { message: "No result found for this semester" }
+          );
+        }
 
-    const results = await gradesCollection.find(filter).toArray();
-    res.send(results);
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("❌ Error fetching student result:", error);
-    }
-    res.status(500).send({ message: "Internal server error" });
-  }
-});
-
+        const results = await gradesCollection.find(filter).toArray();
+        res.send(results);
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Error fetching student result:", error);
+        }
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
 
     // GET: All weekly routines sorted by months secured
     app.get("/all/weekly-routines", verifyToken, async (req, res) => {
@@ -3395,92 +3392,87 @@ app.get("/student-result/:email", verifyToken, async (req, res) => {
       }
     });
 
-        // ✅ POST: Send & store message
-app.post("/send-message", upload.single("file"), async (req, res) => {
-  const {
-    name,
-    email,
-    subject,
-    description,
-    recipientRole,
-    replyTo,
-  } = req.body;
+    // ✅ POST: Send & store message
+    app.post("/send-message", upload.single("file"), async (req, res) => {
+      const { name, email, subject, description, recipientRole, replyTo } =
+        req.body;
 
-  let recipients = req.body.recipients;
-  if (!recipients) recipients = [];
-  if (typeof recipients === "string") recipients = [recipients];
+      let recipients = req.body.recipients;
+      if (!recipients) recipients = [];
+      if (typeof recipients === "string") recipients = [recipients];
 
-  if (
-    !name ||
-    !email ||
-    !subject ||
-    !description ||
-    !recipients?.length ||
-    !recipientRole
-  ) {
-    return res.status(400).send({ message: "Missing required fields" });
-  }
+      if (
+        !name ||
+        !email ||
+        !subject ||
+        !description ||
+        !recipients?.length ||
+        !recipientRole
+      ) {
+        return res.status(400).send({ message: "Missing required fields" });
+      }
 
-  const message = {
-    name,
-    email,
-    subject,
-    description,
-    recipients,
-    recipientRole,
-    sender: email,
-    replyTo: replyTo || null,
-    createdAt: new Date().toISOString(),
-  };
-
-  try {
-    // ✅ If a file was uploaded, store it in Firebase Storage
-    if (req.file && req.file.buffer) {
-      const { getStorage } = require("firebase-admin/storage");
-      const bucket = getStorage().bucket();
-
-      const uniqueFileName = `messages/${Date.now()}-${req.file.originalname}`;
-      const blob = bucket.file(uniqueFileName);
-
-      const stream = blob.createWriteStream({
-        metadata: {
-          contentType: req.file.mimetype,
-        },
-      });
-
-      stream.end(req.file.buffer);
-
-      await new Promise((resolve, reject) => {
-        stream.on("finish", async () => {
-          try {
-            await blob.makePublic(); // ✅ Make file publicly accessible
-            resolve();
-          } catch (err) {
-            reject(err);
-          }
-        });
-        stream.on("error", reject);
-      });
-
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${encodeURIComponent(uniqueFileName)}`;
-
-      message.attachment = {
-        filename: req.file.originalname,
-        path: publicUrl,
-        mimetype: req.file.mimetype,
+      const message = {
+        name,
+        email,
+        subject,
+        description,
+        recipients,
+        recipientRole,
+        sender: email,
+        replyTo: replyTo || null,
+        createdAt: new Date().toISOString(),
       };
-    }
 
-    const result = await messageCollection.insertOne(message);
-    res.send({ success: true, insertedId: result.insertedId });
-  } catch (err) {
-    console.error("❌ Message send failed:", err);
-    res.status(500).send({ message: "Internal server error" });
-  }
-});
+      try {
+        // ✅ If a file was uploaded, store it in Firebase Storage
+        if (req.file && req.file.buffer) {
+          const { getStorage } = require("firebase-admin/storage");
+          const bucket = getStorage().bucket();
 
+          const uniqueFileName = `messages/${Date.now()}-${
+            req.file.originalname
+          }`;
+          const blob = bucket.file(uniqueFileName);
 
+          const stream = blob.createWriteStream({
+            metadata: {
+              contentType: req.file.mimetype,
+            },
+          });
 
+          stream.end(req.file.buffer);
+
+          await new Promise((resolve, reject) => {
+            stream.on("finish", async () => {
+              try {
+                await blob.makePublic(); // ✅ Make file publicly accessible
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            });
+            stream.on("error", reject);
+          });
+
+          const publicUrl = `https://storage.googleapis.com/${
+            bucket.name
+          }/${encodeURIComponent(uniqueFileName)}`;
+
+          message.attachment = {
+            filename: req.file.originalname,
+            path: publicUrl,
+            mimetype: req.file.mimetype,
+          };
+        }
+
+        const result = await messageCollection.insertOne(message);
+        res.send({ success: true, insertedId: result.insertedId });
+      } catch (err) {
+        console.error("❌ Message send failed:", err);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
 
     // upload assignment
     app.post(
